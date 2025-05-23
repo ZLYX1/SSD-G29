@@ -36,7 +36,13 @@ Build Docker Image
 docker build -t safe-companions .
 ```
 
-Run the Container
+Create Container with a name. (RUN IT ONCE ONLY)
 ```bat
-docker run -p 5000:5000 safe-companions
+docker run -d -p 5000:5000 --name safe-companions-container safe-companions
+```
+
+Start/Stop the Container
+```bat
+docker start safe-companions-container
+docker stop safe-companions-container
 ```
