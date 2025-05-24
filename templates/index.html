@@ -10,6 +10,9 @@
         <div class="col-md">
             <h1 class="mt-4">Welcome to My Flask App</h1>
             <p class="lead">This is the home page served by Flask.</p>
+
+            {# Display the PostgreSQL version #}
+            <p class="mt-3 text-muted">PostgreSQL version: {{ version }}</p>
         </div>
     </div>
 {% endblock %}

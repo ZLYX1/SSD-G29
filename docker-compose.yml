@@ -12,7 +12,9 @@ services:
       - DATABASE_URL=postgresql://postgres:password@db:5432/safe_companions_db
     depends_on:
       - db
-    command: ["flask", "run", "--host=0.0.0.0"]
+    entrypoint: [ "./entrypoint.sh" ]
+    networks:
+      - backend-network
 
   db:
     container_name: postgres-db
@@ -27,6 +29,12 @@ services:
     volumes:
       # Persist PostgreSQL data
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend-network
 
 volumes:
   postgres_data:
+
+networks:
+  backend-network:
+    driver: bridge
