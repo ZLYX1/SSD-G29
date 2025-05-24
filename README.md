@@ -27,22 +27,21 @@ python app.py
 ```
 
 <hr style="width:100%; height:1px; border:none; background-color:#ccc;">
+Setup environment variables
+
+1. Create `.env` file using `.env.example` as a template.
+
+<hr style="width:100%; height:1px; border:none; background-color:#ccc;">
 
 ## Docker
 **Ensure Docker Desktop is running**
 
-Build Docker Image
+Build and run container
 ```bat
-docker build -t safe-companions .
+docker compose up --build -d
 ```
 
-Create Container with a name. (RUN IT ONCE ONLY)
+Stop container
 ```bat
-docker run -d -p 5000:5000 --name safe-companions-container safe-companions
-```
-
-Start/Stop the Container
-```bat
-docker start safe-companions-container
-docker stop safe-companions-container
+docker compose down
 ```
