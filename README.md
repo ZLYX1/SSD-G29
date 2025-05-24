@@ -45,3 +45,13 @@ Stop container
 ```bat
 docker compose down
 ```
+
+Completely remove everything (containers, networks, volumes, and images)
+```bat
+docker compose down --volumes --rmi all --remove-orphans
+```
+
+Connect to PostgreSQL database in container.
+```bat
+psql -h localhost -p 8888 -U postgres -d safe_companions_db
+```
