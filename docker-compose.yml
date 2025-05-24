@@ -3,10 +3,38 @@ services:
     container_name: flask-app
     build: .
     ports:
-      - "5000:5000"
+      - "8080:5000"
     volumes:
       - .:/app # Live sync local files with container
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
-    command: ["flask", "run", "--host=0.0.0.0"]
+      - DATABASE_URL=postgresql://postgres:password@db:5432/safe_companions_db
+    depends_on:
+      - db
+    entrypoint: [ "./entrypoint.sh" ]
+    networks:
+      - backend-network
+
+  db:
+    container_name: postgres-db
+    image: postgres:bullseye
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: safe_companions_db
+    ports:
+      - "8888:5432"
+    volumes:
+      # Persist PostgreSQL data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend-network
+
+volumes:
+  postgres_data:
+
+networks:
+  backend-network:
+    driver: bridge
