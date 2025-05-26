@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y netcat-openbsd && apt-get clean
 WORKDIR /app
 
 # Copy requirement and source files.
-COPY requirements.txt requirements.txt
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code.
@@ -17,17 +17,12 @@ COPY . .
 # Make sure the entrypoint script is executable.
 RUN chmod +x ./entrypoint.sh
 
+# Expose port used by Flask/Gunicorn
+EXPOSE 5000
+
 # Set environment variable for Flask.
 ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
 
-# Expose port 5000 for Flask
-EXPOSE 5000
-
-# Run the entrypoint script that waits for the database.
+# Use entrypoint to handle both dev and prod
 ENTRYPOINT ["./entrypoint.sh"]
-
-# Run the Flask app (Development)
-#CMD ["flask", "run"]
-# Run the Flask app (Production)
-#CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
