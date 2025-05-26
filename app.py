@@ -1,7 +1,9 @@
-from flask import Flask, g, render_template
+from flask import Flask, g, render_template, request, redirect, url_for, flash
 from db import PostgresConnector
+import secrets
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(16)
 
 # Persistent database connection
 db = PostgresConnector(
@@ -44,8 +46,19 @@ def index():
     return render_template("index.html", version=version)
 
 
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        # Authentication logic
+        if email == "user@example.com" and password == "securepassword":
+            # Successful login
+            return redirect(url_for("index"))
+        else:
+            flash("Invalid email or password", "danger")
+
     return render_template("login.html")
 
 
