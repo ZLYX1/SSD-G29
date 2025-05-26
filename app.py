@@ -2,6 +2,8 @@ from flask import Flask, g, render_template, request, redirect, url_for, flash
 from db import PostgresConnector
 import secrets
 
+from controllers.auth_controller import AuthController
+
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
@@ -15,6 +17,9 @@ db = PostgresConnector(
     user="postgres",
     password="password",
 )
+
+# Authentication controller
+auth_controller = AuthController()
 
 
 def get_db_conn():
@@ -52,8 +57,7 @@ def login():
         email = request.form.get("email")
         password = request.form.get("password")
 
-        # Authentication logic
-        if email == "user@example.com" and password == "securepassword":
+        if auth_controller.authenticate(email, password):
             # Successful login
             return redirect(url_for("index"))
         else:
