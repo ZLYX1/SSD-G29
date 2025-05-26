@@ -66,5 +66,25 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+
+        if password != confirm_password:
+            flash("Passwords do not match", "danger")
+            return render_template("register.html")
+
+        if auth_controller.register(email, password):
+            flash("Account created successfully. Please log in.", "success")
+            return redirect(url_for("login"))
+        else:
+            flash("Email already registered", "danger")
+
+    return render_template("register.html")
+
+
 if __name__ == "__main__":
     app.run(debug=True)
