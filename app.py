@@ -29,6 +29,7 @@ def close_db_conn(exception):
 
 
 @app.route("/")
+@app.route("/home")
 def index():
     try:
         conn = get_db_conn()
@@ -41,6 +42,11 @@ def index():
         version = "Unavailable"
 
     return render_template("index.html", version=version)
+
+
+@app.route("/login")
+def login():
+    return render_template("login.html")
 
 
 if __name__ == "__main__":
