@@ -1,0 +1,33 @@
+{# Inherit base.html layout #}
+{% extends "base.html" %}
+
+{# Website title #}
+{% block title %}Register - Flask App{% endblock %}
+
+{# Main content #}
+{% block content %}
+    <div class="d-flex justify-content-center align-items-center" style="height: calc(100vh - 160px);">
+        <div style="max-width: 500px; width: 100%;">
+            <form method="post" class="row g-3">
+                <div class="col-12">
+                    <label for="inputEmail4" class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" id="inputEmail4" required>
+                </div>
+                <div class="col-12">
+                    <label for="inputPassword4" class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" id="inputPassword4" required>
+                </div>
+                <div class="col-12">
+                    <label for="inputConfirmPassword" class="form-label">Confirm Password</label>
+                    <input type="password" name="confirm_password" class="form-control" id="inputConfirmPassword"
+                           required>
+                </div>
+                <div class="col-12">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Register</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

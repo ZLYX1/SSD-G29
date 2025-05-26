@@ -15,7 +15,7 @@
 <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
     <!-- Navbar content -->
     <div class="container-fluid">
-        <a class="navbar-brand" href="#">
+        <a class="navbar-brand" href="{{ url_for('index') }}">
             <img src="https://getbootstrap.com/docs/5.3/assets/brand/bootstrap-logo.svg" alt="Logo" width="30"
                  height="24" class="d-inline-block align-text-top">
             Bootstrap
@@ -28,7 +28,7 @@
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="#">Home</a>
+                    <a class="nav-link active" aria-current="page" href="{{ url_for('index') }}">Home</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#">Features</a>
@@ -63,8 +63,8 @@
                         Account
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end custom-dropdown-light">
-                        <li><a class="dropdown-item" href="#">Login</a></li>
-                        <li><a class="dropdown-item" href="#">Signup</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('login') }}">Login</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('register') }}">Signup</a></li>
                     </ul>
                 </li>
             </ul>
@@ -73,14 +73,14 @@
 </nav>
 
 {# Main content container #}
-<main class="flex-grow-1">
+<main class="flex-fill d-flex align-items-center justify-content-center">
     <div class="container">
         {% block content %}{% endblock %}
     </div>
 </main>
 
 {# Footer #}
-<footer class="bg-primary text-light text-center py-4 mt-5" data-bs-theme="dark">
+<footer class="bg-primary text-light text-center py-4" data-bs-theme="dark">
     <div class="container">
         <p class="mb-1">&copy; 2025 G29</p>
         <p class="mb-0">

@@ -1,7 +1,11 @@
-from flask import Flask, g, render_template
+from flask import Flask, g, render_template, request, redirect, url_for, flash
 from db import PostgresConnector
+import secrets
+
+from controllers.auth_controller import AuthController
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(16)
 
 # Persistent database connection
 db = PostgresConnector(
@@ -13,6 +17,9 @@ db = PostgresConnector(
     user="postgres",
     password="password",
 )
+
+# Authentication controller
+auth_controller = AuthController()
 
 
 def get_db_conn():
@@ -29,6 +36,7 @@ def close_db_conn(exception):
 
 
 @app.route("/")
+@app.route("/home")
 def index():
     try:
         conn = get_db_conn()
@@ -41,6 +49,41 @@ def index():
         version = "Unavailable"
 
     return render_template("index.html", version=version)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        if auth_controller.authenticate(email, password):
+            # Successful login
+            return redirect(url_for("index"))
+        else:
+            flash("Invalid email or password", "danger")
+
+    return render_template("login.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+
+        if password != confirm_password:
+            flash("Passwords do not match", "danger")
+            return render_template("register.html")
+
+        if auth_controller.register(email, password):
+            flash("Account created successfully. Please log in.", "success")
+            return redirect(url_for("login"))
+        else:
+            flash("Email already registered", "danger")
+
+    return render_template("register.html")
 
 
 if __name__ == "__main__":
