@@ -1,13 +1,21 @@
 services:
   web:
     container_name: flask-app
-    build: .
+    build:
+      context: .
+      args:
+        REQ_FILE: requirements-prod.txt
     ports:
       - "8080:5000"
     environment:
-      - FLASK_APP=${FLASK_APP}
-      - FLASK_ENV=${FLASK_ENV}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL
+      - DATABASE_USERNAME
+      - DATABASE_PASSWORD
+      - DATABASE_NAME
+      - DATABASE_HOST
+      - DATABASE_PORT
+      - FLASK_APP
+      - FLASK_ENV
     depends_on:
       - db
     entrypoint: [ "./entrypoint.sh" ]
@@ -21,9 +29,9 @@ services:
     image: postgres:bullseye
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: safe_companions_db
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
     ports:
       - "8888:5432"
     volumes:

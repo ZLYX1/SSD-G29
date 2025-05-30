@@ -1,21 +1,41 @@
 from flask import Flask, g, render_template, request, redirect, url_for, flash
 from db import PostgresConnector
 import secrets
+import os
 
 from controllers.auth_controller import AuthController
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
+# Validate required environment variables
+required_vars = [
+    "DATABASE_HOST",
+    "DATABASE_PORT",
+    "DATABASE_NAME",
+    "DATABASE_USERNAME",
+    "DATABASE_PASSWORD",
+]
+
+for var in required_vars:
+    if var not in os.environ:
+        raise EnvironmentError(f"Missing required environment variable: {var}")
+
+# Log non-sensitive variables (for development only)
+if os.environ.get("FLASK_ENV") == "development":
+    print(f"[INFO] Connecting to DB host: {os.environ['DATABASE_HOST']}")
+    print(f"[INFO] DB port: {os.environ['DATABASE_PORT']}")
+    print(f"[INFO] DB name: {os.environ['DATABASE_NAME']}")
+
 # Persistent database connection
 db = PostgresConnector(
     # Matches the service name in docker-compose.yml
-    host="db",
+    host=os.environ["DATABASE_HOST"],
     # Internal port (not the mapped host port)
-    port=5432,
-    database="safe_companions_db",
-    user="postgres",
-    password="password",
+    port=int(os.environ["DATABASE_PORT"]),
+    database=os.environ["DATABASE_NAME"],
+    user=os.environ["DATABASE_USERNAME"],
+    password=os.environ["DATABASE_PASSWORD"],
 )
 
 # Authentication controller
