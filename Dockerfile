@@ -7,9 +7,14 @@ RUN apt-get update && apt-get install -y netcat-openbsd && apt-get clean
 # Set working directory
 WORKDIR /app
 
-# Copy requirement and source files.
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirement files.
+COPY requirements.txt requirements-prod.txt ./
+
+# Build argument to select requirements.
+ARG REQ_FILE=requirements.txt
+
+# Install dependencies based on build arg
+RUN pip install --no-cache-dir -r $REQ_FILE
 
 # Copy application code.
 COPY . .
