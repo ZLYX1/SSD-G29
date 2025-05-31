@@ -1,5 +1,13 @@
 # SSD-G29
 
+## Prerequisites
+
+Ensure the following are installed on **Windows** before proceeding
+
+* [Python 3.13](https://www.python.org/downloads/)
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+* [PostgreSQL Client](https://www.postgresql.org/download/)
+
 ## Flask app
 
 Create an environment
