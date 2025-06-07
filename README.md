@@ -87,3 +87,16 @@ Connect to PostgreSQL database in container.
 ```bat
 psql -h localhost -p 8888 -U postgres -d safe_companions_db
 ```
+
+SSL Certificate
+
+```bash
+// Check Certbot Renewal Timer
+systemctl list-timers | grep certbot
+
+// Simulate Renewal Without Making Changes
+sudo certbot renew --dry-run
+
+// Check Certificate Expiry Date
+sudo certbot certificates
+```
