@@ -70,6 +70,12 @@ Stop container
 docker compose down
 ```
 
+Stop container (Production)
+
+```bat
+ docker compose --env-file .env.production down
+```
+
 Completely remove everything (containers, networks, volumes, and images)
 
 ```bat
