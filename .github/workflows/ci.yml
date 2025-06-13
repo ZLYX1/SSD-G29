@@ -1,0 +1,75 @@
+name: CI Pipeline with Dummy Credentials
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:bullseye
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U testuser"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+      DATABASE_USERNAME: testuser
+      DATABASE_PASSWORD: testpassword
+      DATABASE_NAME: testdb
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Initialize test database schema
+        run: |
+          # Wait for Postgres to be ready
+          until pg_isready -h localhost -p 5432 -U testuser; do
+            echo "Waiting for Postgres..."
+            sleep 2
+          done
+          # Run migrations or create tables here.
+          # Example using psql to create a simple table (adjust accordingly)
+          PGPASSWORD=testpassword psql -h localhost -U testuser -d testdb -c "
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL
+          );"
+
+      - name: Run tests
+        run: |
+          pytest
+
+      - name: Build Docker image
+        run: |
+          docker build --build-arg REQ_FILE=requirements-prod.txt -t flask-app .
