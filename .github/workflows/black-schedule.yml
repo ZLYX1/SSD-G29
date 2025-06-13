@@ -1,0 +1,24 @@
+name: Nightly Code Formatting Check
+
+on:
+  schedule:
+    # Daily at midnight UTC
+    - cron: "0 0 * * *"
+
+jobs:
+  black-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Black
+        run: pip install black
+
+      - name: Run Black in check mode
+        run: black --check .
