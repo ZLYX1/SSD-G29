@@ -68,19 +68,20 @@ jobs:
           done
           
           if [ "$STATUS" != "healthy" ]; then
-            echo "PostgreSQL" container failed to become healthy."
+            echo "PostgreSQL container failed to become healthy."
             exit 1
           fi
         shell: bash
 
       - name: Initialize test database schema
         run: |
-          PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USERNAME -d $DATABASE_NAME -c "
-          CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL
-          );"
+          PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USERNAME -d $DATABASE_NAME <<-EOF
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              email VARCHAR(255) UNIQUE NOT NULL,
+              password_hash VARCHAR(255) NOT NULL
+            );
+          EOF
 
       - name: Run tests
         run: |
