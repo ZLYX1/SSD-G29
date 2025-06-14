@@ -12,6 +12,18 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
 
+    # Centralised dummy environment variables
+    env:
+      # These dummy values are for CI testing only.
+      # Repo maintainers can replace them with GitHub Secrets.
+      FLASK_ENV: development
+      DATABASE_USERNAME: testuser
+      DATABASE_PASSWORD: testpassword
+      DATABASE_NAME: testdb
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+
     services:
       postgres:
         image: postgres:bullseye
@@ -27,15 +39,6 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
-    env:
-      FLASK_ENV: development
-      DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
-      DATABASE_USERNAME: testuser
-      DATABASE_PASSWORD: testpassword
-      DATABASE_NAME: testdb
-      DATABASE_HOST: localhost
-      DATABASE_PORT: 5432
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,16 +53,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Wait for PostgreSQL container health check
+        run: |
+          echo "Checking PostgresSQL container health..."
+          for i in {1..10}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' $(docker ps -q --filter expose=5432))
+            echo "Health status: $STATUS"
+            if [ "$STATUS" == "healthy" ]; then
+              echo "PostgreSQL is healthy."
+              break
+            fi
+            echo "Waiting for PostgreSQL to become healthy..."
+            sleep 3
+          done
+          
+          if [ "$STATUS" != "healthy" ]; then
+            echo "PostgreSQL" container failed to become healthy."
+            exit 1
+          fi
+        shell: bash
+
       - name: Initialize test database schema
         run: |
-          # Wait for Postgres to be ready
-          until pg_isready -h localhost -p 5432 -U testuser; do
-            echo "Waiting for Postgres..."
-            sleep 2
-          done
-          # Run migrations or create tables here.
-          # Example using psql to create a simple table (adjust accordingly)
-          PGPASSWORD=testpassword psql -h localhost -U testuser -d testdb -c "
+          PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USERNAME -d $DATABASE_NAME -c "
           CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             email VARCHAR(255) UNIQUE NOT NULL,
