@@ -8,23 +8,11 @@ on:
     branches:
       - main
   workflow_dispatch:
-    
+
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
-
-    # Centralised dummy environment variables
-    env:
-      # These dummy values are for CI testing only.
-      # Repo maintainers can replace them with GitHub Secrets.
-      FLASK_ENV: development
-      DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
-      DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
-      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     services:
       postgres:
@@ -67,8 +55,7 @@ jobs:
             fi
             echo "Waiting for PostgreSQL to become healthy..."
             sleep 3
-          done
-          
+          done          
           if [ "$STATUS" != "healthy" ]; then
             echo "PostgreSQL container failed to become healthy."
             exit 1
@@ -76,18 +63,26 @@ jobs:
         shell: bash
 
       - name: Initialize test database schema
+        env:
+          PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
         run: |
-          PGPASSWORD=${{ secrets.DATABASE_PASSWORD }} psql -h ${{ secrets.DATABASE_HOST }} -U ${{ secrets.DATABASE_USERNAME }} -d ${{ secrets.DATABASE_NAME }} <<-EOF
+          psql -h ${{ secrets.DATABASE_HOST }} -U ${{ secrets.DATABASE_USERNAME }} -d ${{ secrets.DATABASE_NAME }} <<-EOF
             CREATE TABLE IF NOT EXISTS users (
-              id SERIAL PRIMARY KEY,
-              email VARCHAR(255) UNIQUE NOT NULL,
-              password_hash VARCHAR(255) NOT NULL
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL
             );
           EOF
 
       - name: Run tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           pytest tests/
+
 
       - name: Build Docker image
         run: |
