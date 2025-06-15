@@ -1,4 +1,6 @@
 from flask import Flask, g, render_template, request, redirect, url_for, flash
+
+from config.db_config import DBConfig
 from db import PostgresConnector
 import secrets
 import os
@@ -28,7 +30,7 @@ if os.environ.get("FLASK_ENV") == "development":
     print(f"[INFO] DB name: {os.environ['DATABASE_NAME']}")
 
 # Persistent database connection
-db = PostgresConnector(
+config = DBConfig(
     # Matches the service name in docker-compose.yml
     host=os.environ["DATABASE_HOST"],
     # Internal port (not the mapped host port)
@@ -37,6 +39,7 @@ db = PostgresConnector(
     user=os.environ["DATABASE_USERNAME"],
     password=os.environ["DATABASE_PASSWORD"],
 )
+db = PostgresConnector(config)
 
 # Authentication controller
 auth_controller = AuthController()
