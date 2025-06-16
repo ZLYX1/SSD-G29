@@ -1,6 +1,9 @@
 name: ESLint Code Analysis
 
-on: [push, pull_request]
+on: [ push, pull_request ]
+
+permissions:
+  security-events: write
 
 jobs:
   eslint:
@@ -35,3 +38,4 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: reports/eslint-results.sarif
+          token: '${{ secret.GITHUB_TOKEN }}'
