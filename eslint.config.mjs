@@ -22,39 +22,54 @@ const commonParserOptions = {
 const commonGlobals = globals.browser
 
 export default defineConfig([
-    {
-        files: ["**/*.{js,mjs,cjs}"],
-        plugins: {
-            js,
-            security,
-            "no-unsanitized": noUnsanitized,
+        // Ignore override applies globally with no files/globs specified
+        {
+            ignores: ["certbot/"],
         },
-        extends: [
-            "plugin:security/recommended",
-            "plugin:no-unsanitized/recommended"
-        ],
-        rules: {
-            ...js.configs.recommended.rules,
-            ...security.configs.recommended.rules,
-
-            "security/detect-eval-with-expression": "error",
+        {
+            files: ["**/*.{js,mjs,cjs}"],
+            plugins: {
+                security,
+                "no-unsanitized": noUnsanitized,
+            },
+            rules: {
+                ...js.configs.recommended.rules,
+                ...security.configs.recommended.rules,
+                ...noUnsanitized.configs.recommended.rules,
+                "security/detect-eval-with-expression": "error",
+            },
+            languageOptions: {
+                parserOptions: commonParserOptions,
+                globals: commonGlobals,
+            },
         },
-        languageOptions: {
-            parserOptions: commonParserOptions,
-            globals: commonGlobals,
+        {
+            files: ["**/*.json"],
+            plugins: {json},
+            language: "json/json",
+            extends: ["json/recommended"]
         },
-    },
-    {files: ["**/*.json"], plugins: {json}, language: "json/json", extends: ["json/recommended"]},
-    {files: ["**/*.md"], plugins: {markdown}, language: "markdown/gfm", extends: ["markdown/recommended"]},
-    {files: ["**/*.css"], plugins: {css}, language: "css/css", extends: ["css/recommended"]},
-    {
-        files: ["**/*.html"],
-        plugins: {html},
-        languageOptions: {
-            parserOptions: commonParserOptions,
-            globals: commonGlobals,
+        {
+            files: ["**/*.md"],
+            plugins: {markdown},
+            language: "markdown/gfm",
+            extends: ["markdown/recommended"]
         },
-        settings: {},
-        rules: {},
-    }
-]);
+        {
+            files: ["**/*.css"],
+            plugins: {css},
+            language: "css/css",
+            extends: ["css/recommended"]
+        },
+        {
+            files: ["**/*.html"],
+            plugins: {html},
+            languageOptions: {
+                parserOptions: commonParserOptions,
+                globals: commonGlobals,
+            },
+            settings: {},
+            rules: {},
+        },
+    ],
+);
