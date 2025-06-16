@@ -38,4 +38,4 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: reports/eslint-results.sarif
-          token: '${{ secret.GITHUB_TOKEN }}'
+          token: '${{ secrets.GITHUB_TOKEN }}'
