@@ -107,8 +107,18 @@ sudo certbot renew --dry-run
 sudo certbot certificates
 ```
 
-Eslint / Sarif formatter
+## ESLint Setup and Usage
+
+### Install ESLint (locally)
 
 ```bat
 npm install eslint --save-dev
+```
+
+### Running the ESLint container
+
+Run ESLint inside the Docker container with:
+
+```bat
+docker compose run --rm eslint
 ```
