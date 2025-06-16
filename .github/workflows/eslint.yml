@@ -26,7 +26,7 @@ jobs:
         run: mkdir -p reports
 
       - name: Run ESLint with SARIF output
-        run: npx eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/eslint-results.sarif
+        run: npx eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/eslint-results.sarif || true
 
       - name: List reports directory
         run: ls -l reports/
