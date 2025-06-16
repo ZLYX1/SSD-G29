@@ -1,10 +1,10 @@
 name: "CodeQL Analysis Lab"
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
   analyze:
-    name: Analyze Code with CodeQL
+    name: Analyze Code with CodeQL + ESLint
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -19,6 +19,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint and generate SARIF report
+        run: |
+          mkdir -p reports
+          npx eslint . -f sarif -o reports/eslint-results.sarif
+
+      - name: Upload ESLint SARIF report
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'reports/eslint-results.sarif'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
