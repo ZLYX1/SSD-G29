@@ -9,7 +9,6 @@ import css from "@eslint/css";
 
 // External plugins
 import security from "eslint-plugin-security";
-import securityNode from "eslint-plugin-security-node";
 import noUnsanitized from "eslint-plugin-no-unsanitized"
 import html from "eslint-plugin-html"
 
@@ -28,11 +27,10 @@ export default defineConfig([
         plugins: {
             js,
             security,
-            "security-node": securityNode,
             "no-unsanitized": noUnsanitized,
         },
         extends: [
-            "plugin:security-node/recommended",
+            "plugin:security/recommended",
             "plugin:no-unsanitized/recommended"
         ],
         rules: {
@@ -40,7 +38,6 @@ export default defineConfig([
             ...security.configs.recommended.rules,
 
             "security/detect-eval-with-expression": "error",
-            "security-node/detect-crlf": "warn",
         },
         languageOptions: {
             parserOptions: commonParserOptions,
