@@ -20,7 +20,7 @@ jobs:
           restore-keys: ${{ runner.os }}-node-modules
 
       - name: Install Node.js dependencies
-        run: npm install
+        run: npm ci
 
       - name: Create reports directory
         run: mkdir -p reports
@@ -29,7 +29,10 @@ jobs:
         run: npm install @microsoft/eslint-formatter-sarif --save-dev
 
       - name: Run ESLint with SARIF output
-        run: npx eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/eslint-results.sarif || true
+        run: npx eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/eslint-results.sarif
+
+      - name: List reports directory
+        run: ls -l reports/
 
       - name: Debug ESLint Output
         run: cat reports/eslint-results.sarif || echo "No SARIF report generated"
