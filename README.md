@@ -34,6 +34,12 @@ Install Dependencies from requirements.txt
 pip install -r requirements.txt
 ```
 
+Install Dependencies (Static Code Analysis)
+
+```bat
+npm install
+```
+
 Run the Flask app
 
 ```bat
@@ -99,4 +105,10 @@ sudo certbot renew --dry-run
 
 // Check Certificate Expiry Date
 sudo certbot certificates
+```
+
+Eslint / Sarif formatter
+
+```bat
+npm install eslint --save-dev
 ```
