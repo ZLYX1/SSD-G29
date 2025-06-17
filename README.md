@@ -122,3 +122,21 @@ Run ESLint inside the Docker container with:
 ```bat
 docker compose run --rm eslint
 ```
+
+### SonarQube
+
+Run SonarQube instance (Locally)
+
+```bat
+docker compose -f sonarqube-compose.yml up -d
+docker compose -f sonarqube-compose.yml down
+```
+
+```bat
+docker run --rm -v ${PWD}:/usr/src sonarsource/sonar-scanner-cli `
+  "-Dsonar.projectKey=<PROJECT_KEY>" `
+  "-Dsonar.sources=/usr/src" `
+  "-Dsonar.host.url=http://host.docker.internal:9000" `
+  "-Dsonar.login=<SONAR_TOKEN>" `
+  "-Dsonar.exclusions=certbot/**"
+```
