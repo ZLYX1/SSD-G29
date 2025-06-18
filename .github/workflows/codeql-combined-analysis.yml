@@ -27,27 +27,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Python dependencies
+      - name: Install dependencies and run Bandit scan
         if: matrix.language == 'python'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install bandit
-
-      - name: Run Bandit and generate JSON report
-        run: |
+          pip install bandit sarif-tools
+          
+          # Create reports directory
           mkdir -p reports
-          bandit -r . -f json -o reports/bandit.json || true
-
-      - name: Convert JSON to SARIF
-        run: |
-          pip install sarif-tools
-          sarif-tools from-bandit reports/bandit.json > reports/bandit-result.sarif
+          
+          # Run Bandit and output to JSON
+          python -m bandit -r . -f json -o reports/bandit.json || true              
+          
+          # Convert to SARIF format
+          python -m sarif_tools from-bandit reports/bandit.json > reports/bandit-result.sarif
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'reports/bandit-results.sarif'
+          sarif_file: 'reports/bandit-result.sarif'
 
       # ------------------ JavaScript Setup -------------------
       - name: Set up Node.js
