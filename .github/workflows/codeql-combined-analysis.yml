@@ -1,0 +1,88 @@
+name: CodeQL + Lint (Python + JavaScript)
+
+on: [ push, pull_request ]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Lint & CodeQL (Python + JavaScript)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ python, javascript ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------ Python Setup -------------------
+      - name: Set up Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        if: matrix.language == 'python'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff sarif-formatter
+
+      - name: Run Ruff and generate SARIF report
+        if: matrix.language == 'python'
+        run: |
+          mkdir -p reports
+          ruff check . --output-format json | python -m sarif_formatter > reports/ruff-results.sarif || true
+
+      - name: Upload Ruff SARIF report
+        if: matrix.language == 'python'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'reports/ruff-results.sarif'
+
+      # ------------------ JavaScript Setup -------------------
+      - name: Set up Node.js
+        if: matrix.language == 'javascript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache Node.js modules
+        if: matrix.language == 'javascript'
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-modules
+
+      - name: Install JavaScript dependencies
+        if: matrix.language == 'javascript'
+        run: npm ci
+
+      - name: Run ESLint and generate SARIF report
+        if: matrix.language == 'javascript'
+        run: |
+          mkdir -p reports
+          npx eslint . --format @microsoft/eslint-formatter-sarif --output-file reports/eslint-results.sarif || true
+
+      - name: Upload ESLint SARIF report
+        if: matrix.language == 'javascript'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'reports/eslint-results.sarif'
+
+      # --------------------- CODEQL Setup ------------------------
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
