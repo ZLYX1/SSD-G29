@@ -1,0 +1,53 @@
+name: CodeQL + Lint (Python)
+
+on: [ push, pull_request ]
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Lint & CodeQL (Python)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies and run Bandit scan
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install bandit sarif-tools
+          
+          # Create reports directory
+          mkdir -p reports
+          
+          # Run Bandit and output to JSON
+          python -m bandit -r . -f json -o reports/bandit.json || true              
+          
+          # Convert to SARIF format
+          python -m sarif_tools from-bandit reports/bandit.json > reports/bandit-result.sarif
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'reports/bandit-result.sarif'
+
+      # --------------------- CODEQL Setup ------------------------
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
