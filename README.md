@@ -4,14 +4,31 @@
 
 Create an environment
 
+Windows:
 ```bat
 py -3 -m venv .venv
 ```
 
+Mac
+```bat
+python3 -m venv .venv
+```
+
 Activate the environment
 
+windows
 ```bat
 .venv\Scripts\activate
+```
+
+Mac
+```bat
+source .venv/bin/activate
+```
+
+Mac need to allow permisison for entrypoint
+```bat
+chmod +x entrypoint.sh
 ```
 
 OPTIONAL: export all install package into requirements.txt
