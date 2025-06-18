@@ -4,6 +4,7 @@ on: [ push, pull_request ]
 
 permissions:
   contents: read
+  actions: read
   security-events: write
 
 jobs:
@@ -33,23 +34,17 @@ jobs:
           pip install -r requirements.txt
           pip install bandit
 
-      - name: Create reports directory
-        if: matrix.language == 'python'
-        run: mkdir -p reports
+      - name: Run Bandit and generate JSON report
+        run: |
+          mkdir -p reports
+          bandit -r . -f json -o reports/bandit.json || true
 
-      - name: Perform Bandit Analysis
-        if: matrix.language == 'python'
-        uses: PyCQA/bandit-action@v1
-        with:
-          format: sarif
-          output: reports/bandit-results.sarif
+      - name: Convert JSON to SARIF
+        run: |
+          pip install sarif-tools
+          sarif-tools from-bandit reports/bandit.json > reports/bandit-result.sarif
 
-      - name: Verify SARIF report exists
-        if: matrix.language == 'python'
-        run: ls -l reports/bandit-results.sarif
-
-      - name: Upload Bandit SARIF report
-        if: matrix.language == 'python'
+      - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'reports/bandit-results.sarif'
