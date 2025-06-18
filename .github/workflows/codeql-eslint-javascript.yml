@@ -1,4 +1,4 @@
-name: CodeQL + Lint (Python + JavaScript)
+name: CodeQL + Lint (JavaScript)
 
 on: [ push, pull_request ]
 
