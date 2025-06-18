@@ -33,12 +33,16 @@ jobs:
           pip install -r requirements.txt
           pip install bandit
 
-      - name: Run Bandit and generate SARIF report
+      - name: Create reports directory
         if: matrix.language == 'python'
-        run: |
-          mkdir -p reports
-          bandit -r . -f sarif -o reports/bandit-results.sarif || true
-          ls -l reports
+        run: mkdir -p reports
+
+      - name: Perform Bandit Analysis
+        if: matrix.language == 'python'
+        uses: PyCQA/bandit-action@v1
+        with:
+          format: sarif
+          output: reports/bandit-results.sarif
 
       - name: Upload Bandit SARIF report
         if: matrix.language == 'python'
