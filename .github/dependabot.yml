@@ -1,0 +1,8 @@
+# Automatically scan Python dependencies daily.
+version: 2
+
+updates:
+  - package-ecosystem: "pip" # or "maven", "gradle", "pip", "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"

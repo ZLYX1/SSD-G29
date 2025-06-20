@@ -1,5 +1,13 @@
 # SSD-G29
 
+## Prerequisites
+
+Ensure the following are installed on **Windows** before proceeding
+
+* [Python 3.13](https://www.python.org/downloads/)
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+* [PostgreSQL Client](https://www.postgresql.org/download/)
+
 ## Flask app
 
 Create an environment
@@ -43,6 +51,12 @@ Install Dependencies from requirements.txt
 pip install -r requirements.txt
 ```
 
+Install Dependencies (Static Code Analysis)
+
+```bat
+npm install
+```
+
 Run the Flask app
 
 ```bat
@@ -79,6 +93,12 @@ Stop container
 docker compose down
 ```
 
+Stop container (Production)
+
+```bat
+ docker compose --env-file .env.production down
+```
+
 Completely remove everything (containers, networks, volumes, and images)
 
 ```bat
@@ -89,4 +109,51 @@ Connect to PostgreSQL database in container.
 
 ```bat
 psql -h localhost -p 8888 -U postgres -d safe_companions_db
+```
+
+SSL Certificate
+
+```bash
+// Check Certbot Renewal Timer
+systemctl list-timers | grep certbot
+
+// Simulate Renewal Without Making Changes
+sudo certbot renew --dry-run
+
+// Check Certificate Expiry Date
+sudo certbot certificates
+```
+
+## ESLint Setup and Usage
+
+### Install ESLint (locally)
+
+```bat
+npm install eslint --save-dev
+```
+
+### Running the ESLint container
+
+Run ESLint inside the Docker container with:
+
+```bat
+docker compose run --rm eslint
+```
+
+### SonarQube
+
+Run SonarQube instance (Locally)
+
+```bat
+docker compose -f sonarqube-compose.yml up -d
+docker compose -f sonarqube-compose.yml down
+```
+
+```bat
+docker run --rm -v ${PWD}:/usr/src sonarsource/sonar-scanner-cli `
+  "-Dsonar.projectKey=<PROJECT_KEY>" `
+  "-Dsonar.sources=/usr/src" `
+  "-Dsonar.host.url=http://host.docker.internal:9000" `
+  "-Dsonar.login=<SONAR_TOKEN>" `
+  "-Dsonar.exclusions=certbot/**"
 ```

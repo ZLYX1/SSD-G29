@@ -1,0 +1,115 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:bullseye
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U testuser"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for PostgreSQL container health check
+        run: |
+          echo "Checking PostgresSQL container health..."
+          for i in {1..10}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' $(docker ps -q --filter expose=5432))
+            echo "Health status: $STATUS"
+            if [ "$STATUS" == "healthy" ]; then
+              echo "PostgreSQL is healthy."
+              break
+            fi
+            echo "Waiting for PostgreSQL to become healthy..."
+            sleep 3
+          done          
+          if [ "$STATUS" != "healthy" ]; then
+            echo "PostgreSQL container failed to become healthy."
+            exit 1
+          fi
+        shell: bash
+
+      - name: Initialize test database schema
+        env:
+          PGPASSWORD: testpassword
+          DATABASE_USERNAME: testuser
+          DATABASE_NAME: testdb
+          DATABASE_HOST: localhost
+        run: |
+          psql -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" <<-EOF
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              email VARCHAR(255) UNIQUE NOT NULL,
+              password_hash VARCHAR(255) NOT NULL
+            );
+          EOF
+        shell: bash
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgres://testuser:testpassword@postgres:5432/testdb
+        run: |
+          pytest tests/
+
+
+      - name: Build Docker image
+        run: |
+          docker build --build-arg REQ_FILE=requirements-prod.txt -t flask-app .
+
+  deploy:
+    name: Deploy to EC2
+    needs: build-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install SSH client
+        run: sudo apt-get update && sudo apt-get install -y openssh-client
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY}}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: SSH and deploy
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+          cd ${{ secrets.DEPLOY_DIR }}
+          git pull origin main
+          docker compose --env-file .env.production down
+          docker compose --env-file .env.production up --build -d
+          EOF

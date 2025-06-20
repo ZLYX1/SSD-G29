@@ -1,28 +1,21 @@
 import psycopg2
 from psycopg2 import pool
 
+from config.db_config import DBConfig
+
 
 class PostgresConnector:
 
-    def __init__(
-            self,
-            host: str,
-            port: int,
-            database: str,
-            user: str,
-            password: str,
-            minconn=1,
-            maxconn=10,
-    ):
+    def __init__(self, config: DBConfig):
         try:
             self.pool = psycopg2.pool.ThreadedConnectionPool(
-                minconn=minconn,
-                maxconn=maxconn,
-                host=host,
-                port=port,
-                database=database,
-                user=user,
-                password=password,
+                minconn=config.minconn,
+                maxconn=config.maxconn,
+                host=config.host,
+                port=config.port,
+                database=config.database,
+                user=config.user,
+                password=config.password,
             )
             print("PostgreSQL connection pool established.")
         except Exception as error:

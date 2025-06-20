@@ -175,3 +175,6 @@ cython_debug/
 .pypirc
 
 .idea/
+certbot/
+node_modules/
+eslint-results.sarif
