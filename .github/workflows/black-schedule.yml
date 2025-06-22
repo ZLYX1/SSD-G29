@@ -16,23 +16,33 @@ jobs:
       # Check out the repository code
       - uses: actions/checkout@v4
 
-      - name: Cache pip packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       # Set up Python 3.13
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
+      - name: Cache pip packages and virtual environment
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}-py-3.13
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Create virtual environment
+        run: python -m venv .venv
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          .venv/bin/python -m pip install --upgrade pip --quiet
+          .venv/bin/python -m pip install -r requirements.txt --quiet
+
+      - name: Show Black version
+        run: .venv/bin/black --version
 
       # Run Black in check mode (non-destructive check)
       - name: Run Black in check mode
-        run: black --check .
+        run: .venv/bin/black --check .
