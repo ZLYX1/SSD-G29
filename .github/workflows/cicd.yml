@@ -59,28 +59,7 @@ jobs:
       - name: Install dependencies
         run: |
           .venv/bin/python -m pip install --upgrade pip --quiet
-          .venv/bin/python -m pip install -r requirements.txt --quiet     
-
-      - name: Wait for PostgreSQL container health check
-        shell: bash
-        run: |
-          set -e
-          echo "Checking PostgreSQL container health..."
-          for i in {1..10}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' postgres 2>/dev/null || echo "unknown")
-            echo "Health status: $STATUS"
-            if [ "$STATUS" = "healthy" ]; then
-              echo "PostgreSQL is healthy."
-              break
-            fi
-            echo "Waiting for PostgreSQL to become healthy..."
-            sleep 3
-          done
-          
-          if [ "$STATUS" != "healthy" ]; then
-            echo "PostgreSQL container failed to become healthy."
-            exit 1
-          fi
+          .venv/bin/python -m pip install -r requirements.txt --quiet    
 
       - name: Initialize test database schema
         env:
