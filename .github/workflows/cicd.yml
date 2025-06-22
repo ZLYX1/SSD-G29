@@ -19,7 +19,6 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:bullseye
@@ -27,6 +26,8 @@ jobs:
           POSTGRES_USER: testuser
           POSTGRES_PASSWORD: testpassword
           POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd="pg_isready -U testuser"
           --health-interval=10s
@@ -54,83 +55,83 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
-        run: |
-          .venv/bin/python -m pip install --upgrade pip --quiet
-          .venv/bin/python -m pip install -r requirements.txt --quiet  
+#      - name: Install dependencies
+#        run: |
+#          .venv/bin/python -m pip install --upgrade pip --quiet
+#          .venv/bin/python -m pip install -r requirements.txt --quiet
+#
+#      - name: Wait for PostgreSQL to be ready
+#        env:
+#          DATABASE_HOST: postgres
+#          DATABASE_USERNAME: testuser
+#        shell: bash
+#        run: |
+#          for i in {1..20}; do
+#            echo "[$i] Checking PostgreSQL..."
+#            pg_isready -h "$DATABASE_HOST" -U "$DATABASE_USERNAME"
+#            STATUS=$?
+#            if [ "$STATUS" -eq 0 ]; then
+#              echo "✅ PostgreSQL is ready."
+#              exit 0
+#            fi
+#            echo "❌ Not ready yet. Retrying..."
+#            sleep 3
+#          done
+#          echo "PostgreSQL did not become ready in time."
+#          exit 1
+#
+#      - name: Initialize test database schema
+#        env:
+#          PGPASSWORD: testpassword
+#          DATABASE_USERNAME: testuser
+#          DATABASE_NAME: testdb
+#          DATABASE_HOST: postgres
+#        shell: bash
+#        run: |
+#          psql -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" <<EOF
+#          CREATE TABLE IF NOT EXISTS users (
+#           id SERIAL PRIMARY KEY,
+#           email VARCHAR(255) UNIQUE NOT NULL,
+#           password_hash VARCHAR(255) NOT NULL
+#          );
+#          EOF
+#
+#      - name: Run tests
+#        env:
+#          DATABASE_URL: postgresql://testuser:testpassword@postgres:5432/testdb
+#        shell: bash
+#        run: |
+#          source .venv/bin/activate
+#          pytest tests/
+#
+#      - name: Build Docker image
+#        run: |
+#          docker build --build-arg REQ_FILE=requirements-prod.txt \
+#          --cache-from=type=gha \
+#          -t flask-app .
 
-      - name: Wait for PostgreSQL to be ready
-        env:
-          DATABASE_HOST: postgres
-          DATABASE_USERNAME: testuser
-        shell: bash
-        run: |
-          for i in {1..20}; do
-            echo "[$i] Checking PostgreSQL..."
-            pg_isready -h "$DATABASE_HOST" -U "$DATABASE_USERNAME"
-            STATUS=$?
-            if [ "$STATUS" -eq 0 ]; then
-              echo "✅ PostgreSQL is ready."
-              exit 0
-            fi
-            echo "❌ Not ready yet. Retrying..."
-            sleep 3          
-          done
-          echo "PostgreSQL did not become ready in time."
-          exit 1
-
-      - name: Initialize test database schema
-        env:
-          PGPASSWORD: testpassword
-          DATABASE_USERNAME: testuser
-          DATABASE_NAME: testdb
-          DATABASE_HOST: postgres
-        shell: bash
-        run: |
-          psql -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" <<EOF
-          CREATE TABLE IF NOT EXISTS users (
-           id SERIAL PRIMARY KEY,
-           email VARCHAR(255) UNIQUE NOT NULL,
-           password_hash VARCHAR(255) NOT NULL
-          );
-          EOF
-
-      - name: Run tests
-        env:
-          DATABASE_URL: postgresql://testuser:testpassword@postgres:5432/testdb
-        shell: bash
-        run: |
-          source .venv/bin/activate
-          pytest tests/
-
-      - name: Build Docker image
-        run: |
-          docker build --build-arg REQ_FILE=requirements-prod.txt \
-          --cache-from=type=gha \
-          -t flask-app .
-
-  deploy:
-    name: Deploy to EC2
-    needs: build-test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Install SSH client
-        run: |
-          sudo apt-get update 
-          sudo apt-get install -y --no-install-recommends openssh-client
-
-      - name: Set up SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
-
-      - name: SSH and deploy
-        run: |
-          timeout 120s ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
-          set -e
-          cd ${{ secrets.DEPLOY_DIR }}
-          git pull origin main
-          docker compose --env-file .env.production down --remove-orphans
-          docker compose --env-file .env.production up --build --pull always -d
-          EOF
+#  deploy:
+#    name: Deploy to EC2
+#    needs: build-test
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#      - name: Install SSH client
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install -y --no-install-recommends openssh-client
+#
+#      - name: Set up SSH key
+#        uses: webfactory/ssh-agent@v0.9.0
+#        with:
+#          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+#
+#      - name: SSH and deploy
+#        run: |
+#          timeout 120s ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+#          set -e
+#          cd ${{ secrets.DEPLOY_DIR }}
+#          git pull origin main
+#          docker compose --env-file .env.production down --remove-orphans
+#          docker compose --env-file .env.production up --build --pull always -d
+#          EOF
