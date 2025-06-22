@@ -59,7 +59,21 @@ jobs:
       - name: Install dependencies
         run: |
           .venv/bin/python -m pip install --upgrade pip --quiet
-          .venv/bin/python -m pip install -r requirements.txt --quiet    
+          .venv/bin/python -m pip install -r requirements.txt --quiet  
+
+      - name: Wait for PostgreSQL to be ready
+        env:
+          DATABASE_HOST: postgres
+          DATABASE_USERNAME: testuser
+        shell: bash
+        run: |
+          for i in {1..10}; do
+            pg_isready -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" && exit 0
+            echo "Waiting for PostgreSQL to become ready..."
+            sleep 3
+          done
+          echo "PostgreSQL did not become ready in time."
+          exit 1
 
       - name: Initialize test database schema
         env:
@@ -70,11 +84,11 @@ jobs:
         shell: bash
         run: |
           psql -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" <<EOF
-            CREATE TABLE IF NOT EXISTS users (
-              id SERIAL PRIMARY KEY,
-              email VARCHAR(255) UNIQUE NOT NULL,
-              password_hash VARCHAR(255) NOT NULL
-            );
+          CREATE TABLE IF NOT EXISTS users (
+           id SERIAL PRIMARY KEY,
+           email VARCHAR(255) UNIQUE NOT NULL,
+           password_hash VARCHAR(255) NOT NULL
+          );
           EOF
 
       - name: Run tests
@@ -105,7 +119,7 @@ jobs:
       - name: Set up SSH key
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.EC2_HOST }}
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       - name: SSH and deploy
         run: |
