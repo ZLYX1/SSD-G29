@@ -55,10 +55,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-#      - name: Install dependencies
-#        run: |
-#          .venv/bin/python -m pip install --upgrade pip --quiet
-#          .venv/bin/python -m pip install -r requirements.txt --quiet
+      - name: Install dependencies
+        run: |
+          .venv/bin/python -m pip install --upgrade pip --quiet
+          .venv/bin/python -m pip install -r requirements.txt --quiet
 #
 #      - name: Wait for PostgreSQL to be ready
 #        env:
