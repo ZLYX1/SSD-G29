@@ -130,6 +130,8 @@ jobs:
         run: |
           timeout 120s ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
           set -e
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"          
           cd ${{ secrets.DEPLOY_DIR }}
           git pull --no-rebase origin main
           docker compose --env-file .env.production down --remove-orphans
