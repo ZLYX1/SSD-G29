@@ -59,40 +59,27 @@ jobs:
         run: |
           .venv/bin/python -m pip install --upgrade pip --quiet
           .venv/bin/python -m pip install -r requirements.txt --quiet
-      #
-      #      - name: Wait for PostgreSQL to be ready
-      #        env:
-      #          DATABASE_HOST: postgres
-      #          DATABASE_USERNAME: testuser
-      #        shell: bash
-      #        run: |
-      #          for i in {1..20}; do
-      #            echo "[$i] Checking PostgreSQL..."
-      #            pg_isready -h "$DATABASE_HOST" -U "$DATABASE_USERNAME"
-      #            STATUS=$?
-      #            if [ "$STATUS" -eq 0 ]; then
-      #              echo "✅ PostgreSQL is ready."
-      #              exit 0
-      #            fi
-      #            echo "❌ Not ready yet. Retrying..."
-      #            sleep 3
-      #          done
-      #          echo "PostgreSQL did not become ready in time."
-      #          exit 1
-      #
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in {1..20}; do
+            pg_isready -h postgres -U testuser -d testdb && exit 0
+            echo "Waiting for PostgreSQL..."
+            sleep 3
+          done
+          echo "PostgreSQL not ready in time"
+          exit 1
+
       - name: Initialize test database schema
         env:
           PGPASSWORD: testpassword
-          DATABASE_USERNAME: testuser
-          DATABASE_NAME: testdb
-          DATABASE_HOST: postgres
         shell: bash
         run: |
-          psql -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" <<EOF
+          psql -h postgres -U testuser -d testdb <<EOF
           CREATE TABLE IF NOT EXISTS users (
-           id SERIAL PRIMARY KEY,
-           email VARCHAR(255) UNIQUE NOT NULL,
-           password_hash VARCHAR(255) NOT NULL
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL
           );
           EOF
 #
