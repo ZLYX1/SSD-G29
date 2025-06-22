@@ -94,43 +94,43 @@ jobs:
             );
           EOF
         shell: bash
-#
-#      - name: Run tests
-#        env:
-#          DATABASE_URL: postgresql://testuser:testpassword@postgres:5432/testdb
-#        shell: bash
-#        run: |
-#          source .venv/bin/activate
-#          pytest tests/
-#
-#      - name: Build Docker image
-#        run: |
-#          docker build --build-arg REQ_FILE=requirements-prod.txt \
-#          --cache-from=type=gha \
-#          -t flask-app .
 
-#  deploy:
-#    name: Deploy to EC2
-#    needs: build-test
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#      - name: Install SSH client
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get install -y --no-install-recommends openssh-client
-#
-#      - name: Set up SSH key
-#        uses: webfactory/ssh-agent@v0.9.0
-#        with:
-#          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
-#
-#      - name: SSH and deploy
-#        run: |
-#          timeout 120s ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
-#          set -e
-#          cd ${{ secrets.DEPLOY_DIR }}
-#          git pull origin main
-#          docker compose --env-file .env.production down --remove-orphans
-#          docker compose --env-file .env.production up --build --pull always -d
-#          EOF
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://testuser:testpassword@postgres:5432/testdb
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          pytest tests/
+
+      - name: Build Docker image
+        run: |
+          docker build --build-arg REQ_FILE=requirements-prod.txt \
+          --cache-from=type=gha \
+          -t flask-app .
+
+  deploy:
+    name: Deploy to EC2
+    needs: build-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install SSH client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openssh-client
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: SSH and deploy
+        run: |
+          timeout 120s ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+          set -e
+          cd ${{ secrets.DEPLOY_DIR }}
+          git pull origin main
+          docker compose --env-file .env.production down --remove-orphans
+          docker compose --env-file .env.production up --build --pull always -d
+          EOF
