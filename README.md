@@ -79,7 +79,7 @@ docker compose down
 Stop container (Production)
 
 ```bat
- docker compose --env-file .env.production down
+docker compose --env-file .env.production down
 ```
 
 Completely remove everything (containers, networks, volumes, and images)
@@ -139,4 +139,10 @@ docker run --rm -v ${PWD}:/usr/src sonarsource/sonar-scanner-cli `
   "-Dsonar.host.url=http://host.docker.internal:9000" `
   "-Dsonar.login=<SONAR_TOKEN>" `
   "-Dsonar.exclusions=certbot/**"
+```
+
+Running test with pytest (Locally)
+
+```bat
+pytest tests/
 ```

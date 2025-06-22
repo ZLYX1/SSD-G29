@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        REQ_FILE: requirements-prod.txt
+        REQ_FILE: ${REQ_FILE}
     environment:
       - DATABASE_URL
       - DATABASE_USERNAME
