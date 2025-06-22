@@ -7,22 +7,25 @@ on:
 
   # Allows manual triggering from the GitHub Actions UI.
   workflow_dispatch:
-    
 
 jobs:
   black-check:
     runs-on: ubuntu-latest
 
     steps:
+      # Check out the repository code
       - uses: actions/checkout@v4
 
+      # Set up Python 3.13
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
+      # Install Black code formatter
       - name: Install Black
         run: pip install black
 
+      # Run Black in check mode (non-destructive check)
       - name: Run Black in check mode
         run: black --check .
