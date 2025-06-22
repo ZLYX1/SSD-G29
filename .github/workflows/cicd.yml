@@ -67,10 +67,16 @@ jobs:
           DATABASE_USERNAME: testuser
         shell: bash
         run: |
-          for i in {1..10}; do
-            pg_isready -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" && exit 0
-            echo "Waiting for PostgreSQL to become ready..."
-            sleep 3
+          for i in {1..20}; do
+            echo "[$i] Checking PostgreSQL..."
+            pg_isready -h "$DATABASE_HOST" -U "$DATABASE_USERNAME"
+            STATUS=$?
+            if [ "$STATUS" -eq 0 ]; then
+              echo "✅ PostgreSQL is ready."
+              exit 0
+            fi
+            echo "❌ Not ready yet. Retrying..."
+            sleep 3          
           done
           echo "PostgreSQL did not become ready in time."
           exit 1
