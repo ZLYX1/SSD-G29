@@ -136,5 +136,5 @@ jobs:
           git fetch origin main
           git reset --hard origin/main        
           docker compose --env-file .env.production down --remove-orphans
-          docker compose --env-file .env.production up --build --pull always -d
+          docker compose --env-file .env.production up --build --no-cache --pull always -d
           EOF
