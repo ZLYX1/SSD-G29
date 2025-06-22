@@ -60,28 +60,40 @@ jobs:
           .venv/bin/python -m pip install --upgrade pip --quiet
           .venv/bin/python -m pip install -r requirements.txt --quiet
 
-      - name: Wait for PostgreSQL to be ready
+      - name: Wait for PostgreSQL container health check
         run: |
-          for i in {1..20}; do
-            pg_isready -h postgres -U testuser -d testdb && exit 0
-            echo "Waiting for PostgreSQL..."
+          echo "Checking PostgresSQL container health..."
+          for i in {1..10}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' $(docker ps -q --filter expose=5432))
+            echo "Health status: $STATUS"
+            if [ "$STATUS" == "healthy" ]; then
+              echo "PostgreSQL is healthy."
+              break
+            fi
+            echo "Waiting for PostgreSQL to become healthy..."
             sleep 3
-          done
-          echo "PostgreSQL not ready in time"
-          exit 1
+          done          
+          if [ "$STATUS" != "healthy" ]; then
+            echo "PostgreSQL container failed to become healthy."
+            exit 1
+          fi
+          shell: bash
 
       - name: Initialize test database schema
         env:
           PGPASSWORD: testpassword
-        shell: bash
+          DATABASE_USERNAME: testuser
+          DATABASE_NAME: testdb
+          DATABASE_HOST: localhost
         run: |
-          psql -h postgres -U testuser -d testdb <<EOF
-          CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL
-          );
+          psql -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" <<-EOF
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              email VARCHAR(255) UNIQUE NOT NULL,
+              password_hash VARCHAR(255) NOT NULL
+            );
           EOF
+        shell: bash
 #
 #      - name: Run tests
 #        env:
