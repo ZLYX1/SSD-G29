@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 
@@ -46,7 +52,6 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            .venv
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}-py-3.13
           restore-keys: |
             ${{ runner.os }}-pip-
@@ -95,7 +100,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgres://testuser:testpassword@postgres:5432/testdb
+          DATABASE_URL: postgresql://testuser:testpassword@postgres:5432/testdb
         shell: bash
         run: |
           source .venv/bin/activate
@@ -103,7 +108,9 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build --build-arg REQ_FILE=requirements-prod.txt -t flask-app .
+          docker build --build-arg REQ_FILE=requirements-prod.txt \
+          --cache-from=type=gha \
+          -t flask-app .
 
   deploy:
     name: Deploy to EC2
@@ -117,12 +124,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends openssh-client
 
       - name: Set up SSH key
-        shell: bash
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_HOST }}
 
       - name: SSH and deploy
         run: |
@@ -131,5 +135,5 @@ jobs:
           cd ${{ secrets.DEPLOY_DIR }}
           git pull origin main
           docker compose --env-file .env.production down --remove-orphans
-          docker compose --env-file .env.production up --build -d
+          docker compose --env-file .env.production up --build --pull always -d
           EOF
