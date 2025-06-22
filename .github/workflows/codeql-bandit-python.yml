@@ -21,6 +21,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}-py-3.13
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies and run Bandit scan
         run: |
           python -m pip install --upgrade pip
