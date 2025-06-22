@@ -135,6 +135,8 @@ jobs:
           cd ${{ secrets.DEPLOY_DIR }}
           git fetch origin main
           git reset --hard origin/main        
+          chmod +x entrypoint.sh
           docker compose --env-file .env.production down --remove-orphans
-          docker compose --env-file .env.production up --build --pull always -d
+          docker compose --env-file .env.production build --no-cache
+          docker compose --env-file .env.production up --pull always -d        
           EOF
