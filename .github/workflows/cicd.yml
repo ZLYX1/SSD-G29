@@ -126,11 +126,12 @@ jobs:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
       - name: SSH and deploy
+        shell: bash
         run: |
           timeout 120s ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
           set -e
           cd ${{ secrets.DEPLOY_DIR }}
-          git pull origin main
+          git pull --no-rebase origin main
           docker compose --env-file .env.production down --remove-orphans
           docker compose --env-file .env.production up --build --pull always -d
           EOF
