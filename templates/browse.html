@@ -1,0 +1,30 @@
+<!-- templates/browse.html -->
+{% extends "base.html" %}
+{% block title %}Browse Escorts{% endblock %}
+
+{% block content %}
+<h2>Browse Escorts</h2>
+<p>Filters: [Age Range] [Availability] [Rating]</p>
+<div class="row row-cols-1 row-cols-md-3 g-4">
+	{% for profile in profiles %}
+	<div class="col">
+		<div class="card h-100">
+			<!-- Use profile.photo for image src when implemented -->
+			<img src="https://via.placeholder.com/300" class="card-img-top" alt="{{ profile.name }}">
+			<div class="card-body">
+				<h5 class="card-title">{{ profile.name }}</h5>
+				<p class="card-text">{{ profile.bio }}</p>
+				<p class="card-text"><small class="text-muted">Rating: {{ profile.rating }} | Age: {{ profile.age
+						}}</small></p>
+			</div>
+			<div class="card-footer">
+				<button class="btn btn-primary btn-sm">View Profile</button>
+				<button class="btn btn-outline-danger btn-sm">♡ Favorite</button>
+			</div>
+		</div>
+	</div>
+	{% else %}
+	<p>No profiles found.</p>
+	{% endfor %}
+</div>
+{% endblock %}

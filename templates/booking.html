@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}My Bookings{% endblock %}
+
+{% block content %}
+<h2>Booking Management</h2>
+
+{% if role == 'escort' %}
+<h3>Set Your Availability</h3>
+<div class="p-3 mb-4 bg-light border">[Calendar control to set availability goes here]</div>
+
+<h3>Booking Requests</h3>
+{% set pending_bookings = bookings | selectattr('status', 'equalto', 'Pending') | list %}
+{% if pending_bookings %}
+{% for booking in pending_bookings %}
+<div class="card mb-2">
+	<div class="card-body">
+		Booking #{{ booking.id }} with User #{{ booking.seeker_id }} on {{ booking.date }}. Status: {{ booking.status }}
+		<form method="post" class="d-inline">
+			<input type="hidden" name="action" value="accept_booking">
+			<input type="hidden" name="booking_id" value="{{ booking.id }}">
+			<button type="submit" class="btn btn-success btn-sm">Accept</button>
+		</form>
+		<button class="btn btn-danger btn-sm">Reject</button>
+	</div>
+</div>
+{% endfor %}
+{% else %}
+<p>No pending bookings.</p>
+{% endif %}
+{% endif %}
+
+<h3>Booking History</h3>
+<ul class="list-group">
+	{% if bookings %}
+	{% for booking in bookings %}
+	<li class="list-group-item">
+		Booking #{{ booking.id }} on {{ booking.date }}.
+		Status: <span class="badge bg-secondary">{{ booking.status }}</span>
+	</li>
+	{% endfor %}
+	{% else %}
+	<li class="list-group-item">You have no bookings.</li>
+	{% endif %}
+</ul>
+
+{% endblock %}

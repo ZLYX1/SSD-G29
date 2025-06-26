@@ -1,0 +1,33 @@
+<!-- templates/dashboard.html -->
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h2 class="pb-2 border-bottom">Dashboard ({{ role|capitalize }})</h2>
+
+{% if role == 'seeker' %}
+<div class="alert alert-info">Welcome, Seeker!</div>
+<h3>Upcoming Bookings</h3>
+<p>You have {{ data.upcoming_bookings|length }} upcoming booking(s).</p>
+<!-- List bookings -->
+<h3>Favorite Escorts</h3>
+<p>[Favorite Escorts list here]</p>
+
+{% elif role == 'escort' %}
+<div class="alert alert-info">Welcome, Escort!</div>
+<h3>Booking Requests</h3>
+<p>You have {{ data.booking_requests|length }} new request(s).</p>
+<!-- List requests -->
+<h3>Earnings Summary</h3>
+<p>[Earnings chart here]</p>
+
+{% elif role == 'admin' %}
+<div class="alert alert-secondary">Welcome, Admin!</div>
+<h3>System Statistics</h3>
+<ul class="list-group">
+	<li class="list-group-item">Total Users: {{ data.system_stats.total_users }}</li>
+	<li class="list-group-item">Pending Reports: {{ data.system_stats.total_reports }}</li>
+</ul>
+{% endif %}
+
+{% endblock %}

@@ -178,3 +178,5 @@ cython_debug/
 certbot/
 node_modules/
 eslint-results.sarif
+
+migrations/

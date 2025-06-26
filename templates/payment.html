@@ -1,0 +1,49 @@
+<!-- templates/payment.html -->
+{% extends "base.html" %}
+{% block title %}Payments{% endblock %}
+
+{% block content %}
+<h2>Payment Simulation</h2>
+<div class="card mb-4">
+	<div class="card-body">
+		<h5 class="card-title">Make a Payment</h5>
+		<form method="post">
+			<div class="mb-3">
+				<label for="card_number" class="form-label">Card Number (enter 16 digits to succeed)</label>
+				<input type="text" class="form-control" id="card_number" name="card_number" required>
+			</div>
+			<div class="mb-3">
+				<label for="amount" class="form-label">Amount</label>
+				<input type="number" class="form-control" id="amount" name="amount" value="250" required>
+			</div>
+			<button type="submit" class="btn btn-primary">Submit Payment</button>
+		</form>
+	</div>
+</div>
+
+<h2>Transaction History</h2>
+<table class="table">
+	<thead>
+		<tr>
+			<th>Transaction ID</th>
+			<th>Date</th>
+			<th>Amount</th>
+			<th>Status</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for id, payment in history.items() %}
+		<tr>
+			<td>{{ payment.transaction_id }}</td>
+			<td>{{ payment.date }}</td>
+			<td>${{ "%.2f"|format(payment.amount) }}</td>
+			<td><span class="badge bg-success">{{ payment.status }}</span></td>
+		</tr>
+		{% else %}
+		<tr>
+			<td colspan="4">No transactions found.</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% endblock %}

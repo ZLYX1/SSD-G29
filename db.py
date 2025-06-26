@@ -8,6 +8,10 @@ class PostgresConnector:
 
     def __init__(self, config: DBConfig):
         try:
+            # print("\n")
+            # print("config.port is:")
+            # print(config.port)
+            # print("\n")
             self.pool = psycopg2.pool.ThreadedConnectionPool(
                 minconn=config.minconn,
                 maxconn=config.maxconn,
@@ -18,6 +22,7 @@ class PostgresConnector:
                 password=config.password,
             )
             print("PostgreSQL connection pool established.")
+            
         except Exception as error:
             print(f"Failed to create connection pool: {error}")
             self.pool = None
