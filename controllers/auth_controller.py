@@ -6,6 +6,7 @@ class AuthController:
         self.users = [User("user@example.com", "securepassword")]
 
     def authenticate(self, email, password):
+        print("authenticate controller\n")
         for user in self.users:
             if user.email == email and user.check_password(password):
                 return True

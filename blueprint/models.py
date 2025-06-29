@@ -13,7 +13,9 @@ class User(db.Model):
     role = db.Column(db.String(10), nullable=False, default='seeker') # 'seeker', 'escort', 'admin'
     active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-
+    # NEW FIELDS
+    gender = db.Column(db.String(20), nullable=False)  # e.g. Male, Female, Non-binary
+    
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
     bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
@@ -37,6 +39,7 @@ class Profile(db.Model):
     availability = db.Column(db.String(50), default='Available')
     rating = db.Column(db.Float)
     age = db.Column(db.Integer)
+    preference = db.Column(db.String(50), nullable=True)  # e.g. Interested in: Men, Women, Both
 
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -62,3 +65,23 @@ class Report(db.Model):
     
     reporter = db.relationship('User', foreign_keys=[reporter_id])
     reported = db.relationship('User', foreign_keys=[reported_id])
+    
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
+    
+    # Optional: soft delete / system flag
+    deleted_by_sender = db.Column(db.Boolean, default=False)
+    deleted_by_recipient = db.Column(db.Boolean, default=False)
+
+    # Relationships (reverse navigation)
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
+    
+    def __repr__(self):
+        return f'<Message from {self.sender_id} to {self.recipient_id}>'

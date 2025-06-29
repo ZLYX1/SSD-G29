@@ -21,9 +21,15 @@
 			</div>
 			<div class="mb-3">
 				<label for="availability" class="form-label">Availability Status</label>
-				<select class="form-select" id="availability" name="availability">
+				<!-- <select class="form-select" id="availability" name="availability">
 					<option>Available</option>
 					<option>Temporarily Unavailable</option>
+				</select> -->
+				<select class="form-select" id="availability" name="availability">
+					<option value="Available" {% if profile.availability=="Available" %}selected{% endif %}>Available
+					</option>
+					<option value="Temporarily Unavailable" {% if profile.availability=="Temporarily Unavailable"
+						%}selected{% endif %}>Temporarily Unavailable</option>
 				</select>
 			</div>
 			<button type="submit" class="btn btn-primary">Save Changes</button>
@@ -35,3 +41,33 @@
 	</div>
 </div>
 {% endblock %}
+
+<script>
+	document.getElementById("photo").onchange = async function (event) {
+		const file = event.target.files[0];
+		const res = await fetch('/profile/generate-presigned-url', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				file_name: file.name,
+				file_type: file.type
+			})
+		});
+		const data = await res.json();
+		const formData = new FormData();
+		Object.entries(data.fields).forEach(([key, value]) => formData.append(key, value));
+		formData.append("file", file);
+		await fetch(data.url, { method: 'POST', body: formData });
+
+		// Tell Flask the photo URL (or filename)
+		const photoUrl = `${data.url}/${data.fields.key}`;  // full S3 URL
+		await fetch('/profile/save-photo', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ photo_url: photoUrl })
+		});
+
+		alert("Upload & save successful!");
+		alert("Upload successful!");
+	};
+</script>
