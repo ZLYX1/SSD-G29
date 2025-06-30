@@ -41,12 +41,33 @@ flask seed
 flask db migrate -m "Message"
 flask db upgrade
 
-## others
+## drop db and restart
 
+Force disconnect all sessions from the database:
+psql -U postgres -d postgres
+
+In postgres:
+SELECT pg_terminate_backend(pg_stat_activity.pid)
+FROM pg_stat_activity
+WHERE pg_stat_activity.datname = 'safe_companions_db'
+  AND pid <> pg_backend_pid();
+\q
+
+Recreate the database:
 dropdb safe_companions_db
 createdb safe_companions_db
+
+initialize migrations:
+flask db init
+
+Create and apply migratons:
+flask db migrate -m "Add report table"
 flask db upgrade
+
+Seed the database:
 flask seed
+
+Commit:
 db.session.commit()
 
 ## When there is changes to DB. Eg: add modify or edit
@@ -60,3 +81,8 @@ Type the 2 liens below and save in env
 ### Generate Flask SECRET_KEY and Generate WTF_CSRF_SECRET_KEY
 
 openssl rand -hex 32
+
+### Runinng
+
+pip install watchdog
+flask run --reload --debugger --with-threads
