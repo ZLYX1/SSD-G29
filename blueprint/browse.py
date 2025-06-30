@@ -1,11 +1,34 @@
 
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
-from blueprint.models import Profile, User
+from blueprint.models import Profile, User, TimeSlot
 from extensions import db
 from blueprint.decorators import login_required
-
+from datetime import datetime
+from flask_wtf.csrf import generate_csrf  # Add this import
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
+
+@browse_bp.route('/browse', methods=['GET', 'POST'])
+@login_required
+def browse():
+    escort_profiles = Profile.query.join(User).filter(User.role == 'escort').all()
+    return render_template('browse.html', profiles=escort_profiles)
+
+@browse_bp.route('/profile/<int:user_id>')
+@login_required
+def view_profile(user_id):
+    profile = Profile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        flash("Escort not found.", "danger")
+        return redirect(url_for('home'))
+
+    # Only show upcoming time slots
+    available_slots = TimeSlot.query.filter(
+        TimeSlot.user_id == user_id,
+        TimeSlot.start_time >= datetime.utcnow()
+    ).order_by(TimeSlot.start_time.asc()).all()
+
+    return render_template('view_profile.html', profile=profile, time_slots=available_slots)
 
 # 2. PROFILE MANAGEMENT
 # @app.route('/profile', methods=['GET', 'POST'])
@@ -25,13 +48,6 @@ browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 #         return redirect(url_for('profile'))
 
 #     return render_template('profile.html', profile=user_profile)
-
-@browse_bp.route('/browse', methods=['GET', 'POST'])
-@login_required
-def browse():
-    escort_profiles = Profile.query.join(User).filter(User.role == 'escort').all()
-    return render_template('browse.html', profiles=escort_profiles)
-
 
 # # @app.route('/profile', methods=['GET', 'POST'])
 # @profile_bp.route('/', methods=['GET', 'POST'])

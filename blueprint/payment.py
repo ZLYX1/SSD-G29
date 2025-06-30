@@ -14,39 +14,39 @@ def payment():
         card_number = request.form.get('card_number', '').replace(' ', '').strip()
         amount_raw = request.form.get('amount', '').strip()
         
-	# Validate card number
-    if not (card_number.isdigit() and len(card_number) == 16):
-        flash("Invalid card number. Must be 16 digits.", "danger")
-        return redirect(url_for('payment.payment'))
+        # Validate card number
+        if not (card_number.isdigit() and len(card_number) == 16):
+            flash("Invalid card number. Must be 16 digits.", "danger")
+            return redirect(url_for('payment.payment'))
 
-	# Validate amount
-    try:
-        amount = float(amount_raw)
-        if amount <= 0:
-            raise ValueError()
-    except ValueError:
-        flash("Invalid amount. Must be a positive number.", "danger")
-        return redirect(url_for('payment.payment'))
-
-        
-        # Validate card number (basic validation)
-    if card_number and len(card_number) == 16 and card_number.isdigit() and amount and amount.isdigit():
+        # Validate amount
         try:
-                new_payment = Payment(
-                    user_id=session['user_id'],
-                    amount=float(amount),
-                    transaction_id=str(uuid.uuid4())
-                )
-                db.session.add(new_payment)
-                db.session.commit()
-                flash("Payment successful!", "success")
-                return redirect(url_for('payment.payment'))  # Use blueprint name
+            amount = float(amount_raw)
+            if amount <= 0:
+                raise ValueError()
         except ValueError:
-                flash("Invalid amount entered", "danger")
-    else:
-        flash("Payment failed. Invalid card number or amount.", "danger")
-        
-        return redirect(url_for('payment.payment'))
+            flash("Invalid amount. Must be a positive number.", "danger")
+            return redirect(url_for('payment.payment'))
+
+            
+            # Validate card number (basic validation)
+        if card_number and len(card_number) == 16 and card_number.isdigit() and amount and amount.isdigit():
+            try:
+                    new_payment = Payment(
+                        user_id=session['user_id'],
+                        amount=float(amount),
+                        transaction_id=str(uuid.uuid4())
+                    )
+                    db.session.add(new_payment)
+                    db.session.commit()
+                    flash("Payment successful!", "success")
+                    return redirect(url_for('payment.payment'))  # Use blueprint name
+            except ValueError:
+                    flash("Invalid amount entered", "danger")
+        else:
+            flash("Payment failed. Invalid card number or amount.", "danger")
+            
+            return redirect(url_for('payment.payment'))
 
     # # GET request - show payment history
     # history = Payment.query.filter_by(user_id=session['user_id']).order_by(Payment.created_at.desc()).all()
@@ -56,3 +56,5 @@ def payment():
     history = Payment.query.filter_by(user_id=session['user_id']).order_by(Payment.created_at.desc()).all()
     csrf_token = generate_csrf()  # Generate CSRF token for the form
     return render_template('payment.html', history=history, csrf_token=csrf_token)
+
+ 

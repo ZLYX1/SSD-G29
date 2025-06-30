@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime
 from controllers.auth_controller import AuthController
 from flask_migrate import Migrate
+from flask.cli import with_appcontext
 
 from blueprint.auth import auth_bp
 from blueprint.profile import profile_bp
@@ -351,13 +352,13 @@ def admin():
 
 # --- Add a command to seed the database ---
 @app.cli.command("seed")
+@with_appcontext
 def seed_database():
     """Seeds the database with realistic mock data."""
     print("Seeding database...")
     faker = Faker()
 
-    # 1. Clean up existing data (in correct order to avoid foreign key errors)
-    # Child tables first, then parent tables
+    # 1. Clean up existing data
     print("-> Deleting existing data...")
     db.session.query(Report).delete()
     db.session.query(Payment).delete()
@@ -371,24 +372,16 @@ def seed_database():
     seekers = []
     escorts = []
 
-    # Create 20 seekers
     for _ in range(20):
-        user = User(email=faker.unique.email(),
-                    role='seeker',
-                    active=True,
+        user = User(email=faker.unique.email(), role='seeker', active=True,
                     gender=random.choice(['Male', 'Female', 'Non-binary']))
         user.set_password('password123')
-        profile = Profile(user=user,
-                          name=faker.name(),
-                          bio=faker.paragraph(nb_sentences=3))
+        profile = Profile(user=user, name=faker.name(), bio=faker.paragraph(nb_sentences=3))
         db.session.add(user)
         seekers.append(user)
 
-    # Create 10 escorts
     for _ in range(10):
-        user = User(email=faker.unique.email(),
-                    role='escort',
-                    active=True,
+        user = User(email=faker.unique.email(), role='escort', active=True,
                     gender=random.choice(['Male', 'Female', 'Non-binary']))
         user.set_password('password123')
         profile = Profile(user=user,
@@ -399,25 +392,15 @@ def seed_database():
         db.session.add(user)
         escorts.append(user)
 
-    # Add specific, predictable users for easy testing
-    admin_user = User(email='admin@example.com',
-                      role='admin',
-                      active=True,
-                      gender="male")
+    admin_user = User(email='admin@example.com', role='admin', active=True, gender="male")
     admin_user.set_password('password123')
     admin_profile = Profile(user=admin_user, name='Admin User')
 
-    seeker_user = User(email='seeker@example.com',
-                       role='seeker',
-                       active=True,
-                       gender="male")
+    seeker_user = User(email='seeker@example.com', role='seeker', active=True, gender="male")
     seeker_user.set_password('password123')
     seeker_profile = Profile(user=seeker_user, name='Alex the Seeker')
 
-    escort_user = User(email='escort@example.com',
-                       role='escort',
-                       active=True,
-                       gender="male")
+    escort_user = User(email='escort@example.com', role='escort', active=True, gender="male")
     escort_user.set_password('password123')
     escort_profile = Profile(user=escort_user,
                              name='Bella the Escort',
@@ -426,63 +409,67 @@ def seed_database():
                              age=25)
 
     db.session.add_all([admin_user, seeker_user, escort_user])
-
-    # Commit users and profiles to get their IDs
     db.session.commit()
-    print(
-        f"   - Created {len(seekers)} seekers, {len(escorts)} escorts, and 3 test users."
-    )
 
-    # 3. Create Bookings
+    print(f"   - Created {len(seekers)} seekers, {len(escorts)} escorts, and 3 test users.")
+
+    # 3. Create Bookings with start_time and end_time
     print("-> Creating bookings...")
     booking_statuses = ['Pending', 'Confirmed', 'Rejected', 'Completed']
-    for _ in range(30):  # Create 30 random bookings
+    for _ in range(30):
+        seeker = random.choice(seekers)
+        escort = random.choice(escorts)
+        start_dt = datetime.utcnow() + timedelta(days=random.randint(1, 10), hours=random.randint(0, 23))
+        duration = random.choice([30, 60, 90])
+        end_dt = start_dt + timedelta(minutes=duration)
+
         booking = Booking(
-            seeker=random.choice(seekers),
-            escort=random.choice(escorts),
-            booking_date=faker.date_time_this_year(after_now=True),
-            status=random.choice(booking_statuses))
+            seeker_id=seeker.id,
+            escort_id=escort.id,
+            start_time=start_dt,
+            end_time=end_dt,
+            status=random.choice(booking_statuses)
+        )
         db.session.add(booking)
     print("   - Created 30 bookings.")
 
     # 4. Create Payments
     print("-> Creating payments...")
-    for _ in range(50):  # Create 50 random payments
-        payment = Payment(user_id=random.choice(seekers).id,
-                          amount=round(random.uniform(50.0, 500.0), 2),
-                          transaction_id=str(uuid.uuid4()),
-                          created_at=faker.date_time_between(start_date='-1y',
-                                                             end_date='now'))
+    for _ in range(50):
+        payment = Payment(
+            user_id=random.choice(seekers).id,
+            amount=round(random.uniform(50.0, 500.0), 2),
+            transaction_id=str(uuid.uuid4()),
+            created_at=faker.date_time_between(start_date='-1y', end_date='now')
+        )
         db.session.add(payment)
     print("   - Created 50 payments.")
 
     # 5. Create Reports
     print("-> Creating reports...")
     all_users = seekers + escorts
-    for _ in range(5):  # Create 5 random reports
+    for _ in range(5):
         reporter = random.choice(all_users)
         reported = random.choice(all_users)
-        # Ensure a user doesn't report themselves
         while reporter.id == reported.id:
             reported = random.choice(all_users)
 
-        report = Report(reporter_id=reporter.id,
-                        reported_id=reported.id,
-                        reason=faker.sentence(),
-                        status=random.choice(['Pending Review', 'Resolved']))
+        report = Report(
+            reporter_id=reporter.id,
+            reported_id=reported.id,
+            reason=faker.sentence(),
+            status=random.choice(['Pending Review', 'Resolved'])
+        )
         db.session.add(report)
     print("   - Created 5 reports.")
 
-    # Final commit
     db.session.commit()
-    print("\nDatabase seeding complete!")
-    print(
-        "You can log in with the following test accounts (password is 'password123'):"
-    )
-    print("  - Admin: admin@example.com")
-    print("  - Seeker: seeker@example.com")
-    print("  - Escort: escort@example.com")
 
+    print("\n✅ Database seeding complete!")
+    print("Test login accounts (password: 'password123'):")
+    print("  - Admin:   admin@example.com")
+    print("  - Seeker:  seeker@example.com")
+    print("  - Escort:  escort@example.com")
 
 # Validate required environment variables
 required_vars = [

@@ -38,7 +38,7 @@ def profile():
         user_profile.availability = request.form.get('availability')
         db.session.commit()
         flash("Profile updated successfully!", "success")
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile.profile'))
     return render_template('profile.html', profile=user_profile)
 
 # For pre-signed url

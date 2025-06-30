@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}View Escort{% endblock %}
+
+{% block content %}
+<h2>{{ profile.name }}'s Profile</h2>
+<p><strong>Bio:</strong> {{ profile.bio }}</p>
+<p><strong>Availability:</strong> {{ profile.availability }}</p>
+{% if profile.photo %}
+<img src="{{ profile.photo }}" alt="Profile Photo" width="200">
+{% endif %}
+
+<hr>
+<h3>Book This Escort</h3>
+
+<form method="post" action="{{ url_for('booking.book', escort_id=profile.user_id) }}">
+	<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+	<div class="mb-3">
+		<label for="start_time" class="form-label">Start Time</label>
+		<input type="datetime-local" class="form-control" name="start_time" required>
+	</div>
+	<div class="mb-3">
+		<label for="duration" class="form-label">Duration (minutes)</label>
+		<select class="form-select" name="duration" required>
+			<option value="15">15 minutes</option>
+			<option value="30">30 minutes</option>
+			<option value="60">1 hour</option>
+		</select>
+	</div>
+	<button type="submit" class="btn btn-primary">Book Now</button>
+</form>
+
+<hr>
+<h4>Available Time Slots</h4>
+<ul class="list-group">
+	{% for slot in time_slots %}
+	<li class="list-group-item">
+		{{ slot.start_time.strftime("%Y-%m-%d %H:%M") }} to {{ slot.end_time.strftime("%Y-%m-%d %H:%M") }}
+	</li>
+	{% else %}
+	<li class="list-group-item">No upcoming availability.</li>
+	{% endfor %}
+</ul>
+{% endblock %}

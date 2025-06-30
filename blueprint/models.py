@@ -21,6 +21,7 @@ class User(db.Model):
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
     bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
     bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', backref='escort', lazy='dynamic')
+    time_slots = db.relationship('TimeSlot', backref='user', lazy='dynamic', cascade="all, delete-orphan")
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -42,13 +43,26 @@ class Profile(db.Model):
     age = db.Column(db.Integer)
     preference = db.Column(db.String(50), nullable=True)  # e.g. Interested in: Men, Women, Both
 
+class TimeSlot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     seeker_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     escort_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    booking_date = db.Column(db.DateTime, nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)  # Booking start time
+    end_time = db.Column(db.DateTime, nullable=False)    # Booking end time
+    status = db.Column(db.String(20), default='Pending', nullable=False)  # 'Pending', 'Confirmed', 'Rejected'
+    
+    # booking_date = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String(20), default='Pending', nullable=False) # 'Pending', 'Confirmed', 'Rejected'
 
+    def __repr__(self):
+        return f'<Booking {self.id} escort:{self.escort_id} seeker:{self.seeker_id} from {self.start_time} to {self.end_time}>'
+    
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
