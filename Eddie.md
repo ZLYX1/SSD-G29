@@ -70,9 +70,12 @@ flask seed
 Commit:
 db.session.commit()
 
-## When there is changes to DB. Eg: add modify or edit
+## When there is changes to DB (model). Eg: add modify or edit
 
+After modifying your model srun:
 flask db migrate -m "Add Message"
+
+Run this to update your actual PostgreSQL or SQLite database:
 flask db upgrade
 
 ## Env for Flask secret key and WTF_CSRF

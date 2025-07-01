@@ -37,7 +37,7 @@ class Profile(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
     name = db.Column(db.String(100))
     bio = db.Column(db.Text)
-    photo = db.Column(db.String(100), default='default.jpg')
+    photo = db.Column(db.String(2000), default='default.jpg')
     availability = db.Column(db.String(50), default='Available')
     rating = db.Column(db.Float)
     age = db.Column(db.Integer)
