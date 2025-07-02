@@ -22,6 +22,13 @@ class User(db.Model):
     email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
     email_verification_token_expires = db.Column(db.DateTime, nullable=True)
     
+    # Phone verification fields (OTP System)
+    phone_number = db.Column(db.String(20), nullable=True)  # Phone number for OTP
+    phone_verified = db.Column(db.Boolean, default=False, nullable=False)
+    otp_code = db.Column(db.String(6), nullable=True)  # 6-digit OTP code
+    otp_expires = db.Column(db.DateTime, nullable=True)  # OTP expiration time
+    otp_attempts = db.Column(db.Integer, default=0, nullable=False)  # Failed OTP attempts
+    
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
     bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
