@@ -35,10 +35,11 @@ app.secret_key = secrets.token_hex(16)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configure CSRF for local development
-app.config['WTF_CSRF_ENABLED'] = True
-app.config['SECRET_KEY'] = 'your-secret-key-here'  # Should match what's in your .env
-app.config['WTF_CSRF_SECRET_KEY'] = 'a-different-secret-key' 
+# Configure CSRF for local development - TEMPORARILY DISABLED FOR TESTING
+app.config['WTF_CSRF_ENABLED'] = False
+# Security configurations
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-development-secret-key')
+app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
 
 # Disable these security measures for local development
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable HTTPS requirement
@@ -48,11 +49,13 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # More lenient than 'Strict'
 # Configure CSRF Protection
 csrf = CSRFProtect(app)  # This initializes CSRF protection
 
-# Security configurations
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-development-secret-key')
-app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
-
 csrf.init_app(app)
+
+# Add CSRF token to template context
+@app.context_processor
+def inject_csrf_token():
+    from flask_wtf.csrf import generate_csrf
+    return dict(csrf_token=generate_csrf)
 
 
 # Initialize extensions
