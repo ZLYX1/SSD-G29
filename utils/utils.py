@@ -278,3 +278,146 @@ def send_sms_via_twilio(phone_number, message):
     except Exception as e:
         print(f"Error sending SMS: {e}")
         return False
+
+
+# Password Security Functions
+
+def validate_password_strength(password):
+    """
+    Validate password strength according to security requirements
+    
+    Requirements:
+    - At least 8 characters long
+    - Contains at least one uppercase letter
+    - Contains at least one lowercase letter  
+    - Contains at least one digit
+    - Contains at least one special character
+    - Not a common password
+    
+    Returns:
+        dict: {'valid': bool, 'message': str, 'score': int}
+    """
+    import string
+    
+    errors = []
+    score = 0
+    
+    # Check length
+    if len(password) < 8:
+        errors.append("at least 8 characters")
+    elif len(password) >= 12:
+        score += 2
+    else:
+        score += 1
+    
+    # Check for uppercase
+    if not any(c.isupper() for c in password):
+        errors.append("at least one uppercase letter")
+    else:
+        score += 1
+    
+    # Check for lowercase
+    if not any(c.islower() for c in password):
+        errors.append("at least one lowercase letter")
+    else:
+        score += 1
+    
+    # Check for digits
+    if not any(c.isdigit() for c in password):
+        errors.append("at least one number")
+    else:
+        score += 1
+    
+    # Check for special characters
+    special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+    if not any(c in special_chars for c in password):
+        errors.append("at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)")
+    else:
+        score += 1
+    
+    # Check for common passwords
+    common_passwords = [
+        'password', 'password123', '123456', '123456789', 'qwerty',
+        'abc123', 'password1', 'admin', 'letmein', 'welcome',
+        'monkey', '1234567890', 'dragon', '123123', 'football'
+    ]
+    
+    if password.lower() in common_passwords:
+        errors.append("cannot be a common password")
+        score = 0
+    
+    # Check for sequential characters
+    sequential_patterns = ['123', 'abc', 'qwe', 'asd', 'zxc']
+    if any(pattern in password.lower() for pattern in sequential_patterns):
+        score -= 1
+    
+    # Check for repeated characters
+    if len(set(password)) < len(password) * 0.6:  # More than 40% repeated chars
+        score -= 1
+    
+    valid = len(errors) == 0
+    
+    if valid:
+        if score >= 6:
+            strength = "Very Strong"
+        elif score >= 4:
+            strength = "Strong"
+        elif score >= 3:
+            strength = "Moderate"
+        else:
+            strength = "Weak"
+        message = f"Password strength: {strength}"
+    else:
+        message = "Password must contain " + ", ".join(errors)
+    
+    return {
+        'valid': valid,
+        'message': message,
+        'score': max(0, score),
+        'strength': strength if valid else "Invalid"
+    }
+
+
+def check_password_expiration_status(user):
+    """
+    Check password expiration status and return appropriate messages
+    
+    Returns:
+        dict: {
+            'expired': bool,
+            'expires_soon': bool, 
+            'days_left': int or None,
+            'message': str,
+            'action_required': bool
+        }
+    """
+    if not user.password_expires_at:
+        return {
+            'expired': False,
+            'expires_soon': False,
+            'days_left': None,
+            'message': "Password does not expire",
+            'action_required': False
+        }
+    
+    days_left = user.days_until_password_expires()
+    expired = user.is_password_expired()
+    expires_soon = days_left is not None and days_left <= 7
+    
+    if expired:
+        message = "Password has expired and must be changed"
+        action_required = True
+    elif expires_soon:
+        message = f"Password expires in {days_left} days"
+        action_required = days_left <= 3
+    else:
+        message = f"Password expires in {days_left} days"
+        action_required = False
+    
+    return {
+        'expired': expired,
+        'expires_soon': expires_soon,
+        'days_left': days_left,
+        'message': message,
+        'action_required': action_required
+    }

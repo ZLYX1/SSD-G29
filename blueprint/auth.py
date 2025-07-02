@@ -4,7 +4,7 @@ from blueprint.models import User, Profile
 from extensions import db
 from blueprint.decorators import login_required
 from flask_wtf.csrf import generate_csrf  # Add this import
-from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp  # Import OTP functions
+from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength  # Import OTP and password functions
 
 # from blueprint.models import User, Profile
 # auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -58,25 +58,57 @@ def auth():
 
         if form_type == 'login':
             user = User.query.filter_by(email=email).first()
-            if user and user.check_password(password):
-                if not user.active:
-                    return redirect(url_for('auth.auth', mode='locked'))
-                
-                # Check if phone is verified (OTP System)
-                if not user.phone_verified:
-                    flash("Please verify your phone number first. Complete the phone verification process.", "warning")
-                    return redirect(url_for('auth.verify_phone', user_id=user.id))
-                
-                # Check if email is verified
-                if not user.email_verified:
-                    flash("Please verify your email address before logging in. Check your inbox for the verification link.", "warning")
+            
+            if user:
+                # Check if account is locked
+                if user.is_account_locked():
+                    flash("Account is temporarily locked due to too many failed login attempts. Please try again later.", "danger")
                     return redirect(url_for('auth.auth', mode='login'))
                 
-                session['user_id'] = user.id
-                session['role'] = user.role
-                session['username'] = user.email
-                
-                return redirect(url_for('dashboard'))
+                # Check password
+                if user.check_password(password):
+                    # Reset failed login attempts on successful login
+                    user.reset_failed_logins()
+                    
+                    if not user.active:
+                        db.session.commit()  # Save reset of failed logins
+                        return redirect(url_for('auth.auth', mode='locked'))
+                    
+                    # Check if password has expired
+                    if user.is_password_expired() or user.password_change_required:
+                        db.session.commit()  # Save reset of failed logins
+                        flash("Your password has expired. Please change your password to continue.", "warning")
+                        return redirect(url_for('auth.change_password', user_id=user.id, force=True))
+                    
+                    # Check if password expires soon (within 7 days)
+                    days_left = user.days_until_password_expires()
+                    if days_left is not None and days_left <= 7:
+                        flash(f"Your password will expire in {days_left} days. Consider changing it soon.", "info")
+                    
+                    # Check if phone is verified (OTP System)
+                    if not user.phone_verified:
+                        db.session.commit()  # Save reset of failed logins
+                        flash("Please verify your phone number first. Complete the phone verification process.", "warning")
+                        return redirect(url_for('auth.verify_phone', user_id=user.id))
+                    
+                    # Check if email is verified
+                    if not user.email_verified:
+                        db.session.commit()  # Save reset of failed logins
+                        flash("Please verify your email address before logging in. Check your inbox for the verification link.", "warning")
+                        return redirect(url_for('auth.auth', mode='login'))
+                    
+                    # Successful login
+                    db.session.commit()  # Save reset of failed logins
+                    session['user_id'] = user.id
+                    session['role'] = user.role
+                    session['username'] = user.email
+                    
+                    return redirect(url_for('dashboard'))
+                else:
+                    # Failed login - increment counter and potentially lock account
+                    lockout_message = user.increment_failed_login()
+                    db.session.commit()
+                    flash(lockout_message, "danger")
             else:
                 flash("Invalid credentials.", "danger")
 
@@ -112,7 +144,13 @@ def auth():
 
             # Create user but don't activate yet (pending phone verification)
             new_user = User(email=email, role=role, gender=gender)
-            new_user.set_password(password)
+            
+            # Set password with history checking disabled for new users
+            success, message = new_user.set_password(password, check_history=False, password_expiry_days=90)
+            if not success:
+                flash(f"Password error: {message}", "danger")
+                return redirect(url_for('auth.auth', mode='register'))
+            
             new_user.phone_number = formatted_phone_or_error
             new_user.active = False  # Will be activated after phone verification
             new_user.email_verified = False
@@ -244,6 +282,64 @@ def resend_otp_code(user_id):
         flash(message, "danger")
     
     return redirect(url_for('auth.verify_phone', user_id=user_id))
+
+
+@auth_bp.route('/change-password/<int:user_id>', methods=['GET', 'POST'])
+def change_password(user_id):
+    """Allow user to change their password"""
+    user = User.query.get_or_404(user_id)
+    force_change = request.args.get('force', 'false').lower() == 'true'
+    
+    if request.method == 'POST':
+        current_password = request.form.get('current_password', '').strip()
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        # Validate inputs
+        if not all([current_password, new_password, confirm_password]):
+            flash("All fields are required.", "danger")
+            return render_template('change_password.html', user=user, force_change=force_change)
+        
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "danger")
+            return render_template('change_password.html', user=user, force_change=force_change)
+        
+        # Verify current password (skip if forced change due to expiration)
+        if not force_change and not user.check_password(current_password):
+            flash("Current password is incorrect.", "danger")
+            return render_template('change_password.html', user=user, force_change=force_change)
+        
+        # Validate new password strength
+        validation_result = validate_password_strength(new_password)
+        if not validation_result['valid']:
+            flash(f"Password requirements not met: {validation_result['message']}", "danger")
+            return render_template('change_password.html', user=user, force_change=force_change)
+        
+        # Set new password with history checking
+        success, message = user.set_password(new_password, check_history=True, password_expiry_days=90)
+        
+        if success:
+            db.session.commit()
+            flash("Password changed successfully.", "success")
+            
+            # If this was a forced change, redirect to login
+            if force_change:
+                session.pop('user_id', None)
+                flash("Please log in with your new password.", "info")
+                return redirect(url_for('auth.auth', mode='login'))
+            else:
+                return redirect(url_for('dashboard'))
+        else:
+            flash(message, "danger")
+            return render_template('change_password.html', user=user, force_change=force_change)
+    
+    return render_template('change_password.html', user=user, force_change=force_change)
+
+
+@auth_bp.route('/password-policy')
+def password_policy():
+    """Display password policy information"""
+    return render_template('password_policy.html')
 
 
 # @app.route("/login", methods=["GET", "POST"])

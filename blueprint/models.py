@@ -29,20 +29,129 @@ class User(db.Model):
     otp_expires = db.Column(db.DateTime, nullable=True)  # OTP expiration time
     otp_attempts = db.Column(db.Integer, default=0, nullable=False)  # Failed OTP attempts
     
+    # Password security fields (Password History & Expiration)
+    password_created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    password_expires_at = db.Column(db.DateTime, nullable=True)  # When password expires
+    password_change_required = db.Column(db.Boolean, default=False, nullable=False)  # Force password change
+    failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)  # Track failed logins
+    account_locked_until = db.Column(db.DateTime, nullable=True)  # Account lockout timestamp
+    
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
     bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
     bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', backref='escort', lazy='dynamic')
     time_slots = db.relationship('TimeSlot', backref='user', lazy='dynamic', cascade="all, delete-orphan")
+    password_history = db.relationship('PasswordHistory', backref='user', lazy='dynamic', cascade="all, delete-orphan")
     
-    def set_password(self, password):
+    def set_password(self, password, check_history=True, password_expiry_days=90):
+        """
+        Set user password with history checking and expiration
+        
+        Args:
+            password (str): New password to set
+            check_history (bool): Whether to check against password history
+            password_expiry_days (int): Number of days until password expires
+        
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        if check_history:
+            # Check if password was used in the last 5 passwords
+            if self.is_password_in_history(password, limit=5):
+                return False, "Password cannot be the same as any of your last 5 passwords."
+        
+        # Store current password in history before changing
+        if self.password_hash:
+            password_history_entry = PasswordHistory(
+                user_id=self.id,
+                password_hash=self.password_hash,
+                created_at=self.password_created_at or datetime.datetime.utcnow()
+            )
+            db.session.add(password_history_entry)
+        
+        # Set new password
         self.password_hash = generate_password_hash(password)
+        self.password_created_at = datetime.datetime.utcnow()
+        
+        # Set expiration date
+        if password_expiry_days > 0:
+            self.password_expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=password_expiry_days)
+        else:
+            self.password_expires_at = None
+            
+        # Reset security flags
+        self.password_change_required = False
+        self.failed_login_attempts = 0
+        self.account_locked_until = None
+        
+        return True, "Password updated successfully."
+    
+    def is_password_in_history(self, password, limit=5):
+        """Check if password exists in user's password history"""
+        history_entries = self.password_history.order_by(PasswordHistory.created_at.desc()).limit(limit).all()
+        
+        # Check current password
+        if self.password_hash and check_password_hash(self.password_hash, password):
+            return True
+            
+        # Check password history
+        for entry in history_entries:
+            if check_password_hash(entry.password_hash, password):
+                return True
+        return False
+    
+    def is_password_expired(self):
+        """Check if user's password has expired"""
+        if not self.password_expires_at:
+            return False
+        return datetime.datetime.utcnow() > self.password_expires_at
+    
+    def days_until_password_expires(self):
+        """Get number of days until password expires"""
+        if not self.password_expires_at:
+            return None
+        delta = self.password_expires_at - datetime.datetime.utcnow()
+        return max(0, delta.days)
+    
+    def is_account_locked(self):
+        """Check if account is currently locked due to failed login attempts"""
+        if not self.account_locked_until:
+            return False
+        return datetime.datetime.utcnow() < self.account_locked_until
+    
+    def increment_failed_login(self, max_attempts=5, lockout_duration_minutes=30):
+        """Increment failed login attempts and lock account if necessary"""
+        self.failed_login_attempts += 1
+        
+        if self.failed_login_attempts >= max_attempts:
+            self.account_locked_until = datetime.datetime.utcnow() + datetime.timedelta(minutes=lockout_duration_minutes)
+            return f"Account locked for {lockout_duration_minutes} minutes due to too many failed login attempts."
+        
+        attempts_left = max_attempts - self.failed_login_attempts
+        return f"Invalid credentials. {attempts_left} attempts remaining before account lockout."
+    
+    def reset_failed_logins(self):
+        """Reset failed login attempts after successful login"""
+        self.failed_login_attempts = 0
+        self.account_locked_until = None
 
     def check_password(self, password):
+        """Enhanced password checking with security features"""
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
         return f'<User {self.email}>'
+
+
+class PasswordHistory(db.Model):
+    """Track user password history to prevent reuse"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+    
+    def __repr__(self):
+        return f'<PasswordHistory {self.id} for User {self.user_id}>'
 
 class Profile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
