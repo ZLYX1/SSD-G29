@@ -17,6 +17,11 @@ class User(db.Model):
     # NEW FIELDS
     gender = db.Column(db.String(20), nullable=False)  # e.g. Male, Female, Non-binary
     
+    # Email verification fields
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
+    email_verification_token_expires = db.Column(db.DateTime, nullable=True)
+    
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
     bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
@@ -100,3 +105,20 @@ class Message(db.Model):
     
     def __repr__(self):
         return f'<Message from {self.sender_id} to {self.recipient_id}>'
+
+class Rating(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False, unique=True)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reviewed_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)  # 1-5 stars
+    feedback = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationships
+    booking = db.relationship('Booking', backref=db.backref('rating', uselist=False))
+    reviewer = db.relationship('User', foreign_keys=[reviewer_id], backref='ratings_given')
+    reviewed = db.relationship('User', foreign_keys=[reviewed_id], backref='ratings_received')
+    
+    def __repr__(self):
+        return f'<Rating {self.rating}/5 for booking {self.booking_id}>'

@@ -4,6 +4,7 @@ from blueprint.models import User, Profile
 from extensions import db
 from blueprint.decorators import login_required
 from flask_wtf.csrf import generate_csrf  # Add this import
+from utils.utils import send_verification_email, verify_email_token  # Import email verification functions
 
 # from blueprint.models import User, Profile
 # auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -44,6 +45,12 @@ def auth():
             if user and user.check_password(password):
                 if not user.active:
                     return redirect(url_for('auth.auth', mode='locked'))
+                
+                # Check if email is verified
+                if not user.email_verified:
+                    flash("Please verify your email address before logging in. Check your inbox for the verification link.", "warning")
+                    return redirect(url_for('auth.auth', mode='login'))
+                
                 session['user_id'] = user.id
                 session['role'] = user.role
                 session['username'] = user.email
@@ -69,6 +76,7 @@ def auth():
             new_user = User(email=email, role=role, gender=gender)
             new_user.set_password(password)
             new_user.active = True
+            new_user.email_verified = False  # Start with unverified email
             db.session.add(new_user)
 
             new_profile = Profile(
@@ -80,7 +88,12 @@ def auth():
             db.session.add(new_profile)
             db.session.commit()
 
-            flash("Registration successful! Please log in.", "success")
+            # Send verification email
+            if send_verification_email(new_user):
+                flash("Registration successful! Please check your email to verify your account before logging in.", "success")
+            else:
+                flash("Registration successful, but there was an issue sending the verification email. Please contact support.", "warning")
+            
             return redirect(url_for('auth.auth', mode='login'))
 
         elif form_type == 'reset':
@@ -89,6 +102,44 @@ def auth():
 	
     csrf_token = generate_csrf()  # Generate CSRF token for the form
     return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token)
+
+
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    """Handle email verification"""
+    user, message = verify_email_token(token)
+    
+    if user:
+        if "successfully" in message:
+            flash("Email verified successfully! You can now log in.", "success")
+        else:
+            flash(message, "info")
+    else:
+        flash(message, "danger")
+    
+    return redirect(url_for('auth.auth', mode='login'))
+
+
+@auth_bp.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend email verification for a user"""
+    email = request.form.get('email')
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        flash("No account found with that email address.", "danger")
+        return redirect(url_for('auth.auth', mode='login'))
+    
+    if user.email_verified:
+        flash("Email is already verified.", "info")
+        return redirect(url_for('auth.auth', mode='login'))
+    
+    if send_verification_email(user):
+        flash("Verification email sent! Please check your inbox.", "success")
+    else:
+        flash("Failed to send verification email. Please try again later.", "danger")
+    
+    return redirect(url_for('auth.auth', mode='login'))
 
 
 # @app.route("/login", methods=["GET", "POST"])

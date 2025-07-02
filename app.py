@@ -22,12 +22,13 @@ from blueprint.browse import browse_bp
 from blueprint.booking import booking_bp
 from blueprint.messaging import messaging_bp
 from blueprint.payment import payment_bp
+from blueprint.rating import rating_bp
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from blueprint.models import db, User, Profile, Booking, Payment, Report
+from blueprint.models import db, User, Profile, Booking, Payment, Report, Rating
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -195,6 +196,7 @@ app.register_blueprint(browse_bp)
 app.register_blueprint(booking_bp)
 app.register_blueprint(messaging_bp)
 app.register_blueprint(payment_bp)
+app.register_blueprint(rating_bp)
 
 
 @app.route('/profile', methods=['GET', 'POST'])
