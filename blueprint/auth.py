@@ -11,14 +11,30 @@ from utils.utils import send_verification_email, verify_email_token  # Import em
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 def verify_recaptcha(token):
+    # For development/testing, bypass reCAPTCHA if using test keys
+    recaptcha_secret = os.environ.get('RECAPTCHA_SECRET_KEY', '')
+    
+    # Skip reCAPTCHA verification in development mode
+    if recaptcha_secret == 'test_secret_key_for_development':
+        print("🔧 Development Mode: Bypassing reCAPTCHA verification")
+        return True
+    
+    # Production reCAPTCHA verification
     url = "https://www.google.com/recaptcha/api/siteverify"
     payload = {
-        'secret': os.environ['RECAPTCHA_SECRET_KEY'],
+        'secret': recaptcha_secret,
         'response': token
     }
-    response = requests.post(url, data=payload)
-    result = response.json()
-    return result.get('success') and result.get('score', 0) >= 0.5  # threshold adjustable
+    try:
+        response = requests.post(url, data=payload)
+        result = response.json()
+        return result.get('success') and result.get('score', 0) >= 0.5  # threshold adjustable
+    except Exception as e:
+        print(f"reCAPTCHA verification error: {e}")
+        # In development, allow registration to proceed if reCAPTCHA fails
+        if os.environ.get('FLASK_ENV') == 'development':
+            return True
+        return False
 
 
 # @auth_bp.route('/', methods=['GET', 'POST'])
@@ -101,7 +117,8 @@ def auth():
             return redirect(url_for('auth.auth', mode='reset'))
 	
     csrf_token = generate_csrf()  # Generate CSRF token for the form
-    return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token)
+    recaptcha_site_key = os.environ.get('RECAPTCHA_SITE_KEY', 'test_site_key_for_development')
+    return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token, recaptcha_site_key=recaptcha_site_key)
 
 
 @auth_bp.route('/verify-email/<token>')

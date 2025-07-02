@@ -100,6 +100,11 @@
 			<button class="w-100 btn btn-lg btn-primary" type="submit">Register</button>
 
 		</form>
+
+		<!-- reCAPTCHA Integration -->
+		{% if recaptcha_site_key != 'test_site_key_for_development' %}
+		<!-- Production reCAPTCHA -->
+		<script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
 		<script>
 			grecaptcha.ready(function () {
 				console.log("reCAPTCHA is ready!");
@@ -111,20 +116,15 @@
 				}
 
 				document.getElementById('register-form').addEventListener('submit', function (event) {
-					event.preventDefault(); // prevent immediate submit
+					event.preventDefault();
 					console.log("Register form submit intercepted");
 
-					// Preserve the CSRF token
 					const csrfToken = document.querySelector('input[name="csrf_token"]').value;
 
-					grecaptcha.execute('6Lcz0W4rAAAAAMaoHyYe_PzkZhJuzqefCtavEmYt', { action: 'register' }).then(function (token) {
-
+					grecaptcha.execute('{{ recaptcha_site_key }}', { action: 'register' }).then(function (token) {
 						console.log("reCAPTCHA token received:", token);
-
-						// Add token to hidden input
 						document.getElementById('g-recaptcha-response').value = token;
 
-						// Create a new form submission that includes both tokens
 						const formData = new FormData(event.target);
 						formData.set('g-recaptcha-response', token);
 						formData.set('csrf_token', csrfToken);
@@ -141,12 +141,28 @@
 							}
 						});
 
-						// Submit the form after token is set
 						event.target.submit();
 					});
 				});
 			});
 		</script>
+		{% else %}
+		<!-- Development Mode: Bypass reCAPTCHA -->
+		<script>
+			console.log("🔧 Development Mode: reCAPTCHA bypassed");
+			const form = document.getElementById('register-form');
+			if (form) {
+				document.getElementById('register-form').addEventListener('submit', function (event) {
+					// In development mode, just set a dummy token and submit
+					document.getElementById('g-recaptcha-response').value = 'development_bypass_token';
+					console.log("📝 Registration proceeding in development mode");
+				});
+			}
+		</script>
+		<div class="alert alert-info mt-3">
+			<small><i class="fas fa-tools"></i> Development Mode: reCAPTCHA verification bypassed</small>
+		</div>
+		{% endif %}
 		{% elif mode == 'reset' and not token %}
 		<h2 class="text-center mb-4">Reset Password</h2>
 		<p class="text-muted text-center">Enter your email to receive a password reset link.</p>
