@@ -80,11 +80,34 @@ class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     reporter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     reported_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    reason = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(20), default='Pending Review', nullable=False)
     
-    reporter = db.relationship('User', foreign_keys=[reporter_id])
-    reported = db.relationship('User', foreign_keys=[reported_id])
+    # Enhanced reporting fields
+    report_type = db.Column(db.String(50), nullable=False)  # 'inappropriate_behavior', 'harassment', 'fraud', etc.
+    title = db.Column(db.String(200), nullable=False)  # Brief title of the report
+    description = db.Column(db.Text, nullable=False)  # Detailed description
+    evidence_urls = db.Column(db.Text)  # JSON array of evidence URLs/screenshots
+    severity = db.Column(db.String(20), default='Medium', nullable=False)  # 'Low', 'Medium', 'High', 'Critical'
+    
+    # Status tracking
+    status = db.Column(db.String(30), default='Pending Review', nullable=False)  # 'Pending Review', 'Under Investigation', 'Resolved', 'Dismissed'
+    admin_notes = db.Column(db.Text)  # Admin notes for investigation
+    resolution = db.Column(db.Text)  # Resolution details
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    resolved_at = db.Column(db.DateTime)
+    
+    # Admin who handled the report
+    assigned_admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    # Relationships
+    reporter = db.relationship('User', foreign_keys=[reporter_id], backref='reports_made')
+    reported = db.relationship('User', foreign_keys=[reported_id], backref='reports_received')
+    assigned_admin = db.relationship('User', foreign_keys=[assigned_admin_id], backref='reports_handled')
+    
+    def __repr__(self):
+        return f'<Report {self.id}: {self.report_type} against User {self.reported_id}>'
     
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
