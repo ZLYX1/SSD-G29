@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Security Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .security-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        background: white;
+    }
+    .stat-box {
+        text-align: center;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px;
+    }
+    .stat-box.critical { background-color: #ffe6e6; border-left: 4px solid #dc3545; }
+    .stat-box.high { background-color: #fff3cd; border-left: 4px solid #ffc107; }
+    .stat-box.medium { background-color: #e7f3ff; border-left: 4px solid #007bff; }
+    .stat-box.low { background-color: #e8f5e8; border-left: 4px solid #28a745; }
+    
+    .event-row {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 5px;
+    }
+    .event-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .blocked-ip {
+        font-family: monospace;
+        background-color: #f8f9fa;
+        padding: 5px;
+        border-radius: 3px;
+    }
+    
+    .event-badge {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .event-badge.failed_login { background-color: #ffc107; color: #000; }
+    .event-badge.account_lockout { background-color: #dc3545; color: #fff; }
+    .event-badge.rate_limit_exceeded { background-color: #fd7e14; color: #fff; }
+    
+    .refresh-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1>🛡️ Security Monitoring Dashboard</h1>
+            <p class="text-muted">Real-time security events and rate limiting status</p>
+        </div>
+    </div>
+
+    <!-- Security Statistics -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="stat-box critical">
+                <h3>{{ event_stats|selectattr('0', 'equalto', 'account_lockout')|list|length or 0 }}</h3>
+                <p>Account Lockouts (24h)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box high">
+                <h3>{{ event_stats|selectattr('0', 'equalto', 'rate_limit_exceeded')|list|length or 0 }}</h3>
+                <p>Rate Limit Violations (24h)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box medium">
+                <h3>{{ event_stats|selectattr('0', 'equalto', 'failed_login')|list|length or 0 }}</h3>
+                <p>Failed Logins (24h)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-box low">
+                <h3>{{ active_blocks|length }}</h3>
+                <p>Currently Blocked</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Security Events -->
+        <div class="col-md-8">
+            <div class="security-card">
+                <h3>🚨 Recent Security Events</h3>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    {% for event in recent_events %}
+                    <div class="event-row">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="event-badge {{ event.event_type }}">{{ event.event_type.replace('_', ' ').title() }}</span>
+                                <strong>{{ event.ip_address }}</strong>
+                                {% if event.user %}
+                                    <small class="text-muted">({{ event.user.email }})</small>
+                                {% endif %}
+                            </div>
+                            <div class="text-right">
+                                <small class="text-muted">{{ event.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                <br>
+                                <span class="badge badge-{{ 'danger' if event.severity == 'high' else 'warning' if event.severity == 'medium' else 'info' }}">
+                                    {{ event.severity.upper() }}
+                                </span>
+                            </div>
+                        </div>
+                        {% if event.details %}
+                        <div class="mt-2">
+                            <small class="text-muted">{{ event.details }}</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% if not recent_events %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-shield-alt fa-3x mb-3"></i>
+                        <p>No recent security events</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Rate Limit Blocks -->
+        <div class="col-md-4">
+            <div class="security-card">
+                <h3>🚫 Currently Blocked</h3>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    {% for block in active_blocks %}
+                    <div class="event-row">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="blocked-ip">{{ block.identifier }}</div>
+                                <small class="text-muted">{{ block.identifier_type.upper() }} • {{ block.endpoint }}</small>
+                            </div>
+                            <div class="text-right">
+                                <small class="text-muted">
+                                    Until: {{ block.blocked_until.strftime('%H:%M:%S') }}
+                                </small>
+                                <br>
+                                <small class="text-danger">{{ block.request_count }} requests</small>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary mt-2 unblock-btn" 
+                                data-identifier="{{ block.identifier }}" 
+                                data-type="{{ block.identifier_type }}">
+                            Unblock
+                        </button>
+                    </div>
+                    {% endfor %}
+                    {% if not active_blocks %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                        <p>No active blocks</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Blocked IPs -->
+    {% if blocked_ips %}
+    <div class="row">
+        <div class="col-12">
+            <div class="security-card">
+                <h3>🌐 Most Blocked IP Addresses</h3>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Block Count</th>
+                                <th>Last Blocked</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ip_info in blocked_ips %}
+                            <tr>
+                                <td><code>{{ ip_info[0] }}</code></td>
+                                <td><span class="badge badge-warning">{{ ip_info[1] }}</span></td>
+                                <td>{{ ip_info[2].strftime('%Y-%m-%d %H:%M:%S') if ip_info[2] else 'N/A' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary unblock-btn" 
+                                            data-identifier="{{ ip_info[0] }}" 
+                                            data-type="ip">
+                                        Unblock All
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Refresh Button -->
+<button class="btn btn-primary refresh-btn" onclick="location.reload()">
+    <i class="fas fa-sync-alt"></i> Refresh
+</button>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle unblock buttons
+    document.querySelectorAll('.unblock-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const identifier = this.getAttribute('data-identifier');
+            const type = this.getAttribute('data-type');
+            
+            if (confirm(`Are you sure you want to unblock ${type} ${identifier}?`)) {
+                fetch('/security/unblock', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        identifier: identifier,
+                        identifier_type: type
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                });
+            }
+        });
+    });
+
+    // Auto-refresh every 30 seconds
+    setTimeout(function() {
+        location.reload();
+    }, 30000);
+});
+</script>
+{% endblock %}

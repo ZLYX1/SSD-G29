@@ -3,6 +3,7 @@ from blueprint.models import Message, User, Profile
 from extensions import db
 from blueprint.decorators import login_required
 from controllers.message_controller import MessageController
+from utils.rate_limiter import user_action_rate_limit  # Import rate limiting
 import json
 
 messaging_bp = Blueprint('messaging', __name__, url_prefix='/messaging')
@@ -54,6 +55,7 @@ def view_conversation(user_id):
 
 
 @messaging_bp.route('/send', methods=['POST'])
+@user_action_rate_limit(max_requests=30, window_minutes=15, block_duration_minutes=15)  # Rate limit messaging
 @login_required
 def send_message():
     """Send a message via AJAX"""

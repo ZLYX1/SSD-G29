@@ -135,8 +135,33 @@ class User(db.Model):
         """Increment failed login attempts and lock account if necessary"""
         self.failed_login_attempts += 1
         
+        # Log security event for failed login
+        try:
+            from utils.rate_limiter import RateLimiter
+            RateLimiter.log_security_event(
+                event_type='failed_login',
+                details=f'Failed login attempt #{self.failed_login_attempts} for user {self.email}',
+                severity='medium' if self.failed_login_attempts < max_attempts else 'high',
+                user_id=self.id
+            )
+        except Exception as e:
+            print(f"Error logging failed login event: {e}")
+        
         if self.failed_login_attempts >= max_attempts:
             self.account_locked_until = datetime.datetime.utcnow() + datetime.timedelta(minutes=lockout_duration_minutes)
+            
+            # Log account lockout event
+            try:
+                from utils.rate_limiter import RateLimiter
+                RateLimiter.log_security_event(
+                    event_type='account_lockout',
+                    details=f'Account locked for {lockout_duration_minutes} minutes after {max_attempts} failed login attempts',
+                    severity='high',
+                    user_id=self.id
+                )
+            except Exception as e:
+                print(f"Error logging account lockout event: {e}")
+            
             return f"Account locked for {lockout_duration_minutes} minutes due to too many failed login attempts."
         
         attempts_left = max_attempts - self.failed_login_attempts
@@ -270,3 +295,40 @@ class Rating(db.Model):
     
     def __repr__(self):
         return f'<Rating {self.rating}/5 for booking {self.booking_id}>'
+
+class RateLimitEntry(db.Model):
+    """Track rate limiting for IP addresses and users"""
+    __tablename__ = 'rate_limit_entry'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    identifier = db.Column(db.String(64), nullable=False)  # IP address or user ID
+    identifier_type = db.Column(db.String(10), nullable=False)  # 'ip' or 'user'
+    endpoint = db.Column(db.String(100), nullable=False)  # Which endpoint was accessed
+    request_count = db.Column(db.Integer, default=1, nullable=False)
+    window_start = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    blocked_until = db.Column(db.DateTime, nullable=True)  # When the block expires
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    
+    def __repr__(self):
+        return f'<RateLimitEntry {self.identifier} ({self.identifier_type}) on {self.endpoint}>'
+
+
+class SecurityEvent(db.Model):
+    """Log security events for monitoring and analysis"""
+    __tablename__ = 'security_event'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_type = db.Column(db.String(50), nullable=False)  # 'rate_limit', 'account_lockout', 'failed_login', etc.
+    ip_address = db.Column(db.String(45), nullable=False)  # IPv4 or IPv6
+    user_agent = db.Column(db.String(500), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    endpoint = db.Column(db.String(100), nullable=True)
+    details = db.Column(db.Text, nullable=True)  # JSON details about the event
+    severity = db.Column(db.String(20), default='medium', nullable=False)  # 'low', 'medium', 'high', 'critical'
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    
+    # Relationship to user for security event tracking
+    user = db.relationship('User', backref='security_events', lazy=True)
+    
+    def __repr__(self):
+        return f'<SecurityEvent {self.event_type} from {self.ip_address}>'
