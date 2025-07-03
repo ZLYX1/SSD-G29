@@ -3,45 +3,9 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from blueprint.models import Profile
 from extensions import db
 from blueprint.decorators import login_required
-import re
-
-# Try to import boto3 for S3 functionality (optional dependency)
-try:
-    import boto3
-    from botocore.exceptions import ClientError
-    s3 = boto3.client('s3')
-    HAS_S3 = True
-except ImportError:
-    HAS_S3 = False
-    s3 = None
 
 
 profile_bp = Blueprint('profile', __name__, url_prefix='/profile')
-
-def validate_profile_data(name, bio, availability):
-    """Validate profile form data"""
-    errors = []
-    
-    # Name validation
-    if not name or not name.strip():
-        errors.append("Name is required")
-    elif len(name.strip()) < 2:
-        errors.append("Name must be at least 2 characters long")
-    elif len(name.strip()) > 100:
-        errors.append("Name must be less than 100 characters")
-    elif not re.match(r'^[a-zA-Z\s\-\.]+$', name.strip()):
-        errors.append("Name can only contain letters, spaces, hyphens, and periods")
-    
-    # Bio validation
-    if bio and len(bio.strip()) > 500:
-        errors.append("Bio must be less than 500 characters")
-    
-    # Availability validation
-    valid_availability = ["Available", "Temporarily Unavailable"]
-    if availability not in valid_availability:
-        errors.append("Invalid availability status")
-    
-    return errors
 
 # 2. PROFILE MANAGEMENT
 # @app.route('/profile', methods=['GET', 'POST'])
@@ -68,20 +32,9 @@ def validate_profile_data(name, bio, availability):
 def profile():
     user_profile = Profile.query.filter_by(user_id=session['user_id']).first()
     if request.method == 'POST':
-        name = request.form.get('name')
-        bio = request.form.get('bio')
-        availability = request.form.get('availability')
-
-        # Validate profile data
-        errors = validate_profile_data(name, bio, availability)
-        if errors:
-            for error in errors:
-                flash(error, "danger")
-            return redirect(url_for('profile.profile'))
-
-        user_profile.name = name
-        user_profile.bio = bio
-        user_profile.availability = availability
+        user_profile.name = request.form.get('name')
+        user_profile.bio = request.form.get('bio')
+        user_profile.availability = request.form.get('availability')
         db.session.commit()
         flash("Profile updated successfully!", "success")
         return redirect(url_for('profile.profile'))
@@ -107,7 +60,7 @@ def generate_presigned_url():
         presigned_post = s3.generate_presigned_post(
             Bucket=S3_BUCKET,
             Key=f"profile_photos/{session['user_id']}/{file_name}",
-            Fields={"Content-Type": file_type},
+            Fiields={"Content-Type": file_type},
             Conditions=[
                 {"Content-Type": file_type}
             ],

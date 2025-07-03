@@ -38,8 +38,8 @@ app.secret_key = secrets.token_hex(16)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configure CSRF for production - ENABLE for production deployment
-app.config['WTF_CSRF_ENABLED'] = True  # Enable CSRF protection for production
+# Configure CSRF for local development - TEMPORARILY DISABLED FOR TESTING
+app.config['WTF_CSRF_ENABLED'] = False
 # Security configurations
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-development-secret-key')
 app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
@@ -59,37 +59,6 @@ csrf.init_app(app)
 def inject_csrf_token():
     from flask_wtf.csrf import generate_csrf
     return dict(csrf_token=generate_csrf)
-
-# Content Security Policy (CSP) Configuration
-@app.after_request
-def set_csp_headers(response):
-    """Set Content Security Policy headers for all responses"""
-    # Define CSP policy
-    csp_policy = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com; "
-        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-        "img-src 'self' data: https: blob:; "
-        "connect-src 'self' https://api.stripe.com; "
-        "frame-src https://js.stripe.com; "
-        "object-src 'none'; "
-        "base-uri 'self'; "
-        "form-action 'self'; "
-        "frame-ancestors 'none'; "
-        "upgrade-insecure-requests;"
-    )
-    
-    # Set CSP header
-    response.headers['Content-Security-Policy'] = csp_policy
-    
-    # Additional security headers
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    
-    return response
 
 
 # Initialize extensions
@@ -211,11 +180,7 @@ def make_session_permanent():
 
 @app.route("/test-session")
 def test_session():
-    return render_template("test_session_timeout.html")
-
-@app.route("/test-session-timeout")
-def test_session_timeout():
-    return render_template("test_session_timeout.html")
+    return render_template("index.html")
 
 
 @app.route('/logout')

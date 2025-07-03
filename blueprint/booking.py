@@ -4,6 +4,7 @@ from blueprint.models import Booking, TimeSlot
 from extensions import db
 from blueprint.decorators import login_required
 from datetime import datetime, timedelta
+from flask_wtf.csrf import generate_csrf  # Add this import
 
 booking_bp = Blueprint('booking', __name__, url_prefix='/booking')
 
@@ -26,7 +27,7 @@ def booking():
         ).order_by(TimeSlot.start_time.asc()).all()
 
 
-    return render_template('booking.html', bookings=bookings_data, time_slots=time_slots, role=role)
+    return render_template('booking.html', bookings=bookings_data, time_slots=time_slots, role=role,csrf_token=generate_csrf())  # ✅ Add this line)
 
 @booking_bp.route('/slots/create', methods=['POST'])
 @login_required

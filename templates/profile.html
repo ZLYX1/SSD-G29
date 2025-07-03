@@ -6,43 +6,31 @@
 <h2>Profile Management</h2>
 <div class="card">
 	<div class="card-body">
-		<!-- Display error messages -->
-		{% with messages = get_flashed_messages(with_categories=true) %}
-			{% if messages %}
-				{% for category, message in messages %}
-					<div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
-						{{ message }}
-						<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-					</div>
-				{% endfor %}
-			{% endif %}
-		{% endwith %}
-		
-		<form method="post" enctype="multipart/form-data" id="profileForm">
+		<form method="post" enctype="multipart/form-data">
 			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 			<div class="mb-3">
-				<label for="name" class="form-label">Name <span class="text-danger">*</span></label>
-				<input type="text" class="form-control" id="name" name="name" value="{{ profile.name }}" required 
-					   minlength="2" maxlength="100" pattern="[a-zA-Z\s\-\.]+">
-				<div class="invalid-feedback">
-					Name must be 2-100 characters and contain only letters, spaces, hyphens, and periods.
-				</div>
+				<label for="name" class="form-label">Name</label>
+				<input type="text" class="form-control" id="name" name="name" value="{{ profile.name }}">
 			</div>
 			<div class="mb-3">
 				<label for="bio" class="form-label">Bio</label>
-				<textarea class="form-control" id="bio" name="bio" rows="3" maxlength="500">{{ profile.bio }}</textarea>
-				<div class="form-text">Maximum 500 characters</div>
+				<textarea class="form-control" id="bio" name="bio" rows="3">{{ profile.bio }}</textarea>
 			</div>
 			<div class="mb-3">
 				<label for="photo" class="form-label">Profile Photo (Current: {{ profile.photo }})</label>
-				<input class="form-control" type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/jpg">
-				<div class="form-text">Supported formats: JPEG, PNG. Maximum size: 5MB</div>
+				<input class="form-control" type="file" id="photo" name="photo">
 			</div>
 			<div class="mb-3">
-				<label for="availability" class="form-label">Availability Status <span class="text-danger">*</span></label>
-				<select class="form-select" id="availability" name="availability" required>
-					<option value="Available" {% if profile.availability=="Available" %}selected{% endif %}>Available</option>
-					<option value="Temporarily Unavailable" {% if profile.availability=="Temporarily Unavailable" %}selected{% endif %}>Temporarily Unavailable</option>
+				<label for="availability" class="form-label">Availability Status</label>
+				<!-- <select class="form-select" id="availability" name="availability">
+					<option>Available</option>
+					<option>Temporarily Unavailable</option>
+				</select> -->
+				<select class="form-select" id="availability" name="availability">
+					<option value="Available" {% if profile.availability=="Available" %}selected{% endif %}>Available
+					</option>
+					<option value="Temporarily Unavailable" {% if profile.availability=="Temporarily Unavailable"
+						%}selected{% endif %}>Temporarily Unavailable</option>
 				</select>
 			</div>
 			<button type="submit" class="btn btn-primary">Save Changes</button>
@@ -55,103 +43,32 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
 <script>
-	// Client-side validation
-	document.getElementById('profileForm').addEventListener('submit', function(e) {
-		const name = document.getElementById('name').value.trim();
-		const bio = document.getElementById('bio').value.trim();
-		
-		// Name validation
-		if (!name || name.length < 2 || name.length > 100) {
-			e.preventDefault();
-			alert('Name must be between 2 and 100 characters');
-			return;
-		}
-		
-		if (!/^[a-zA-Z\s\-\.]+$/.test(name)) {
-			e.preventDefault();
-			alert('Name can only contain letters, spaces, hyphens, and periods');
-			return;
-		}
-		
-		// Bio validation
-		if (bio.length > 500) {
-			e.preventDefault();
-			alert('Bio must be less than 500 characters');
-			return;
-		}
-	});
-
-	// Photo upload handling
 	document.getElementById("photo").onchange = async function (event) {
 		const file = event.target.files[0];
-		if (!file) return;
-		
-		// Validate file type
-		const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-		if (!allowedTypes.includes(file.type)) {
-			alert('Invalid file type. Please select a JPEG or PNG image.');
-			this.value = '';
-			return;
-		}
-		
-		// Validate file size (5MB max)
-		const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-		if (file.size > maxSize) {
-			alert('File size too large. Please select an image smaller than 5MB.');
-			this.value = '';
-			return;
-		}
-		
-		try {
-			const res = await fetch('/profile/generate-presigned-url', {
-				method: 'POST',
-				headers: { 
-					'Content-Type': 'application/json',
-					'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
-				},
-				body: JSON.stringify({
-					file_name: file.name,
-					file_type: file.type
-				})
-			});
-			
-			if (!res.ok) {
-				throw new Error('Failed to generate upload URL');
-			}
-			
-			const data = await res.json();
-			const formData = new FormData();
-			Object.entries(data.fields).forEach(([key, value]) => formData.append(key, value));
-			formData.append("file", file);
-			
-			const uploadRes = await fetch(data.url, { method: 'POST', body: formData });
-			if (!uploadRes.ok) {
-				throw new Error('Upload failed');
-			}
+		const res = await fetch('/profile/generate-presigned-url', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				file_name: file.name,
+				file_type: file.type
+			})
+		});
+		const data = await res.json();
+		const formData = new FormData();
+		Object.entries(data.fields).forEach(([key, value]) => formData.append(key, value));
+		formData.append("file", file);
+		await fetch(data.url, { method: 'POST', body: formData });
 
-			// Tell Flask the photo URL (or filename)
-			const photoUrl = `${data.url}/${data.fields.key}`;
-			const saveRes = await fetch('/profile/save-photo', {
-				method: 'POST',
-				headers: { 
-					'Content-Type': 'application/json',
-					'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
-				},
-				body: JSON.stringify({ photo_url: photoUrl })
-			});
-			
-			if (!saveRes.ok) {
-				throw new Error('Failed to save photo');
-			}
+		// Tell Flask the photo URL (or filename)
+		const photoUrl = `${data.url}/${data.fields.key}`;  // full S3 URL
+		await fetch('/profile/save-photo', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ photo_url: photoUrl })
+		});
 
-			alert("Photo uploaded successfully!");
-		} catch (error) {
-			console.error('Upload error:', error);
-			alert("Upload failed: " + error.message);
-			this.value = '';
-		}
+		alert("Upload & save successful!");
+		alert("Upload successful!");
 	};
 </script>
-{% endblock %}

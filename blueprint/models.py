@@ -35,7 +35,6 @@ class User(db.Model):
     password_change_required = db.Column(db.Boolean, default=False, nullable=False)  # Force password change
     failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)  # Track failed logins
     account_locked_until = db.Column(db.DateTime, nullable=True)  # Account lockout timestamp
-    last_activity = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)  # Track last activity for session timeout
     
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
