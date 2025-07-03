@@ -41,14 +41,29 @@ config = DBConfig(
 )
 db = PostgresConnector(config)
 
-# Authentication controller
-auth_controller = AuthController()
+def initialize_database():
+    try:
+        from data_sources.user_repository import UserRepository
+        conn = db.get_connection()
+        user_repo = UserRepository(conn)
+        db.return_connection(conn)
+    except Exception:
+        # Fail silently - let the application handle DB errors during requests
+        pass
 
+# Initialize database when app starts
+with app.app_context():
+    initialize_database()
 
 def get_db_conn():
     if "db_conn" not in g:
         g.db_conn = db.get_connection()
     return g.db_conn
+
+def get_auth_controller():
+    if "auth_controller" not in g:
+        g.auth_controller = AuthController(get_db_conn())
+    return g.auth_controller
 
 
 @app.teardown_appcontext
@@ -80,6 +95,7 @@ def login():
         email = request.form.get("email")
         password = request.form.get("password")
 
+        auth_controller = get_auth_controller()
         if auth_controller.authenticate(email, password):
             # Successful login
             return redirect(url_for("index"))
@@ -99,7 +115,8 @@ def register():
         if password != confirm_password:
             flash("Passwords do not match", "danger")
             return render_template("register.html")
-
+        
+        auth_controller = get_auth_controller()
         if auth_controller.register(email, password):
             flash("Account created successfully. Please log in.", "success")
             return redirect(url_for("login"))
