@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Report {{ reported_user.email }} - Safe Companions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Report User
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Reporting:</strong> {{ reported_user.email }}
+                        {% if profile and profile.name %}
+                        <br><strong>Name:</strong> {{ profile.name }}
+                        {% endif %}
+                    </div>
+
+                    <form method="POST" action="{{ url_for('report.submit_report') }}">
+                        <input type="hidden" name="reported_user_id" value="{{ reported_user.id }}">
+
+                        <div class="mb-3">
+                            <label for="report_type" class="form-label">What happened? *</label>
+                            <select class="form-select" name="report_type" id="report_type" required>
+                                <option value="">Select...</option>
+                                {% for value, label in report_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Brief Summary *</label>
+                            <input type="text" class="form-control" name="title" id="title" 
+                                   placeholder="Brief description of the issue" maxlength="200" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Details *</label>
+                            <textarea class="form-control" name="description" id="description" rows="4" 
+                                      placeholder="Please describe what happened, when it occurred, and any other relevant details." required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="severity" class="form-label">How serious is this?</label>
+                            <select class="form-select" name="severity" id="severity">
+                                {% for value, label in severity_levels %}
+                                <option value="{{ value }}" {% if value == 'Medium' %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <small>
+                                <i class="fas fa-info-circle me-1"></i>
+                                False reports violate our community guidelines. Only report genuine safety concerns.
+                            </small>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-secondary me-md-2" onclick="history.back()">Cancel</button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-flag"></i> Submit Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

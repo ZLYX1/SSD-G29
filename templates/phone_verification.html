@@ -1,0 +1,162 @@
+<!-- templates/phone_verification.html -->
+{% extends "base.html" %}
+{% block title %}Phone Verification - Safe Companions{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-mobile-alt me-2"></i>
+                    Phone Verification
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Verification Required</strong><br>
+                        We've sent a 6-digit verification code to:<br>
+                        <strong>{{ user.phone_number }}</strong>
+                    </div>
+                </div>
+
+                <form method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control text-center" id="otp_code" name="otp_code" 
+                               placeholder="000000" maxlength="6" pattern="[0-9]{6}" required
+                               style="font-size: 1.5rem; letter-spacing: 0.5rem;">
+                        <label for="otp_code">Enter 6-Digit Code</label>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary btn-lg" type="submit">
+                            <i class="fas fa-check me-2"></i>
+                            Verify Phone Number
+                        </button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-3">
+                    <p class="text-muted">Didn't receive the code?</p>
+                    <form method="post" action="{{ url_for('auth.resend_otp_code', user_id=user.id) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-secondary">
+                            <i class="fas fa-redo me-1"></i>
+                            Resend Code
+                        </button>
+                    </form>
+                </div>
+
+                <div class="mt-4">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-shield-alt text-success me-2"></i>
+                                Security Notice
+                            </h6>
+                            <small class="text-muted">
+                                • Verification code expires in 5 minutes<br>
+                                • You have 3 attempts to enter the correct code<br>
+                                • Your phone number will be used for account security<br>
+                                • We never share your phone number with third parties
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                Need help? <a href="mailto:support@safecompanions.com">Contact Support</a>
+            </small>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus on OTP input and format
+document.addEventListener('DOMContentLoaded', function() {
+    const otpInput = document.getElementById('otp_code');
+    
+    // Auto-focus
+    otpInput.focus();
+    
+    // Only allow numbers
+    otpInput.addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        
+        // Auto-submit when 6 digits are entered
+        if (this.value.length === 6) {
+            // Add a small delay to let user see the complete code
+            setTimeout(() => {
+                this.form.submit();
+            }, 500);
+        }
+    });
+    
+    // Handle paste events
+    otpInput.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text');
+        const numbers = paste.replace(/[^0-9]/g, '').substring(0, 6);
+        this.value = numbers;
+        
+        if (numbers.length === 6) {
+            setTimeout(() => {
+                this.form.submit();
+            }, 500);
+        }
+    });
+});
+</script>
+
+<style>
+/* OTP Input Styling */
+#otp_code {
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+#otp_code:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Card animations */
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Button hover effects */
+.btn {
+    transition: all 0.2s ease-in-out;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+</style>
+
+{% endblock %}

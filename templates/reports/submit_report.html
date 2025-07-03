@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Report - Safe Companions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Submit User Report
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if reported_user %}
+                    <div class="alert alert-info">
+                        <strong>Reporting User:</strong> {{ reported_user.email }}
+                        {% if reported_user.profile %}
+                        - {{ reported_user.profile.name }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" id="reportForm">
+                        {% if not reported_user %}
+                        <div class="mb-3">
+                            <label for="reported_user_id" class="form-label">User to Report *</label>
+                            <select class="form-select" name="reported_user_id" id="reported_user_id" required>
+                                <option value="">Select a user...</option>
+                                <!-- This would be populated via AJAX or server-side -->
+                            </select>
+                            <div class="form-text">Search and select the user you want to report</div>
+                        </div>
+                        {% else %}
+                        <input type="hidden" name="reported_user_id" value="{{ reported_user.id }}">
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="report_type" class="form-label">Report Type *</label>
+                            <select class="form-select" name="report_type" id="report_type" required>
+                                <option value="">Select report type...</option>
+                                {% for value, label in report_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="severity" class="form-label">Severity Level</label>
+                            <select class="form-select" name="severity" id="severity">
+                                {% for value, label in severity_levels %}
+                                <option value="{{ value }}" {% if value == 'Medium' %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Report Title *</label>
+                            <input type="text" class="form-control" name="title" id="title" 
+                                   placeholder="Brief description of the issue" maxlength="200" required>
+                            <div class="form-text">Provide a clear, concise title for your report</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Detailed Description *</label>
+                            <textarea class="form-control" name="description" id="description" rows="6" 
+                                      placeholder="Please provide detailed information about the incident, including dates, times, and specific behaviors that concern you." required></textarea>
+                            <div class="form-text">Be as specific as possible. Include dates, times, and details of what happened.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="evidence_urls" class="form-label">Evidence URLs (Optional)</label>
+                            <div id="evidence-container">
+                                <input type="url" class="form-control mb-2" name="evidence_urls" 
+                                       placeholder="https://example.com/screenshot.jpg">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addEvidenceField()">
+                                <i class="fas fa-plus"></i> Add Another URL
+                            </button>
+                            <div class="form-text">Links to screenshots, messages, or other evidence</div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Important:</strong> Filing false reports is against our community guidelines. 
+                            All reports are thoroughly investigated. Only submit reports for genuine safety concerns.
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('browse.browse') }}" class="btn btn-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-flag"></i> Submit Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addEvidenceField() {
+    const container = document.getElementById('evidence-container');
+    const newField = document.createElement('input');
+    newField.type = 'url';
+    newField.className = 'form-control mb-2';
+    newField.name = 'evidence_urls';
+    newField.placeholder = 'https://example.com/evidence.jpg';
+    container.appendChild(newField);
+}
+
+// Form validation and submission
+document.getElementById('reportForm').addEventListener('submit', function(e) {
+    const description = document.getElementById('description').value;
+    if (description.length < 20) {
+        e.preventDefault();
+        alert('Please provide a more detailed description (at least 20 characters).');
+        return false;
+    }
+});
+</script>
+{% endblock %}

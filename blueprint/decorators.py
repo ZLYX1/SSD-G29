@@ -20,3 +20,15 @@ def role_required(role):
             return f(*args, **kwargs)
         return decorated_function
     return wrapper
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash("You need to be logged in to access this page.", "warning")
+            return redirect(url_for('auth.auth'))
+        if 'role' not in session or session['role'] != 'admin':
+            flash("Administrator access required.", "danger")
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function

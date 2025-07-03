@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Rate Bookings{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">
+        <i class="fas fa-star text-warning"></i>
+        Rate Your Completed Bookings
+    </h2>
+    
+    {% if booking_data %}
+    <p class="text-muted">Please rate your experience with the following completed bookings:</p>
+    
+    <div class="row">
+        {% for data in booking_data %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        Booking #{{ data.booking.id }}
+                        <span class="badge bg-success">{{ data.booking.status }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            {% if data.other_profile.photo and data.other_profile.photo != 'default.jpg' %}
+                            <img src="{{ data.other_profile.photo }}" alt="Profile" class="img-fluid rounded">
+                            {% else %}
+                            <div class="bg-secondary rounded d-flex align-items-center justify-content-center" style="height: 100px;">
+                                <i class="fas fa-user fa-2x text-white"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-8">
+                            <h6>{{ "Escort" if data.is_escort else "Seeker" }}: {{ data.other_profile.name }}</h6>
+                            <p class="text-muted small">{{ data.other_user.email }}</p>
+                            <p><strong>Date:</strong> {{ data.booking.start_time.strftime('%Y-%m-%d') }}</p>
+                            <p><strong>Time:</strong> {{ data.booking.start_time.strftime('%H:%M') }} - {{ data.booking.end_time.strftime('%H:%M') }}</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <form class="rating-form" data-booking-id="{{ data.booking.id }}">
+                        <div class="mb-3">
+                            <label class="form-label">Your Rating:</label>
+                            <div class="rating-stars" data-rating="0">
+                                {% for i in range(1, 6) %}
+                                <i class="fas fa-star star" data-value="{{ i }}"></i>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="rating" class="rating-input">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="feedback-{{ data.booking.id }}" class="form-label">Feedback (Optional):</label>
+                            <textarea class="form-control" name="feedback" id="feedback-{{ data.booking.id }}" 
+                                    rows="3" placeholder="Share your experience..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Submit Rating
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle"></i>
+        <h5>No Bookings to Rate</h5>
+        <p>You don't have any completed bookings that haven't been rated yet.</p>
+        <a href="{{ url_for('booking.booking') }}" class="btn btn-primary">View All Bookings</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Rating Success Modal -->
+<div class="modal fade" id="ratingSuccessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle text-success"></i>
+                    Rating Submitted
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Thank you for your feedback! Your rating has been submitted successfully.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.rating-stars {
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.rating-stars .star {
+    color: #ddd;
+    transition: color 0.2s;
+    margin-right: 5px;
+}
+
+.rating-stars .star:hover,
+.rating-stars .star.active {
+    color: #ffc107;
+}
+
+.rating-stars .star.filled {
+    color: #ffc107;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle star rating interaction
+    document.querySelectorAll('.rating-stars').forEach(function(starsContainer) {
+        const stars = starsContainer.querySelectorAll('.star');
+        const ratingInput = starsContainer.closest('.rating-form').querySelector('.rating-input');
+        
+        stars.forEach(function(star, index) {
+            star.addEventListener('click', function() {
+                const rating = parseInt(this.dataset.value);
+                ratingInput.value = rating;
+                
+                // Update visual state
+                stars.forEach(function(s, i) {
+                    if (i < rating) {
+                        s.classList.add('filled');
+                    } else {
+                        s.classList.remove('filled');
+                    }
+                });
+                
+                starsContainer.dataset.rating = rating;
+            });
+            
+            star.addEventListener('mouseenter', function() {
+                const rating = parseInt(this.dataset.value);
+                stars.forEach(function(s, i) {
+                    if (i < rating) {
+                        s.classList.add('active');
+                    } else {
+                        s.classList.remove('active');
+                    }
+                });
+            });
+        });
+        
+        starsContainer.addEventListener('mouseleave', function() {
+            const currentRating = parseInt(this.dataset.rating) || 0;
+            stars.forEach(function(s, i) {
+                s.classList.remove('active');
+                if (i < currentRating) {
+                    s.classList.add('filled');
+                } else {
+                    s.classList.remove('filled');
+                }
+            });
+        });
+    });
+    
+    // Handle form submission
+    document.querySelectorAll('.rating-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const bookingId = this.dataset.bookingId;
+            const rating = this.querySelector('.rating-input').value;
+            const feedback = this.querySelector('textarea[name="feedback"]').value;
+            
+            if (!rating) {
+                alert('Please select a rating before submitting.');
+                return;
+            }
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            submitBtn.disabled = true;
+            
+            fetch('/rating/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    booking_id: parseInt(bookingId),
+                    rating: parseInt(rating),
+                    feedback: feedback
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success modal
+                    const modal = new bootstrap.Modal(document.getElementById('ratingSuccessModal'));
+                    modal.show();
+                    
+                    // Remove the card from view
+                    this.closest('.col-md-6').style.display = 'none';
+                    
+                    // Check if no more cards are visible
+                    const visibleCards = document.querySelectorAll('.col-md-6:not([style*="display: none"])');
+                    if (visibleCards.length === 0) {
+                        location.reload(); // Reload to show "no bookings" message
+                    }
+                } else {
+                    alert('Error: ' + data.error);
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to submit rating. Please try again.');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

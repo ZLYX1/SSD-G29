@@ -24,12 +24,14 @@ from blueprint.browse import browse_bp
 from blueprint.booking import booking_bp
 from blueprint.messaging import messaging_bp
 from blueprint.payment import payment_bp
+from blueprint.rating import rating_bp
+from blueprint.report import report_bp
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from blueprint.models import db, User, Profile, Booking, Payment, Report
+from blueprint.models import db, User, Profile, Booking, Payment, Report, Rating, TimeSlot, Message
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -37,10 +39,11 @@ app.secret_key = secrets.token_hex(16)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configure CSRF for local development
-app.config['WTF_CSRF_ENABLED'] = True
-app.config['SECRET_KEY'] = 'your-secret-key-here'  # Should match what's in your .env
-app.config['WTF_CSRF_SECRET_KEY'] = 'a-different-secret-key' 
+# Configure CSRF for local development - TEMPORARILY DISABLED FOR TESTING
+app.config['WTF_CSRF_ENABLED'] = False
+# Security configurations
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-development-secret-key')
+app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
 
 # Disable these security measures for local development
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable HTTPS requirement
@@ -50,11 +53,13 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # More lenient than 'Strict'
 # Configure CSRF Protection
 # csrf = CSRFProtect(app)  # This initializes CSRF protection
 
-# Security configurations
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-development-secret-key')
-app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
-
 csrf.init_app(app)
+
+# Add CSRF token to template context
+@app.context_processor
+def inject_csrf_token():
+    from flask_wtf.csrf import generate_csrf
+    return dict(csrf_token=generate_csrf)
 
 
 # Initialize extensions
@@ -194,10 +199,9 @@ app.register_blueprint(browse_bp)
 app.register_blueprint(booking_bp)
 app.register_blueprint(messaging_bp)
 app.register_blueprint(payment_bp)
+app.register_blueprint(rating_bp)
+app.register_blueprint(report_bp)
 
-
-@app.route('/profile', methods=['GET', 'POST'])
-# @app.route('/auth', methods=['GET', 'POST'])
 
 # 3. BROWSE & SEARCH
 # @app.route('/browse')
@@ -360,11 +364,14 @@ def seed_database():
     print("Seeding database...")
     faker = Faker()
 
-    # 1. Clean up existing data
+    # 1. Clean up existing data (proper order to handle foreign keys)
     print("-> Deleting existing data...")
+    db.session.query(Rating).delete()
+    db.session.query(Message).delete()
     db.session.query(Report).delete()
     db.session.query(Payment).delete()
     db.session.query(Booking).delete()
+    db.session.query(TimeSlot).delete()
     db.session.query(Profile).delete()
     db.session.query(User).delete()
     db.session.commit()
@@ -415,6 +422,29 @@ def seed_database():
 
     print(f"   - Created {len(seekers)} seekers, {len(escorts)} escorts, and 3 test users.")
 
+    # 2.5. Create TimeSlots for escorts
+    print("-> Creating time slots for escorts...")
+    all_escorts = escorts + [escort_user]
+    for escort in all_escorts:
+        # Create 3-5 random availability slots for each escort
+        for _ in range(random.randint(3, 5)):
+            start_dt = datetime.utcnow() + timedelta(
+                days=random.randint(1, 14), 
+                hours=random.randint(9, 18)
+            )
+            duration = random.choice([60, 120, 180])  # 1-3 hours
+            end_dt = start_dt + timedelta(minutes=duration)
+            
+            time_slot = TimeSlot(
+                user_id=escort.id,
+                start_time=start_dt,
+                end_time=end_dt
+            )
+            db.session.add(time_slot)
+    
+    db.session.commit()
+    print(f"   - Created availability slots for {len(all_escorts)} escorts.")
+
     # 3. Create Bookings with start_time and end_time
     print("-> Creating bookings...")
     booking_statuses = ['Pending', 'Confirmed', 'Rejected', 'Completed']
@@ -459,8 +489,11 @@ def seed_database():
         report = Report(
             reporter_id=reporter.id,
             reported_id=reported.id,
-            reason=faker.sentence(),
-            status=random.choice(['Pending Review', 'Resolved'])
+            report_type=random.choice(['inappropriate_behavior', 'harassment', 'fraud', 'other']),
+            title=faker.sentence(nb_words=6),
+            description=faker.paragraph(nb_sentences=3),
+            severity=random.choice(['Low', 'Medium', 'High']),
+            status=random.choice(['Pending Review', 'Under Investigation', 'Resolved', 'Dismissed'])
         )
         db.session.add(report)
     print("   - Created 5 reports.")

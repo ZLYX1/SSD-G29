@@ -1,6 +1,6 @@
 services:
   web:
-    container_name: flask-app
+    container_name: safe-companions-web
     build:
       context: .
       dockerfile: Dockerfile
@@ -24,7 +24,7 @@ services:
       - backend-network
 
   db:
-    container_name: postgres-db
+    container_name: safe-companions-db
     image: postgres:bullseye
     restart: always
     environment:
@@ -40,7 +40,7 @@ services:
       - backend-network
 
   nginx:
-    container_name: nginx-proxy
+    container_name: safe-companions-nginx
     restart: unless-stopped
     image: nginx:stable-perl
     ports:

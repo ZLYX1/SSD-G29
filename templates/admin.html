@@ -3,8 +3,41 @@
 {% block title %}Admin Panel{% endblock %}
 
 {% block content %}
-<h2>Admin Panel</h2>
-<div class="card mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
+	<h2>Admin Panel</h2>
+	<div>
+		<a href="{{ url_for('report.admin_dashboard') }}" class="btn btn-primary">
+			<i class="fas fa-exclamation-triangle me-1"></i>
+			Report Management
+		</a>
+	</div>
+</div>
+
+<!-- Quick Navigation Cards -->
+<div class="row mb-4">
+	<div class="col-md-6">
+		<div class="card text-center">
+			<div class="card-body">
+				<i class="fas fa-users fa-2x text-primary mb-2"></i>
+				<h5 class="card-title">User Management</h5>
+				<p class="card-text">Manage user accounts, roles, and permissions</p>
+				<a href="#user-management" class="btn btn-outline-primary">View Below</a>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-6">
+		<div class="card text-center">
+			<div class="card-body">
+				<i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+				<h5 class="card-title">Report Management</h5>
+				<p class="card-text">View and manage user reports and investigations</p>
+				<a href="{{ url_for('report.admin_dashboard') }}" class="btn btn-outline-danger">Open Dashboard</a>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div id="user-management" class="card mb-4">
 	<div class="card-header">User Management</div>
 	<div class="card-body">
 		<table class="table table-striped">
