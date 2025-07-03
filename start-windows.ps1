@@ -1,5 +1,5 @@
-# PowerShell script to start SSD-G29 Messaging Application with Docker Desktop
-Write-Host "Starting SSD-G29 Messaging Application Setup for Windows Docker Desktop" -ForegroundColor Green
+# PowerShell script to start Safe Companion Messaging Application with Docker Desktop
+Write-Host "Starting Safe Companion Messaging Application Setup for Windows Docker Desktop" -ForegroundColor Green
 Write-Host ""
 
 # Check if Docker Desktop is running

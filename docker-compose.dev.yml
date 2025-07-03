@@ -1,6 +1,6 @@
 services:
   web:
-    container_name: flask-app-dev
+    container_name: safe-companions-web-dev
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,7 +28,7 @@ services:
     restart: unless-stopped
 
   db:
-    container_name: postgres-db-dev
+    container_name: safe-companions-db-dev
     image: postgres:15-alpine  # Lighter image for development
     restart: unless-stopped
     environment:
@@ -50,7 +50,7 @@ services:
 
   # Optional: pgAdmin for database management
   pgadmin:
-    container_name: pgadmin-dev
+    container_name: safe-companions-pgadmin-dev
     image: dpage/pgadmin4:latest
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@ssd.local

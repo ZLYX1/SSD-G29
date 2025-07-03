@@ -201,9 +201,6 @@ app.register_blueprint(rating_bp)
 app.register_blueprint(report_bp)
 
 
-@app.route('/profile', methods=['GET', 'POST'])
-# @app.route('/auth', methods=['GET', 'POST'])
-
 # 3. BROWSE & SEARCH
 # @app.route('/browse')
 # def browse():

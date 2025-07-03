@@ -1,5 +1,5 @@
 @echo off
-echo Starting SSD-G29 Messaging Application Setup for Windows Docker Desktop
+echo Starting Safe Companion Messaging Application Setup for Windows Docker Desktop
 echo.
 
 REM Check if Docker Desktop is running

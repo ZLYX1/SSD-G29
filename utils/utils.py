@@ -44,7 +44,7 @@ def send_verification_email(user):
         If you didn't create an account, please ignore this email.
         
         Best regards,
-        SSD-G29 Team
+        Safe Companion Team
         """
         
         # For development, just print the verification URL
