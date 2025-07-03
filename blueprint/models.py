@@ -19,10 +19,14 @@ class User(db.Model):
     
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
-    bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
-    bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', backref='escort', lazy='dynamic')
+    # bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
+
+    # bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', backref='escort', lazy='dynamic')
     time_slots = db.relationship('TimeSlot', backref='user', lazy='dynamic', cascade="all, delete-orphan")
     
+    bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', back_populates='seeker', lazy='dynamic')
+    bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', back_populates='escort', lazy='dynamic')
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -59,7 +63,12 @@ class Booking(db.Model):
     
     # booking_date = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String(20), default='Pending', nullable=False) # 'Pending', 'Confirmed', 'Rejected'
-
+    # seeker = db.relationship('User', foreign_keys=[seeker_id])
+    # escort = db.relationship('User', foreign_keys=[escort_id])
+    # seeker = db.relationship('User', foreign_keys=[seeker_id], back_populates='bookings_made')
+    # escort = db.relationship('User', foreign_keys=[escort_id], back_populates='bookings_received')
+    seeker = db.relationship('User', foreign_keys=[seeker_id], back_populates='bookings_made')
+    escort = db.relationship('User', foreign_keys=[escort_id], back_populates='bookings_received')
     def __repr__(self):
         return f'<Booking {self.id} escort:{self.escort_id} seeker:{self.seeker_id} from {self.start_time} to {self.end_time}>'
     

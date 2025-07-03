@@ -36,7 +36,13 @@
 {% for booking in pending_bookings %}
 <div class="card mb-2">
 	<div class="card-body">
-		Booking #{{ booking.id }} from User #{{ booking.seeker_id }}<br>
+
+		<div class="d-flex align-items-center">
+			<img src="{{ booking.seeker.profile.photo or 'https://via.placeholder.com/50' }}" alt="Profile Photo"
+				class="rounded-circle me-2" width="50" height="50">
+			<strong>{{ booking.seeker.profile.name or 'Unnamed User' }}</strong>
+		</div>
+		Booking #{{ booking.id }}
 		From: {{ booking.start_time.strftime("%Y-%m-%d %H:%M") }}<br>
 		To: {{ booking.end_time.strftime("%Y-%m-%d %H:%M") }}<br>
 		Status: {{ booking.status }}
@@ -60,6 +66,18 @@
 	{% if bookings %}
 	{% for booking in bookings %}
 	<li class="list-group-item">
+		{% if role == 'seeker' %}
+		<!-- Show Escort Info -->
+		<img src="{{ booking.escort.profile.photo }}" alt="Profile Photo" class="rounded-circle me-2" width="40"
+			height="40">
+		<strong>{{ booking.escort.profile.name }}</strong><br>
+		{% elif role == 'escort' %}
+		<!-- Show Seeker Info -->
+		<img src="{{ booking.seeker.profile.photo }}" alt="Profile Photo" class="rounded-circle me-2" width="40"
+			height="40">
+		<strong>{{ booking.seeker.profile.name }}</strong><br>
+		{% endif %}
+
 		Booking #{{ booking.id }}<br>
 		From: {{ booking.start_time.strftime("%Y-%m-%d %H:%M") }}<br>
 		To: {{ booking.end_time.strftime("%Y-%m-%d %H:%M") }}<br>

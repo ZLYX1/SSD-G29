@@ -5,16 +5,21 @@
 {% block content %}
 <h2>Browse Escorts</h2>
 <p>Filters: [Age Range] [Availability] [Rating]</p>
+
 <div class="row row-cols-1 row-cols-md-3 g-4">
 	{% for profile in profiles %}
 	<div class="col">
 		<div class="card h-100">
 			<!-- Use profile.photo for image src when implemented -->
-			<img src="https://via.placeholder.com/300" class="card-img-top" alt="{{ profile.name }}">
+			<!-- Use actual profile photo if set -->
+			<img src="{{ profile.photo or 'https://via.placeholder.com/300' }}" class="card-img-top"
+				alt="{{ profile.name }}">
 			<div class="card-body">
+
 				<h5 class="card-title">{{ profile.name }}</h5>
 				<p class="card-text">{{ profile.bio }}</p>
-				<p class="card-text"><small class="text-muted">Rating: {{ profile.rating }} | Age: {{ profile.age
+				<p class="card-text"><small class="text-muted">Rating: {{ profile.rating or 'N/A' }} | Age: {{
+						profile.age
 						}}</small></p>
 			</div>
 			<div class="card-footer">
