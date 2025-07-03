@@ -4,7 +4,6 @@ from blueprint.models import Profile, User, TimeSlot
 from extensions import db
 from blueprint.decorators import login_required
 from datetime import datetime
-from flask_wtf.csrf import generate_csrf  # Add this import
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 

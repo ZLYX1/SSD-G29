@@ -20,7 +20,7 @@
 		{% if mode == 'login' %}
 		<h2 class="text-center mb-4">Login</h2>
 		<form method="post">
-			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 			<input type="hidden" name="form_type" value="login">
 			<div class="form-floating mb-3">
 				<input type="email" class="form-control" id="email" name="email" placeholder="name@example.com"
@@ -40,7 +40,7 @@
 		<div class="mt-4 p-3 bg-light rounded">
 			<p class="text-center mb-2">Haven't verified your email yet?</p>
 			<form method="post" action="{{ url_for('auth.resend_verification') }}">
-				<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+				<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 				<div class="input-group">
 					<input type="email" class="form-control" name="email" placeholder="Enter your email" required>
 					<button class="btn btn-outline-secondary" type="submit">Resend Verification</button>
@@ -52,7 +52,7 @@
 		<h2 class="text-center mb-4">Register</h2>
 		<form method="post" id="register-form">
 			<input type="hidden" name="form_type" value="register">
-			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 			<div class="form-floating mb-3">
 				<input type="email" class="form-control" id="email" name="email" placeholder="name@example.com"
 					required>
@@ -176,7 +176,7 @@
 		<p class="text-muted text-center">Enter your email to receive a password reset link.</p>
 		<form method="post">
 			<input type="hidden" name="form_type" value="reset">
-			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 			<div class="form-floating mb-3">
 				<input type="email" class="form-control" id="email" name="email" placeholder="name@example.com"
 					required>

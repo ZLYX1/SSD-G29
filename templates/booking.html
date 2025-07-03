@@ -8,7 +8,7 @@
 <h3>Set Your Availability</h3>
 <form method="post" action="{{ url_for('booking.create_slot') }}">
 	<div class="mb-3">
-		<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+		<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 		<label for="start_time" class="form-label">Start Time</label>
 		<input type="datetime-local" class="form-control" id="start_time" name="start_time" required>
 	</div>
@@ -42,7 +42,7 @@
 		Status: {{ booking.status }}
 
 		<form method="post" action="{{ url_for('booking.handle_booking_action') }}" class="d-inline mt-2">
-			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 			<input type="hidden" name="booking_id" value="{{ booking.id }}">
 			<button type="submit" name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
 			<button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>

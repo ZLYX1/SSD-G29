@@ -3,7 +3,6 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from blueprint.models import User, Profile
 from extensions import db
 from blueprint.decorators import login_required
-from flask_wtf.csrf import generate_csrf  # Add this import
 from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength  # Import OTP and password functions
 
 # from blueprint.models import User, Profile
@@ -183,9 +182,8 @@ def auth():
             flash("Password reset link sent to your email.", "info")
             return redirect(url_for('auth.auth', mode='reset'))
 	
-    csrf_token = generate_csrf()  # Generate CSRF token for the form
     recaptcha_site_key = os.environ.get('RECAPTCHA_SITE_KEY', 'test_site_key_for_development')
-    return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token, recaptcha_site_key=recaptcha_site_key)
+    return render_template('auth.html', mode=mode, token=token, recaptcha_site_key=recaptcha_site_key)
 
 
 @auth_bp.route('/verify-email/<token>')

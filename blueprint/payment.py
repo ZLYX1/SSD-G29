@@ -3,7 +3,6 @@ from blueprint.models import Payment  # Uncomment this import
 from extensions import db
 from blueprint.decorators import login_required
 import uuid  # Add this import for transaction_id generation
-from flask_wtf.csrf import generate_csrf  # Add this import
 
 payment_bp = Blueprint('payment', __name__, url_prefix='/payment')
 
@@ -54,7 +53,6 @@ def payment():
 
  	# GET request - show payment form
     history = Payment.query.filter_by(user_id=session['user_id']).order_by(Payment.created_at.desc()).all()
-    csrf_token = generate_csrf()  # Generate CSRF token for the form
-    return render_template('payment.html', history=history, csrf_token=csrf_token)
+    return render_template('payment.html', history=history)
 
  
