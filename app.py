@@ -24,7 +24,6 @@ from blueprint.messaging import messaging_bp
 from blueprint.payment import payment_bp
 from blueprint.rating import rating_bp
 from blueprint.report import report_bp
-from blueprint.security import security_bp  # Import security blueprint
 
 from dotenv import load_dotenv
 
@@ -200,7 +199,6 @@ app.register_blueprint(messaging_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(rating_bp)
 app.register_blueprint(report_bp)
-app.register_blueprint(security_bp)  # Register security blueprint
 
 
 # 3. BROWSE & SEARCH

@@ -5,7 +5,6 @@ from extensions import db
 from blueprint.decorators import login_required
 from flask_wtf.csrf import generate_csrf  # Add this import
 from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength  # Import OTP and password functions
-from utils.rate_limiter import strict_rate_limit, api_rate_limit, RateLimiter  # Import rate limiting
 
 # from blueprint.models import User, Profile
 # auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -39,8 +38,7 @@ def verify_recaptcha(token):
 
 
 # @auth_bp.route('/', methods=['GET', 'POST'])
-@auth_bp.route('/', methods=['GET', 'POST'])
-@strict_rate_limit(max_requests=5, window_minutes=5, block_duration_minutes=30)  # Strict rate limiting for auth
+@auth_bp.route('/', methods=['GET', 'POST']) 
 def auth():
     mode = request.args.get('mode', 'login')
     token = request.args.get('token')
@@ -207,7 +205,6 @@ def verify_email(token):
 
 
 @auth_bp.route('/resend-verification', methods=['POST'])
-@strict_rate_limit(max_requests=3, window_minutes=10, block_duration_minutes=60)  # Rate limit resend verification
 def resend_verification():
     """Resend email verification for a user"""
     email = request.form.get('email')
@@ -230,7 +227,6 @@ def resend_verification():
 
 
 @auth_bp.route('/verify-phone/<int:user_id>', methods=['GET', 'POST'])
-@strict_rate_limit(max_requests=10, window_minutes=15, block_duration_minutes=30)  # Rate limit OTP verification
 def verify_phone(user_id):
     """Handle phone verification with OTP"""
     user = User.query.get_or_404(user_id)
@@ -264,7 +260,6 @@ def verify_phone(user_id):
 
 
 @auth_bp.route('/resend-otp/<int:user_id>', methods=['POST'])
-@strict_rate_limit(max_requests=3, window_minutes=10, block_duration_minutes=60)  # Rate limit OTP resend
 def resend_otp_code(user_id):
     """Resend OTP code to user's phone"""
     print(f"🔧 DEBUG: Resend OTP request for user_id: {user_id}")
