@@ -55,19 +55,23 @@ class User(db.Model):
         Returns:
             tuple: (success: bool, message: str)
         """
-        if check_history:
+        if check_history and self.id and db.session.object_session(self):
             # Check if password was used in the last 5 passwords
             if self.is_password_in_history(password, limit=5):
                 return False, "Password cannot be the same as any of your last 5 passwords."
         
-        # Store current password in history before changing
-        if self.password_hash:
-            password_history_entry = PasswordHistory(
-                user_id=self.id,
-                password_hash=self.password_hash,
-                created_at=self.password_created_at or datetime.datetime.utcnow()
-            )
-            db.session.add(password_history_entry)
+        # Store current password in history before changing (only for existing users)
+        if self.password_hash and self.id and db.session.object_session(self):
+            try:
+                password_history_entry = PasswordHistory(
+                    user_id=self.id,
+                    password_hash=self.password_hash,
+                    created_at=self.password_created_at or datetime.datetime.utcnow()
+                )
+                db.session.add(password_history_entry)
+            except:
+                # If there's an issue adding to history, continue without it
+                pass
         
         # Set new password
         self.password_hash = generate_password_hash(password)
@@ -88,7 +92,15 @@ class User(db.Model):
     
     def is_password_in_history(self, password, limit=5):
         """Check if password exists in user's password history"""
-        history_entries = self.password_history.order_by(PasswordHistory.created_at.desc()).limit(limit).all()
+        # For new users or users not in session, skip history check
+        if not self.id or not db.session.object_session(self):
+            return False
+            
+        try:
+            history_entries = self.password_history.order_by(PasswordHistory.created_at.desc()).limit(limit).all()
+        except:
+            # If there's an issue with the relationship query, skip history check
+            return False
         
         # Check current password
         if self.password_hash and check_password_hash(self.password_hash, password):
@@ -177,9 +189,6 @@ class Booking(db.Model):
     start_time = db.Column(db.DateTime, nullable=False)  # Booking start time
     end_time = db.Column(db.DateTime, nullable=False)    # Booking end time
     status = db.Column(db.String(20), default='Pending', nullable=False)  # 'Pending', 'Confirmed', 'Rejected'
-    
-    # booking_date = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), default='Pending', nullable=False) # 'Pending', 'Confirmed', 'Rejected'
 
     def __repr__(self):
         return f'<Booking {self.id} escort:{self.escort_id} seeker:{self.seeker_id} from {self.start_time} to {self.end_time}>'

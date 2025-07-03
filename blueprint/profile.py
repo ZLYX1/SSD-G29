@@ -1,6 +1,5 @@
-
 import os
-from flask import Blueprint, render_template, request, flash, redirect, url_for, session
+from flask import Blueprint, render_template, request, flash, redirect, url_for, session, jsonify
 from blueprint.models import Profile
 from extensions import db
 from blueprint.decorators import login_required
@@ -83,3 +82,20 @@ def save_photo():
     db.session.commit()
 
     return {'message': 'Photo saved successfully'}, 200
+
+@profile_bp.route('/photo', methods=['GET'])
+@login_required
+def get_profile_photo():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    profile = Profile.query.filter_by(user_id=user_id).first()
+
+    if not profile:
+        return jsonify({'error': 'Profile not found'}), 404
+
+    return jsonify({
+        'user_id': user_id,
+        'photo_url': profile.photo or 'https://via.placeholder.com/150'
+    }), 200
