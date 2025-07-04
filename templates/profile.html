@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<h2>Profile Management</h2>
+<div class="card">
+	<div class="card-body">
+		<form method="post" enctype="multipart/form-data" onsubmit="return beforeSubmit()">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+			<input type="hidden" name="photo_url" id="photo_url" value="{{ profile.photo or '' }}">
+
+			<div class="mb-3">
+				<label for="name" class="form-label">Name</label>
+				<input type="text" class="form-control" id="name" name="name" value="{{ profile.name }}">
+			</div>
+
+			<div class="mb-3">
+				<label for="bio" class="form-label">Bio</label>
+				<textarea class="form-control" id="bio" name="bio" rows="3">{{ profile.bio }}</textarea>
+			</div>
+
+			<div class="mb-3">
+				<img src="{{ profile.photo or 'https://via.placeholder.com/150' }}" alt="Profile Photo"
+					class="img-thumbnail mb-3" width="150" id="preview-photo">
+				<label for="photo" class="form-label">Upload New Photo</label>
+				<input class="form-control" type="file" id="photo" name="photo">
+			</div>
+
+			<div class="mb-3">
+				<label for="availability" class="form-label">Availability Status</label>
+				<select class="form-select" id="availability" name="availability">
+					<option value="Available" {% if profile.availability=="Available" %}selected{% endif %}>Available
+					</option>
+					<option value="Temporarily Unavailable" {% if profile.availability=="Temporarily Unavailable"
+						%}selected{% endif %}>Temporarily Unavailable</option>
+				</select>
+			</div>
+
+			<button type="submit" class="btn btn-primary">Save Changes</button>
+		</form>
+
+		<hr>
+		<h4>Account Actions</h4>
+		<button class="btn btn-warning">Change Password</button>
+		<button class="btn btn-danger">Deactivate Profile</button>
+	</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+	// Use let for block-scoping and clearer intent
+	let uploadedUrl = null;
+	let isUploading = false; // Track upload state
+
+	document.getElementById("photo").onchange = async function (event) {
+		const file = event.target.files[0];
+		if (!file) return;
+
+		isUploading = true;
+		try {
+			console.log("Starting upload...");
+
+			const res = await fetch('/profile/generate-presigned-url', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+				},
+				body: JSON.stringify({
+					file_name: file.name,
+					file_type: file.type
+				})
+			});
+
+			if (!res.ok) throw new Error(await res.text());
+
+			const { url, fields, file_url } = await res.json();
+			const formData = new FormData();
+
+			// Add all required fields
+			Object.entries(fields).forEach(([key, value]) => {
+				formData.append(key, value);
+			});
+			formData.append("file", file);
+
+			const upload = await fetch(url, {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!upload.ok)
+				throw new Error(await upload.text());
+			else
+				console.log("Uploaded to:", file_url);
+			document.getElementById("photo_url").value = file_url;
+
+			// Update only after successful upload
+			uploadedUrl = file_url;
+			document.getElementById("photo_url").value = uploadedUrl;
+			document.getElementById("preview-photo").src = uploadedUrl;
+			console.log("Upload successful:", uploadedUrl);
+
+		} catch (err) {
+			console.error("Upload failed:", err);
+			alert("Upload failed: " + err.message);
+		} finally {
+			isUploading = false;
+		}
+	};
+
+	function beforeSubmit() {
+		// Proper null check and upload state verification
+		if (isUploading || (document.getElementById("photo").files.length > 0 && !uploadedUrl)) {
+			alert("Please wait for the photo upload to complete");
+			return false;
+		}
+		return true;
+	}
+
+	// Load existing photo on page load
+	window.addEventListener('DOMContentLoaded', () => {
+		console.log("dom content loaded")
+		fetch('/profile/photo')
+			.then(res => res.ok ? res.json() : Promise.reject(res))
+			.then(data => {
+				if (data.photo_url) {
+					const photoUrl = data.photo_url === 'https://via.placeholder.com/150' ?
+						data.photo_url :
+						data.photo_url.replace('http://', 'https://');
+
+					document.getElementById("preview-photo").src = photoUrl;
+					document.getElementById("photo_url").value = photoUrl;
+					uploadedUrl = photoUrl;
+
+					// document.getElementById("preview-photo").src = data.photo_url;
+					// document.getElementById("photo_url").value = data.photo_url;
+					// uploadedUrl = data.photo_url; // Sync with our state
+				}
+			})
+			.catch(err => console.error("Photo load error:", err));
+		console.log("end of fetch\n");
+	});
+</script>
+{% endblock %}

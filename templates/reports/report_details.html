@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Report Details - Safe Companions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                    Report Details
+                </h2>
+                <div>
+                    <a href="{{ url_for('report.admin_dashboard') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-tachometer-alt me-1"></i>
+                        Admin Dashboard
+                    </a>
+                    <a href="{{ url_for('admin') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Back to Admin Panel
+                    </a>
+                </div>
+            </div>
+
+            <!-- Report Information Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>
+                        Report #{{ report.id }}
+                        <span class="badge badge-severity-{{ report.severity.lower() }} ms-2">{{ report.severity }}</span>
+                        <span class="badge badge-status-{{ report.status.lower().replace(' ', '-') }} ms-2">{{ report.status }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><strong>Report Type:</strong></h6>
+                            <p class="text-muted">{{ report.report_type.replace('_', ' ').title() }}</p>
+                            
+                            <h6><strong>Title:</strong></h6>
+                            <p>{{ report.title }}</p>
+                            
+                            <h6><strong>Submitted:</strong></h6>
+                            <p class="text-muted">{{ report.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                            
+                            {% if report.updated_at and report.updated_at != report.created_at %}
+                            <h6><strong>Last Updated:</strong></h6>
+                            <p class="text-muted">{{ report.updated_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6><strong>Reporter:</strong></h6>
+                            <p>
+                                <i class="fas fa-user me-1"></i>
+                                {{ report.reporter.email }}
+                                {% if report.reporter.profile %}
+                                - {{ report.reporter.profile.name }}
+                                {% endif %}
+                            </p>
+                            
+                            <h6><strong>Reported User:</strong></h6>
+                            <p>
+                                <i class="fas fa-user me-1"></i>
+                                {{ report.reported.email }}
+                                {% if report.reported.profile %}
+                                - {{ report.reported.profile.name }}
+                                {% endif %}
+                            </p>
+                            
+                            {% if report.resolved_at %}
+                            <h6><strong>Resolved:</strong></h6>
+                            <p class="text-muted">{{ report.resolved_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-align-left me-2"></i>
+                        Description
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p>{{ report.description }}</p>
+                </div>
+            </div>
+
+            <!-- Evidence -->
+            {% if evidence_urls and evidence_urls|length > 0 %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-paperclip me-2"></i>
+                        Evidence ({{ evidence_urls|length }} item{{ 's' if evidence_urls|length != 1 else '' }})
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        {% for url in evidence_urls %}
+                        <li class="mb-2">
+                            <i class="fas fa-link me-2 text-primary"></i>
+                            <a href="{{ url }}" target="_blank" class="text-decoration-none">{{ url }}</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Admin Notes -->
+            {% if report.admin_notes %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-sticky-note me-2"></i>
+                        Admin Notes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p>{{ report.admin_notes }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Resolution -->
+            {% if report.resolution %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Resolution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p>{{ report.resolution }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Action Panel -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>
+                        Administrative Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('report.update_report_status') }}">
+                        <input type="hidden" name="report_id" value="{{ report.id }}">
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="status" class="form-label">Update Status</label>
+                                <select class="form-select" name="status" id="status">
+                                    <option value="Pending Review" {{ 'selected' if report.status == 'Pending Review' else '' }}>Pending Review</option>
+                                    <option value="Under Investigation" {{ 'selected' if report.status == 'Under Investigation' else '' }}>Under Investigation</option>
+                                    <option value="Resolved" {{ 'selected' if report.status == 'Resolved' else '' }}>Resolved</option>
+                                    <option value="Dismissed" {{ 'selected' if report.status == 'Dismissed' else '' }}>Dismissed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8">
+                                <label for="admin_notes" class="form-label">Admin Notes</label>
+                                <textarea class="form-control" name="admin_notes" id="admin_notes" rows="3" placeholder="Add investigation notes or comments...">{{ report.admin_notes or '' }}</textarea>
+                            </div>
+                        </div>
+                        
+                        {% if report.status in ['Resolved', 'Dismissed'] %}
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <label for="resolution" class="form-label">Resolution Details</label>
+                                <textarea class="form-control" name="resolution" id="resolution" rows="3" placeholder="Describe how this report was resolved...">{{ report.resolution or '' }}</textarea>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>
+                                    Update Report
+                                </button>
+                                <a href="{{ url_for('report.admin_dashboard') }}" class="btn btn-secondary ms-2">
+                                    <i class="fas fa-times me-1"></i>
+                                    Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Status badges */
+.badge-severity-low { background-color: #28a745; }
+.badge-severity-medium { background-color: #ffc107; color: #212529; }
+.badge-severity-high { background-color: #fd7e14; }
+.badge-severity-critical { background-color: #dc3545; }
+
+.badge-status-pending-review { background-color: #6c757d; }
+.badge-status-under-investigation { background-color: #007bff; }
+.badge-status-resolved { background-color: #28a745; }
+.badge-status-dismissed { background-color: #343a40; }
+</style>
+
+{% endblock %}

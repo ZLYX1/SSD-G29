@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Report Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-shield-alt me-2"></i>
+                Report Management Dashboard
+            </h2>
+            
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Pending</h5>
+                                    <h3>{{ statistics.pending_reports or 0 }}</h3>
+                                </div>
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Under Investigation</h5>
+                                    <h3>{{ statistics.under_investigation or 0 }}</h3>
+                                </div>
+                                <i class="fas fa-search fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">High/Critical</h5>
+                                    <h3>{{ (statistics.high_severity or 0) + (statistics.critical_severity or 0) }}</h3>
+                                </div>
+                                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h5 class="card-title">Resolved</h5>
+                                    <h3>{{ statistics.resolved_reports or 0 }}</h3>
+                                </div>
+                                <i class="fas fa-check fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status Filter</label>
+                            <select name="status" id="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                <option value="Pending Review" {% if current_status == 'Pending Review' %}selected{% endif %}>Pending Review</option>
+                                <option value="Under Investigation" {% if current_status == 'Under Investigation' %}selected{% endif %}>Under Investigation</option>
+                                <option value="Resolved" {% if current_status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                                <option value="Dismissed" {% if current_status == 'Dismissed' %}selected{% endif %}>Dismissed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="severity" class="form-label">Severity Filter</label>
+                            <select name="severity" id="severity" class="form-select">
+                                <option value="">All Severities</option>
+                                <option value="Critical" {% if current_severity == 'Critical' %}selected{% endif %}>Critical</option>
+                                <option value="High" {% if current_severity == 'High' %}selected{% endif %}>High</option>
+                                <option value="Medium" {% if current_severity == 'Medium' %}selected{% endif %}>Medium</option>
+                                <option value="Low" {% if current_severity == 'Low' %}selected{% endif %}>Low</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search</label>
+                            <div class="input-group">
+                                <input type="text" name="search" id="search" class="form-control" 
+                                       placeholder="Search reports..." value="{{ search_term or '' }}">
+                                <select name="search_type" class="form-select" style="max-width: 150px;">
+                                    <option value="all" {% if search_type == 'all' %}selected{% endif %}>All Fields</option>
+                                    <option value="title" {% if search_type == 'title' %}selected{% endif %}>Title</option>
+                                    <option value="reporter_email" {% if search_type == 'reporter_email' %}selected{% endif %}>Reporter Email</option>
+                                    <option value="reported_email" {% if search_type == 'reported_email' %}selected{% endif %}>Reported Email</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reports Table -->
+            <div class="card">
+                <div class="card-body">
+                    {% if reports %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Reporter</th>
+                                    <th>Reported User</th>
+                                    <th>Type</th>
+                                    <th>Title</th>
+                                    <th>Severity</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in reports %}
+                                <tr class="{% if report.severity == 'Critical' %}table-danger{% elif report.severity == 'High' %}table-warning{% endif %}">
+                                    <td><span class="badge bg-secondary">#{{ report.id }}</span></td>
+                                    <td>{{ report.reporter.email }}</td>
+                                    <td>{{ report.reported.email }}</td>
+                                    <td><span class="badge bg-light text-dark">{{ report.report_type.replace('_', ' ').title() }}</span></td>
+                                    <td>{{ report.title[:50] }}{% if report.title|length > 50 %}...{% endif %}</td>
+                                    <td>
+                                        {% if report.severity == 'Critical' %}
+                                        <span class="badge bg-danger">{{ report.severity }}</span>
+                                        {% elif report.severity == 'High' %}
+                                        <span class="badge bg-warning">{{ report.severity }}</span>
+                                        {% elif report.severity == 'Medium' %}
+                                        <span class="badge bg-info">{{ report.severity }}</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ report.severity }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm" onchange="updateReportStatus({{ report.id }}, this.value)">
+                                            <option value="Pending Review" {% if report.status == 'Pending Review' %}selected{% endif %}>Pending Review</option>
+                                            <option value="Under Investigation" {% if report.status == 'Under Investigation' %}selected{% endif %}>Under Investigation</option>
+                                            <option value="Resolved" {% if report.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                                            <option value="Dismissed" {% if report.status == 'Dismissed' %}selected{% endif %}>Dismissed</option>
+                                        </select>
+                                    </td>
+                                    <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('report.view_report_details', report_id=report.id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-secondary" 
+                                                    onclick="openNotesModal({{ report.id }}, '{{ report.admin_notes or '' }}')">
+                                                <i class="fas fa-sticky-note"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Reports Found</h5>
+                        <p class="text-muted">No reports match your current filters.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Notes Modal -->
+<div class="modal fade" id="notesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Admin Notes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="notesForm">
+                    <input type="hidden" id="noteReportId">
+                    <div class="mb-3">
+                        <label for="adminNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="adminNotes" rows="4" 
+                                  placeholder="Add investigation notes..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="resolution" class="form-label">Resolution (if resolved)</label>
+                        <textarea class="form-control" id="resolution" rows="3" 
+                                  placeholder="Describe the resolution..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveNotes()">Save Notes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateReportStatus(reportId, newStatus) {
+    fetch('{{ url_for("report.update_report_status") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `report_id=${reportId}&status=${newStatus}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message or reload page
+            location.reload();
+        } else {
+            alert('Error updating status: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating status');
+    });
+}
+
+function openNotesModal(reportId, currentNotes) {
+    document.getElementById('noteReportId').value = reportId;
+    document.getElementById('adminNotes').value = currentNotes;
+    new bootstrap.Modal(document.getElementById('notesModal')).show();
+}
+
+function saveNotes() {
+    const reportId = document.getElementById('noteReportId').value;
+    const notes = document.getElementById('adminNotes').value;
+    const resolution = document.getElementById('resolution').value;
+    
+    fetch('{{ url_for("report.update_report_status") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `report_id=${reportId}&status=&admin_notes=${encodeURIComponent(notes)}&resolution=${encodeURIComponent(resolution)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('notesModal')).hide();
+            location.reload();
+        } else {
+            alert('Error saving notes: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving notes');
+    });
+}
+</script>
+{% endblock %}

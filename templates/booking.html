@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}My Bookings{% endblock %}
+
+{% block content %}
+<h2>Booking Management</h2>
+
+{% if role == 'escort' %}
+<h3>Set Your Availability</h3>
+<form method="post" action="{{ url_for('booking.create_slot') }}">
+	<div class="mb-3">
+		<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+		<label for="start_time" class="form-label">Start Time</label>
+		<input type="datetime-local" class="form-control" id="start_time" name="start_time" required>
+	</div>
+	<div class="mb-3">
+		<label for="end_time" class="form-label">End Time</label>
+		<input type="datetime-local" class="form-control" id="end_time" name="end_time" required>
+	</div>
+	<button type="submit" class="btn btn-primary">Create Availability Slot</button>
+</form>
+
+<h4>Your Current Availability</h4>
+<ul class="list-group mb-4">
+	{% for slot in time_slots %}
+	<li class="list-group-item">
+		{{ slot.start_time.strftime("%Y-%m-%d %H:%M") }} to {{ slot.end_time.strftime("%Y-%m-%d %H:%M") }}
+	</li>
+	{% else %}
+	<li class="list-group-item">No availability slots set.</li>
+	{% endfor %}
+</ul>
+
+<h3>Booking Requests</h3>
+{% set pending_bookings = bookings | selectattr('status', 'equalto', 'Pending') | list %}
+{% if pending_bookings %}
+{% for booking in pending_bookings %}
+<div class="card mb-2">
+	<div class="card-body">
+
+		<div class="d-flex align-items-center">
+			<img src="{{ booking.seeker.profile.photo or 'https://via.placeholder.com/50' }}" alt="Profile Photo"
+				class="rounded-circle me-2" width="50" height="50">
+			<strong>{{ booking.seeker.profile.name or 'Unnamed User' }}</strong>
+		</div>
+		Booking #{{ booking.id }}
+		From: {{ booking.start_time.strftime("%Y-%m-%d %H:%M") }}<br>
+		To: {{ booking.end_time.strftime("%Y-%m-%d %H:%M") }}<br>
+		Status: {{ booking.status }}
+
+		<form method="post" action="{{ url_for('booking.handle_booking_action') }}" class="d-inline mt-2">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+			<input type="hidden" name="booking_id" value="{{ booking.id }}">
+			<button type="submit" name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
+			<button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+		</form>
+	</div>
+</div>
+{% endfor %}
+{% else %}
+<p>No pending bookings.</p>
+{% endif %}
+{% endif %}
+
+<h3>Booking History</h3>
+<ul class="list-group">
+	{% if bookings %}
+	{% for booking in bookings %}
+	<li class="list-group-item">
+		{% if role == 'seeker' %}
+		<!-- Show Escort Info -->
+		<img src="{{ booking.escort.profile.photo }}" alt="Profile Photo" class="rounded-circle me-2" width="40"
+			height="40">
+		<strong>{{ booking.escort.profile.name }}</strong><br>
+		{% elif role == 'escort' %}
+		<!-- Show Seeker Info -->
+		<img src="{{ booking.seeker.profile.photo }}" alt="Profile Photo" class="rounded-circle me-2" width="40"
+			height="40">
+		<strong>{{ booking.seeker.profile.name }}</strong><br>
+		{% endif %}
+
+		Booking #{{ booking.id }}<br>
+		From: {{ booking.start_time.strftime("%Y-%m-%d %H:%M") }}<br>
+		To: {{ booking.end_time.strftime("%Y-%m-%d %H:%M") }}<br>
+		Status: <span class="badge bg-secondary">{{ booking.status }}</span>
+	</li>
+	{% endfor %}
+	{% else %}
+	<li class="list-group-item">You have no bookings.</li>
+	{% endif %}
+</ul>
+{% endblock %}

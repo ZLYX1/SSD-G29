@@ -1,0 +1,72 @@
+services:
+  web:
+    container_name: safe-companions-web-dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        REQ_FILE: requirements.txt  # Use development requirements
+    environment:
+      - DATABASE_URL=postgresql://ssd_user:ssd_password@db:5432/ssd_database
+      - DATABASE_USERNAME=ssd_user
+      - DATABASE_PASSWORD=ssd_password
+      - DATABASE_NAME=ssd_database
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    ports:
+      - "5000:5000"  # Expose Flask directly for development
+    depends_on:
+      - db
+    volumes:
+      - .:/app  # Live sync for development
+      - /app/__pycache__  # Exclude pycache from sync
+    networks:
+      - dev-network
+    restart: unless-stopped
+
+  db:
+    container_name: safe-companions-db-dev
+    image: postgres:15-alpine  # Lighter image for development
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ssd_user
+      POSTGRES_PASSWORD: ssd_password
+      POSTGRES_DB: ssd_database
+    ports:
+      - "5432:5432"  # Direct access for development tools
+    volumes:
+      # Use named volume for persistence
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ssd_user -d ssd_database"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    container_name: safe-companions-pgadmin-dev
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ssd.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - dev-network
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  dev-network:
+    driver: bridge
