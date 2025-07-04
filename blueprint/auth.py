@@ -6,6 +6,12 @@ from blueprint.decorators import login_required
 from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength  # Import OTP and password functions
 from flask_wtf.csrf import generate_csrf  # Add this import
 
+import boto3
+from botocore.exceptions import ClientError
+from flask import current_app
+# from app.email_utils import send_email_ses
+
+
 # from blueprint.models import User, Profile
 # auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -329,8 +335,7 @@ def change_password(user_id):
 @auth_bp.route('/password-policy')
 def password_policy():
     """Display password policy information"""
-    return render_template('password_policy.html')
-
+    return render_template('password_policy.html') 
 
 # @app.route("/login", methods=["GET", "POST"])
 # def login():
@@ -365,3 +370,58 @@ def password_policy():
 #             flash("Email already registered", "danger")
 
 #     return render_template("register.html")
+
+
+
+
+# AWS SES
+
+def send_email_ses(to_email, subject, body_text, body_html=None):
+    SENDER = "Your Name <13eddie07@gmail.com>"
+    CHARSET = "UTF-8"
+
+    client = boto3.client('ses', region_name="us-east-1")  # Replace with your SES region
+
+    try:
+        response = client.send_email(
+            Destination={
+                'ToAddresses': [to_email],
+            },
+            Message={
+                'Body': {
+                    'Html': {
+                        'Charset': CHARSET,
+                        'Data': body_html or body_text,
+                    },
+                    'Text': {
+                        'Charset': CHARSET,
+                        'Data': body_text,
+                    },
+                },
+                'Subject': {
+                    'Charset': CHARSET,
+                    'Data': subject,
+                },
+            },
+            Source=SENDER,
+        )
+    except ClientError as e:
+        current_app.logger.error(f"SES Error: {e.response['Error']['Message']}")
+        return False
+    else:
+        return True
+   
+
+@auth_bp.route("/send-test-email" , methods=["POST"])
+def send_test_email():
+    success = send_email_ses(
+        to_email="13eddie07@gmail.com",
+        subject="Welcome!",
+        body_text="This is a test email from Flask + AWS SES."
+    )
+
+    if success:
+        flash("Email sent!", "success")
+    else:
+        flash("Failed to send email.", "danger")
+    return redirect(url_for("auth.auth"))
