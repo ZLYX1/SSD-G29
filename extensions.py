@@ -1,8 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 import boto3
 import os
 
 db = SQLAlchemy()
+csrf = CSRFProtect()
 
 # AWS S3 configuration (optional for development)
 s3 = None

@@ -164,20 +164,3 @@ def save_photo():
     db.session.commit()
 
     return {'message': 'Photo saved successfully'}, 200
-
-@profile_bp.route('/photo', methods=['GET'])
-@login_required
-def get_profile_photo():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Not logged in'}), 401
-
-    profile = Profile.query.filter_by(user_id=user_id).first()
-
-    if not profile:
-        return jsonify({'error': 'Profile not found'}), 404
-
-    return jsonify({
-        'user_id': user_id,
-        'photo_url': profile.photo or 'https://via.placeholder.com/150'
-    }), 200
