@@ -76,10 +76,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.eslint
-    working_dir: /app
     volumes:
       # Mount project folder.
       - .:/app
+    working_dir: /app
+    command: [ "npx", "eslint", "." ]
     networks:
       - backend-network
 
