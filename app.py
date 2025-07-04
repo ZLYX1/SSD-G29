@@ -204,10 +204,12 @@ app.register_blueprint(profile_bp)
 
 app.register_blueprint(browse_bp)
 app.register_blueprint(booking_bp)
-app.register_blueprint(messaging_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(rating_bp)
 app.register_blueprint(report_bp)
+
+app.register_blueprint(messaging_bp)
+
 
 
 # 3. BROWSE & SEARCH

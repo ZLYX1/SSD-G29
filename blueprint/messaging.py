@@ -7,6 +7,46 @@ import json
 
 messaging_bp = Blueprint('messaging', __name__, url_prefix='/messaging')
 
+# def serialize_conversation(conv):
+#     return {
+#         'other_user': {
+#             'id': conv.other_user.id,
+#             'profile': {
+#                 'name': conv.other_user.profile.name if conv.other_user.profile else None,
+#                 'photo': conv.other_user.profile.photo if conv.other_user.profile else None,
+#             },
+#             'email': conv.other_user.email,
+#         },
+#         'last_message': serialize_message(conv.last_message) if conv.last_message else None,
+#         'unread_count': conv.unread_count,
+#         # add more fields if needed
+#     }
+
+def serialize_conversation(conv):
+    other_user = conv['other_user']
+    profile = other_user.profile if hasattr(other_user, 'profile') else None
+
+    return {
+        'other_user': {
+            'id': other_user.id,
+            'profile': {
+                'name': profile.name if profile else None,
+                'photo': profile.photo if profile else None,
+            },
+            'email': other_user.email,
+        },
+        'last_message': serialize_message(conv['last_message']) if conv['last_message'] else None,
+        'unread_count': conv['unread_count'],
+    }
+def serialize_message(msg):
+    return {
+        'id': msg.id,
+        'content': msg.content,
+        'timestamp': msg.timestamp.strftime('%m/%d %H:%M'),  # already formatted string
+        'sender_id': msg.sender_id,
+        'recipient_id': msg.recipient_id,
+    }
+
 
 @messaging_bp.route('/')
 @messaging_bp.route('/messaging')
@@ -20,42 +60,86 @@ def messaging():
     
     # Get available users for new conversations
     available_users = MessageController.get_available_users(user_id)
+    other_user = User.query.get_or_404(user_id)
+    conversations_serialized = [serialize_conversation(c) for c in conversations]
     
-    return render_template('messaging.html', 
-                         conversations=conversations,
-                         available_users=available_users,
-                         current_conversation=None,
-                         messages=[])
+    # return render_template('messaging.html', 
+    #                      conversations=conversations,
+    #                      available_users=available_users,
+    #                      current_conversation=None,
+    #                      messages=[])
+    return render_template('messaging.html',
+                           user_id=session['user_id'],
+                           conversations=conversations_serialized,
+                           available_users=available_users,
+                           current_conversation=other_user,
+                           messages=[])
 
+# @messaging_bp.route('/conversation/<int:user_id>')
+# @login_required
+# def view_conversation(user_id):
+#     """View specific conversation with another user"""
+#     current_user_id = session['user_id']
+    
+#     # Get the other user
+#     other_user = User.query.get_or_404(user_id)
+    
+#     # Get conversations list
+#     conversations = MessageController.get_user_conversations(current_user_id)
+    
+#     # Get messages between users
+#     messages = MessageController.get_conversation_messages(current_user_id, user_id)
+    
+#     # Get available users for new conversations
+#     available_users = MessageController.get_available_users(current_user_id)
+    
+#     return render_template('messaging.html',
+#                          conversations=conversations,
+#                          available_users=available_users,
+#                          current_conversation=other_user,
+#                          messages=messages)
 
 @messaging_bp.route('/conversation/<int:user_id>')
 @login_required
 def view_conversation(user_id):
-    """View specific conversation with another user"""
     current_user_id = session['user_id']
     
-    # Get the other user
     other_user = User.query.get_or_404(user_id)
-    
-    # Get conversations list
     conversations = MessageController.get_user_conversations(current_user_id)
-    
-    # Get messages between users
     messages = MessageController.get_conversation_messages(current_user_id, user_id)
-    
-    # Get available users for new conversations
     available_users = MessageController.get_available_users(current_user_id)
     
+    # Serialize conversations
+    conversations_serialized = [serialize_conversation(c) for c in conversations]
+    
+    # Serialize current conversation as a minimal dict representing the other user
+    current_conversation_serialized = {
+        'id': other_user.id,
+        'profile': {
+            'name': other_user.profile.name if other_user.profile else None,
+            'photo': other_user.profile.photo if other_user.profile else None,
+        },
+        'email': other_user.email,
+        'role': other_user.role  # if you need this
+    }
+    
+    # Serialize messages list
+    messages_serialized = [serialize_message(m) for m in messages]
+    
     return render_template('messaging.html',
-                         conversations=conversations,
-                         available_users=available_users,
-                         current_conversation=other_user,
-                         messages=messages)
+                         user_id=session['user_id'],
+                           conversations=conversations_serialized,
+                           available_users=available_users,
+                           current_conversation=current_conversation_serialized,
+                           messages=messages_serialized)
 
 
+    
+        
 @messaging_bp.route('/send', methods=['POST'])
 @login_required
 def send_message():
+    print("send message in .py")
     """Send a message via AJAX"""
     try:
         # Add debug logging

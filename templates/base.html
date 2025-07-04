@@ -113,7 +113,7 @@
 
 		function resetIdle() {
 			idleTime = 0;
-			console.log("Activity detected, reset idle timer.");
+			// console.log("Activity detected, reset idle timer.");
 		}
 
 		document.onload = resetIdle;
@@ -125,7 +125,7 @@
 		function startIdleTimer() {
 			setInterval(function () {
 				idleTime++;
-				console.log("Idle time:", idleTime, "seconds");
+				// console.log("Idle time:", idleTime, "seconds");
 				if (idleTime >= idleLimit) {
 					console.log("Redirecting to logout...");
 					window.location.href = "/logout";
