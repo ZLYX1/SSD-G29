@@ -29,7 +29,7 @@ def payment():
 
             
             # Validate card number (basic validation)
-        if card_number and len(card_number) == 16 and card_number.isdigit() and amount and amount.isdigit():
+        if card_number and len(card_number) == 16 and card_number.isdigit() and amount > 0:
             try:
                     new_payment = Payment(
                         user_id=session['user_id'],
