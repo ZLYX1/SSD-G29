@@ -4,37 +4,21 @@ from blueprint.models import User, Profile
 from extensions import db
 from blueprint.decorators import login_required
 from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength  # Import OTP and password functions
+from flask_wtf.csrf import generate_csrf  # Add this import
 
 # from blueprint.models import User, Profile
 # auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 def verify_recaptcha(token):
-    # For development/testing, bypass reCAPTCHA if using test keys
-    recaptcha_secret = os.environ.get('RECAPTCHA_SECRET_KEY', '')
-    
-    # Skip reCAPTCHA verification in development mode
-    if recaptcha_secret == 'test_secret_key_for_development':
-        print("🔧 Development Mode: Bypassing reCAPTCHA verification")
-        return True
-    
-    # Production reCAPTCHA verification
     url = "https://www.google.com/recaptcha/api/siteverify"
     payload = {
-        'secret': recaptcha_secret,
+        'secret': os.environ['RECAPTCHA_SECRET_KEY'],
         'response': token
     }
-    try:
-        response = requests.post(url, data=payload)
-        result = response.json()
-        return result.get('success') and result.get('score', 0) >= 0.5  # threshold adjustable
-    except Exception as e:
-        print(f"reCAPTCHA verification error: {e}")
-        # In development, allow registration to proceed if reCAPTCHA fails
-        if os.environ.get('FLASK_ENV') == 'development':
-            return True
-        return False
-
+    response = requests.post(url, data=payload)
+    result = response.json()
+    return result.get('success') and result.get('score', 0) >= 0.5  # threshold adjustable
 
 # @auth_bp.route('/', methods=['GET', 'POST'])
 @auth_bp.route('/', methods=['GET', 'POST']) 
@@ -49,15 +33,17 @@ def auth():
         password = request.form.get('password', '').strip()
 
         # reCAPTCHA only for register (based on your JS)
-        if form_type == 'register':
-            recaptcha_token = request.form.get('g-recaptcha-response')
-            if not recaptcha_token or not verify_recaptcha(recaptcha_token):
-                flash("CAPTCHA verification failed.", "danger")
-                return redirect(url_for('auth.auth', mode='register'))
+        # if form_type == 'register':
+        #     print("Submitted for Register\n");
+            
+        #     recaptcha_token = request.form.get('g-recaptcha-response')
+        #     if not recaptcha_token or not verify_recaptcha(recaptcha_token):
+        #         flash("CAPTCHA verification failed.", "danger")
+        #         return redirect(url_for('auth.auth', mode='register'))
 
         if form_type == 'login':
             user = User.query.filter_by(email=email).first()
-            
+            print("Submitted for login\n");
             if user:
                 # Check if account is locked
                 if user.is_account_locked():
@@ -112,6 +98,13 @@ def auth():
                 flash("Invalid credentials.", "danger")
 
         elif form_type == 'register':
+            print("Submitted for Register\n");
+
+            recaptcha_token = request.form.get('g-recaptcha-response')
+            if not recaptcha_token:
+                flash("CAPTCHA verification failed.", "danger")
+                # return redirect(url_for('auth.auth', mode='register'))
+
             if User.query.filter_by(email=email).first():
                 flash("Email already registered.", "danger")
                 return redirect(url_for('auth.auth', mode='register'))
@@ -181,10 +174,9 @@ def auth():
         elif form_type == 'reset':
             flash("Password reset link sent to your email.", "info")
             return redirect(url_for('auth.auth', mode='reset'))
-	
-    recaptcha_site_key = os.environ.get('RECAPTCHA_SITE_KEY', 'test_site_key_for_development')
-    return render_template('auth.html', mode=mode, token=token, recaptcha_site_key=recaptcha_site_key)
 
+    csrf_token = generate_csrf()  # Generate CSRF token for the form
+    return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token)
 
 @auth_bp.route('/verify-email/<token>')
 def verify_email(token):

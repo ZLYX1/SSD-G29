@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 import boto3
 import os
+from flask_wtf import CSRFProtect
 
 db = SQLAlchemy()
 csrf = CSRFProtect()
@@ -10,6 +11,7 @@ csrf = CSRFProtect()
 s3 = None
 S3_BUCKET = None
 
+csrf = CSRFProtect()
 # Only initialize AWS if credentials are provided
 if all(key in os.environ for key in ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'S3_BUCKET_NAME']):
     try:
