@@ -8,6 +8,10 @@ from datetime import timedelta
 
 from controllers.auth_controller import AuthController
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
