@@ -94,5 +94,50 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO"
         crossorigin="anonymous"></script>
+
+{% if session.user_id %}
+<script>
+let idleTime = 0;
+let sessionLifetime = 30;  // default fallback
+let idleLimit = sessionLifetime * 60;
+
+function resetIdle() { 
+    idleTime = 0; 
+    console.log("Activity detected, reset idle timer.");
+}
+
+document.onload = resetIdle;
+document.onmousemove = resetIdle;
+document.onkeypress = resetIdle;
+document.onclick = resetIdle;
+document.onscroll = resetIdle;
+
+function startIdleTimer() {
+    setInterval(function() {
+        idleTime++;
+        console.log("Idle time:", idleTime, "seconds");
+        if (idleTime >= idleLimit) {
+            console.log("Redirecting to logout...");
+            window.location.href = "/logout";
+        }
+    }, 1000);
+}
+
+// Dynamically get session lifetime from server
+fetch('/api/session-config')
+    .then(response => response.json())
+    .then(data => {
+        sessionLifetime = data.session_lifetime_minutes;
+        idleLimit = (sessionLifetime - 0) * 60;
+        console.log("Session lifetime (minutes):", sessionLifetime);
+        console.log("Idle timeout set for:", idleLimit, "seconds");
+        startIdleTimer();
+    })
+    .catch(err => {
+        console.error("Failed to fetch session config, using default.", err);
+        startIdleTimer();
+    });
+</script>
+{% endif %}
 </body>
 </html>

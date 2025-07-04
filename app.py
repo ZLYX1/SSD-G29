@@ -1,14 +1,26 @@
-from flask import Flask, g, render_template, request, redirect, url_for, flash
+from flask import Flask, g, render_template, request, redirect, url_for, flash, session
 
 from config.db_config import DBConfig
 from db import PostgresConnector
 import secrets
 import os
+from datetime import timedelta
 
 from controllers.auth_controller import AuthController
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
+
+def str2bool(val, default=False):
+    if val is None:
+        return default
+    return val.lower() in ("1", "true", "yes", "y", "on")
+
+app.config['WTF_CSRF_SSL_STRICT'] = str2bool(os.getenv('WTF_CSRF_SSL_STRICT'), default=(env=="production"))
+app.config['SESSION_COOKIE_SECURE'] = str2bool(os.getenv('SESSION_COOKIE_SECURE'), default=(env=="production"))
+app.config['SESSION_COOKIE_SAMESITE'] = os.getenv('SESSION_COOKIE_SAMESITE', 'Strict' if env=='production' else 'Lax')
+app.config['SESSION_COOKIE_HTTPONLY'] = str2bool(os.getenv('SESSION_COOKIE_HTTPONLY'), default=True)
+
 
 # Validate required environment variables
 required_vars = [
@@ -103,6 +115,40 @@ def login():
             flash("Invalid email or password", "danger")
 
     return render_template("login.html")
+
+# --- ROUTES ---
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+    app.permanent_session_lifetime = timedelta(minutes=30)
+    
+    # User-Agent and IP protection
+    current_ua = request.headers.get('User-Agent')
+    current_ip = request.remote_addr
+
+    if 'user_id' in session:
+        # Enforce UA and IP match
+        if session.get('bound_ua') != current_ua or session.get('bound_ip') != current_ip:
+            session.clear()
+            flash("Session ended for security reasons.", "danger")
+            return redirect(url_for('auth.auth'))
+    else:
+        session['bound_ua'] = current_ua
+        session['bound_ip'] = current_ip
+
+# Regenerate session after login to ensure security
+def regenerate_session():
+    """Call this after successful login"""
+    old_session = dict(session)
+    session.clear()
+    session.update(old_session)
+    session.permanent = True
+
+@app.route('/api/session-config')
+def session_config():
+    return {
+        'session_lifetime_minutes': app.permanent_session_lifetime.total_seconds() // 60
+    }
 
 
 @app.route("/register", methods=["GET", "POST"])
