@@ -91,7 +91,7 @@ docker compose down --volumes --rmi all --remove-orphans
 Connect to PostgreSQL database in container.
 
 ```bat
-psql -h localhost -p 8888 -U postgres -d safe_companions_db
+psql -h localhost -p 8888 -U edwin -d safe_companions_db
 ```
 
 SSL Certificate
