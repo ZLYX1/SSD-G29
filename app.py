@@ -11,6 +11,7 @@ from controllers.auth_controller import AuthController
 from dotenv import load_dotenv
 
 load_dotenv()
+env = os.getenv("FLASK_ENV", "production")
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
