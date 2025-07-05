@@ -51,13 +51,13 @@ class User(db.Model):
     bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', back_populates='seeker', lazy='dynamic')
     bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', back_populates='escort', lazy='dynamic')
 
-    def set_password(self, password):
+    def set_password(self, password, password_expiry_days=90):
         self.password_hash = generate_password_hash(password)
-        self.password_created_at = datetime.datetime.utcnow()
+        self.password_created_at = datetime.datetime()
         
         # Set expiration date
         if password_expiry_days > 0:
-            self.password_expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=password_expiry_days)
+            self.password_expires_at = datetime.datetime() + datetime.timedelta(days=password_expiry_days)
         else:
             self.password_expires_at = None
             
