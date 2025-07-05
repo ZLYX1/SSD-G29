@@ -210,7 +210,7 @@ def booking():
             TimeSlot.start_time >= datetime.utcnow()
         ).order_by(TimeSlot.start_time.asc()).all()
 
-    return render_template('booking.html', bookings=bookings_data, time_slots=time_slots, role=role, csrf_token=generate_csrf())
+    return render_template('booking.html', bookings=bookings_data, time_slots=time_slots, role=role, csrf_token=generate_csrf)
 
 
 @booking_bp.route('/slots/create', methods=['POST'])

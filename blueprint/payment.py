@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from blueprint.models import Payment  # Uncomment this import
+from flask_wtf.csrf import generate_csrf
 from extensions import db
 from blueprint.decorators import login_required
 import uuid  # Add this import for transaction_id generation
