@@ -1,55 +1,66 @@
 {% extends "base.html" %}
-{% block title %}Payments{% endblock %}
+{% block title %}Payment{% endblock %}
 
 {% block content %}
-<h2>Payment Simulation</h2>
+<h2>Make a Payment</h2>
 <div class="card mb-4">
-	<div class="card-body">
-		<h5 class="card-title">Make a Payment</h5>
-		<form method="POST">
-			<!-- CSRF Token (MUST be added) -->
-			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-body">
+    <h5 class="card-title">Confirm Your Booking</h5>
+    <p><strong>Escort:</strong> {{ escort.email }}</p>
+    <p><strong>Time:</strong> {{ booking.start_time.strftime('%Y-%m-%d %H:%M') }} – {{ booking.end_time.strftime('%H:%M') }}</p>
+    <p><strong>Total Amount:</strong> ${{ "%.2f"|format(amount_due) }}</p>
 
-			<div class="mb-3">
-				<label for="card_number" class="form-label">Card Number (simulation only)</label>
-				<input type="text" class="form-control" id="card_number" name="card_number" pattern="\d{16}"
-					maxlength="16" placeholder="Any 16 digits will work" pattern="\d{16}" title="Enter 16 digits">
-			</div>
-			<div class="mb-3">
-				<label for="amount" class="form-label">Amount</label>
-				<input type="number" class="form-control" id="amount" name="amount" value="100" min="1" step="0.01"
-					required>
-			</div>
-			<button type="submit" class="btn btn-primary">Process Payment</button>
-		</form>
-	</div>
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="token" value="{{ token }}">
+
+      <div class="mb-3">
+        <label for="card_number" class="form-label">Card Number (simulation only)</label>
+        <input type="text" class="form-control" id="card_number" name="card_number" pattern="\d{16}" maxlength="16" placeholder="1234567812345678" required>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="expiry" class="form-label">Expiry Date (MM/YY)</label>
+          <input type="text" class="form-control" id="expiry" name="expiry" pattern="\d{2}/\d{2}" placeholder="12/25" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="cvv" class="form-label">CVV</label>
+          <input type="text" class="form-control" id="cvv" name="cvv" pattern="\d{3,4}" maxlength="4" placeholder="123" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Pay ${{ "%.2f"|format(amount_due) }}</button>
+    </form>
+  </div>
 </div>
+
+<hr>
 
 <h2>Transaction History</h2>
 {% if history %}
 <div class="table-responsive">
-	<table class="table">
-		<thead class="table-light">
-			<tr>
-				<th>Date</th>
-				<th>Transaction ID</th>
-				<th>Amount</th>
-				<th>Status</th>
-			</tr>
-		</thead>
-		<tbody>
-			{% for payment in history %}
-			<tr>
-				<td>{{ payment.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-				<td class="font-monospace">{{ payment.transaction_id }}</td>
-				<td>${{ "%.2f"|format(payment.amount) }}</td>
-				<td><span class="badge bg-success">{{ payment.status }}</span></td>
-			</tr>
-			{% endfor %}
-		</tbody>
-	</table>
+  <table class="table">
+    <thead class="table-light">
+      <tr>
+        <th>Date</th>
+        <th>Transaction ID</th>
+        <th>Amount</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for payment in history %}
+      <tr>
+        <td>{{ payment.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td class="font-monospace">{{ payment.transaction_id }}</td>
+        <td>${{ "%.2f"|format(payment.amount) }}</td>
+        <td><span class="badge bg-success">{{ payment.status }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% else %}
-<div class="alert alert-info">No transaction history found</div>
+<div class="alert alert-info">No transactions found.</div>
 {% endif %}
 {% endblock %}

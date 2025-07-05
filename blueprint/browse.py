@@ -1,21 +1,23 @@
-
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from blueprint.models import Profile, User, TimeSlot
 from extensions import db
 from blueprint.decorators import login_required
 from datetime import datetime
+from flask_wtf.csrf import generate_csrf
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
-@browse_bp.route('/browse', methods=['GET', 'POST'])
+
+# Shoud have 1 for escorts to see
+@browse_bp.route('/browseSeeker', methods=['GET', 'POST'])
 @login_required
-def browse():
-    escort_profiles = Profile.query.join(User).filter(
-        User.role == 'escort',
-        User.deleted == False,  # Exclude deleted users
-        User.active == True     # Only show active users
-    ).all()
+def browseSeeker():
+    escort_profiles = (Profile.query.join(User)
+                       # .filter(User.role == 'escort')
+                       .filter(User.role == 'seeker', User.activate == True)
+                       .all())
     return render_template('browse.html', profiles=escort_profiles)
+
 
 @browse_bp.route('/profile/<int:user_id>')
 @login_required
@@ -29,13 +31,19 @@ def view_profile(user_id):
         flash("Escort not found.", "danger")
         return redirect(url_for('home'))
 
-    # Only show upcoming time slots
     available_slots = TimeSlot.query.filter(
         TimeSlot.user_id == user_id,
         TimeSlot.start_time >= datetime.utcnow()
     ).order_by(TimeSlot.start_time.asc()).all()
 
-    return render_template('view_profile.html', profile=profile, time_slots=available_slots)
+    # ✅ ADD csrf_token TO TEMPLATE CONTEXT
+    return render_template(
+        'view_profile.html',
+        profile=profile,
+        time_slots=available_slots,
+        csrf_token=generate_csrf()
+    )
+
 
 # 2. PROFILE MANAGEMENT
 # @app.route('/profile', methods=['GET', 'POST'])
@@ -77,7 +85,7 @@ def view_profile(user_id):
 #     file_name = request.json.get('file_name')
 #     file_type = request.json.get('file_type')
 #     S3_BUCKET = os.environ['S3_BUCKET_NAME']
-    
+
 #     if not file_name or not file_type:
 #         return {'error': 'Missing file name or type'}, 400
 
@@ -99,7 +107,7 @@ def view_profile(user_id):
 #         return presigned_post
 #     except Exception as e:
 #         return {'error': str(e)}, 500
-    
+
 # @profile_bp.route('/save-photo', methods=['POST'])
 # @login_required
 # def save_photo():
@@ -112,3 +120,28 @@ def view_profile(user_id):
 #     db.session.commit()
 
 #     return {'message': 'Photo saved successfully'}, 200
+
+# to test
+@browse_bp.route('/browse', methods=['GET'])
+@login_required
+def browseEscort():
+    query = Profile.query.join(User).filter(User.role == 'escort', User.activate == True)
+
+    min_age = request.args.get('min_age', type=int)
+    max_age = request.args.get('max_age', type=int)
+    availability = request.args.get('availability')
+    min_rating = request.args.get('min_rating', type=float)
+
+    if min_age is not None:
+        query = query.filter(Profile.age >= min_age)
+    if max_age is not None:
+        query = query.filter(Profile.age <= max_age)
+    if availability == 'yes':
+        query = query.filter(Profile.availability == True)
+    elif availability == 'no':
+        query = query.filter(Profile.availability == False)
+    if min_rating is not None:
+        query = query.filter(Profile.rating >= min_rating)
+
+    escort_profiles = query.all()
+    return render_template('browse.html', profiles=escort_profiles)

@@ -1,4 +1,3 @@
-<!-- templates/base.html -->
 <!doctype html>
 <html lang="en">
 
@@ -44,12 +43,23 @@
 				<ul class="navbar-nav me-auto mb-2 mb-md-0">
 					{% if session.user_id %}
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
-					<li class="nav-item"><a class="nav-link" href="{{ url_for('browse.browse') }}">Browse</a></li>
+
+					{% if session.role == 'escort' %}
+					<li class="nav-item"><a class="nav-link" href="{{ url_for('browse.browseSeeker') }}">Browse</a></li>
+
+					{% elif session.role == 'seeker' %}
+					<li class="nav-item"><a class="nav-link" href="{{ url_for('browse.browseEscort') }}">Browse</a></li>
+					{% endif %}
+
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('profile.profile') }}">Profile</a></li>
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('booking.booking') }}">Bookings</a></li>
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('messaging.messaging') }}">Messages</a>
 					</li>
-					<li class="nav-item"><a class="nav-link" href="{{ url_for('payment.payment') }}">Payments</a></li>
+					{% if user_token %}
+  						<li class="nav-item">
+   							 <a class="nav-link" href="{{ url_for('payment.payment', token=user_token) }}">Payments</a>
+ 						</li>
+					{% endif %}
 					{% if session.role == 'admin' %}
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('report.admin_dashboard') }}">
 							<i class="fas fa-exclamation-triangle me-1"></i>Reports
@@ -73,36 +83,35 @@
 				</ul>
 				<ul class="navbar-nav">
 					{% if session.user_id %}
-					<li class="nav-item"><span class="navbar-text me-3">Welcome, {{ session.username }}!</span></li>
-					<li class="nav-item"><a class="btn btn-outline-warning" href="{{ url_for('logout') }}">Logout</a>
-					</li>
+						<li class="nav-item"><span class="navbar-text me-3">Welcome, {{ session.username }}!</span></li>
+						<li class="nav-item"><a class="btn btn-outline-warning" href="{{ url_for('logout') }}">Logout</a></li>
 					{% else %}
-					<li class="nav-item"><a class="btn btn-outline-light"
-							href="{{ url_for('auth.auth', mode='login') }}">Login</a></li>
-					<li class="nav-item ms-2"><a class="btn btn-warning"
-							href="{{ url_for('auth.auth', mode='register') }}">Register</a></li>
+						<li class="nav-item"><a class="btn btn-outline-light" href="{{ url_for('auth.auth', mode='login') }}">Login</a></li>
+						<li class="nav-item ms-2"><a class="btn btn-warning" href="{{ url_for('auth.auth', mode='register') }}">Register</a></li>
 					{% endif %}
 				</ul>
 			</div>
 		</div>
 	</nav>
+
 	<main class="container">
 		<!-- Flash Messages -->
 		{% with messages = get_flashed_messages(with_categories=true) %}
-		{% if messages %}
-		<div class="flash-messages">
-			{% for category, message in messages %}
-			<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-				{{ message }}
-				<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-			</div>
-			{% endfor %}
-		</div>
-		{% endif %}
+			{% if messages %}
+				<div class="flash-messages">
+					{% for category, message in messages %}
+						<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+							{{ message }}
+							<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+						</div>
+					{% endfor %}
+				</div>
+			{% endif %}
 		{% endwith %}
 
 		{% block content %}{% endblock %}
 	</main>
+
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 	{% if session.user_id %}
@@ -113,7 +122,7 @@
 
 		function resetIdle() {
 			idleTime = 0;
-			console.log("Activity detected, reset idle timer.");
+			// console.log("Activity detected, reset idle timer.");
 		}
 
 		document.onload = resetIdle;
@@ -125,7 +134,7 @@
 		function startIdleTimer() {
 			setInterval(function () {
 				idleTime++;
-				console.log("Idle time:", idleTime, "seconds");
+				// console.log("Idle time:", idleTime, "seconds");
 				if (idleTime >= idleLimit) {
 					console.log("Redirecting to logout...");
 					window.location.href = "/logout";
