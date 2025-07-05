@@ -76,6 +76,10 @@
 							<li><a class="dropdown-item" href="{{ url_for('report.admin_dashboard') }}">
 									<i class="fas fa-exclamation-triangle me-2"></i>Report Management
 								</a></li>
+							<li><a class="dropdown-item" href="{{ url_for('audit.view_logs') }}">
+								<i class="fas fa-clipboard me-2"></i>Security Audit Log
+							</a></li>
+
 						</ul>
 					</li>
 					{% endif %}
@@ -122,7 +126,6 @@
 
 		function resetIdle() {
 			idleTime = 0;
-			// console.log("Activity detected, reset idle timer.");
 		}
 
 		document.onload = resetIdle;
@@ -148,8 +151,6 @@
 			.then(data => {
 				sessionLifetime = data.session_lifetime_minutes;
 				idleLimit = (sessionLifetime - 0) * 60;
-				console.log("Session lifetime (minutes):", sessionLifetime);
-				console.log("Idle timeout set for:", idleLimit, "seconds");
 				startIdleTimer();
 			})
 			.catch(err => {

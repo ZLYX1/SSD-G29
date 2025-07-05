@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from blueprint.models import Profile
 from extensions import db
 from blueprint.decorators import login_required
+from blueprint.audit_log import log_event
 # from flask_wtf import CSRFProtect
 from extensions import db, csrf, s3
 from datetime import datetime
@@ -179,11 +180,14 @@ def request_role_change():
     if user.role == 'seeker':
         user.pending_role = 'escort'
         flash("Role change request submitted: seeker ➔ escort. Awaiting admin approval.", "info")
+        log_event(user_id, 'role change request', f"User {user.email} requested role change from seeker to escort.")
     elif user.role == 'escort':
         user.pending_role = 'seeker'
         flash("Role change request submitted: escort ➔ seeker. Awaiting admin approval.", "info")
+        log_event(user_id, 'role change request', f"User {user.email} requested role change from escort to seeker.")
     else:
         flash("Role change not allowed for your account type.", "warning")
+        log_event(user_id, 'role change request failed', f"User {user.email} attempted an invalid role change request.")
         return redirect(url_for('profile.profile'))
 
     db.session.commit()
@@ -204,6 +208,7 @@ def deactivate_profile():
 
     session.clear()
     flash("Your account has been deactivated. You are now logged out.", "info")
+    log_event(user_id, 'deactivate', f"User {user.email} deactivated their account.")
     return redirect(url_for('auth.auth', mode='login'))
 
 # @profile_bp.route('/photo', methods=['GET'])

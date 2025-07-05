@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from blueprint.models import User, Profile
 from extensions import db
 from blueprint.decorators import login_required
+from blueprint.audit_log import log_event
 from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength  # Import OTP and password functions
 from flask_wtf.csrf import generate_csrf  # Add this import
 
@@ -100,6 +101,7 @@ def auth():
                     session['user_id'] = user.id
                     session['role'] = user.role
                     session['username'] = user.email
+                    log_event(user.id, 'login success', f"User {user.email} logged in successfully.")
                     
                     return redirect(url_for('dashboard'))
                 else:
@@ -107,6 +109,7 @@ def auth():
                     lockout_message = user.increment_failed_login()
                     db.session.commit()
                     flash(lockout_message, "danger")
+                    log_event(user.id, 'login failed', f"User {user.email} failed to log in: {lockout_message}")
             else:
                 flash("Invalid credentials.", "danger")
 
@@ -324,6 +327,7 @@ def change_password(user_id):
         if success:
             db.session.commit()
             flash("Password changed successfully.", "success")
+            log_event(user.id, 'password_change', f"User {user.email} changed their password successfully.")
             
             # If this was a forced change, redirect to login
             if force_change:
@@ -334,6 +338,7 @@ def change_password(user_id):
                 return redirect(url_for('dashboard'))
         else:
             flash(message, "danger")
+            log_event(user.id, 'password_change_failed', f"User {user.email} failed to change their password: {message}")
             return render_template('change_password.html', user=user, force_change=force_change)
     
     return render_template('change_password.html', user=user, force_change=force_change)

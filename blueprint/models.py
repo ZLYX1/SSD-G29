@@ -283,3 +283,17 @@ class Favourite(db.Model):
 
     def __repr__(self):
         return f"<Favourite by {self.user_id} → {self.favourite_user_id}>"
+    
+class AuditLog(db.Model):
+    __tablename__ = 'audit_log'  # explicit table name for clarity
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    action = db.Column(db.String(100), nullable=False)
+    details = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    # Relationship back to User
+    user = db.relationship('User', backref='audit_logs')
+
+    def __repr__(self):
+        return f"<AuditLog {self.id} {self.action} by {self.user_id}>"

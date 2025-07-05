@@ -28,6 +28,7 @@ from blueprint.messaging import messaging_bp
 from blueprint.payment import payment_bp
 from blueprint.rating import rating_bp
 from blueprint.report import report_bp
+from blueprint.audit_log import audit_bp, log_event
 
 from dotenv import load_dotenv
 
@@ -182,12 +183,6 @@ def role_required(role):
 
 
 # --- ROUTES ---
-@app.before_request
-def make_session_permanent():
-    session.permanent = True
-    app.permanent_session_lifetime = timedelta(minutes=30)
-
-
 @app.route("/test-session")
 def test_session():
     return render_template("index.html")
@@ -203,7 +198,7 @@ def logout():
 app.register_blueprint(
     auth_bp)  # registers at /auth because of prefix in auth.py
 app.register_blueprint(profile_bp)
-
+app.register_blueprint(audit_bp)
 app.register_blueprint(browse_bp)
 app.register_blueprint(booking_bp)
 app.register_blueprint(messaging_bp)
@@ -373,23 +368,38 @@ def admin():
             if action == 'delete_user':
                 user_to_modify.deleted = True  # Soft delete
                 db.session.commit()
-                flash(f"User {user_to_modify.email} has been deleted.",
-                      "success")
+                flash(f"User {user_to_modify.email} has been deleted.", "success")
+                log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin delete user',
+                        f"Deleted user {user_to_modify.email} (id={user_to_modify.id})")
             elif action == 'toggle_ban':
                 user_to_modify.active = not user_to_modify.active
                 db.session.commit()
-                status = "unbanned" if user_to_modify.active else "banned"
-                flash(f"User {user_to_modify.email} has been {status}.",
-                      "success")
+                if user_to_modify.active:
+                    flash(f"User {user_to_modify.email} has been unbanned.", "success")
+                    log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin unban user',
+                        f"Unbanned user {user_to_modify.email} (id={user_to_modify.id})")
+                else:
+                    flash(f"User {user_to_modify.email} has been banned.", "warning")
+                    log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin ban user',
+                        f"Banned user {user_to_modify.email} (id={user_to_modify.id})")
             elif action == 'approve_role_change':
                 user_to_modify.role = user_to_modify.pending_role
                 user_to_modify.pending_role = None
                 db.session.commit()
                 flash(f"Role change approved for {user_to_modify.email}.", "success")
+                log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin approved role change',
+                        f"Deleted user {user_to_modify.email} (id={user_to_modify.id})")
             elif action == 'reject_role_change':
                 user_to_modify.pending_role = None
                 db.session.commit()
                 flash(f"Role change rejected for {user_to_modify.email}.", "warning")
+                log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin rejected role change',
+                        f"Rejected user {user_to_modify.email} (id={user_to_modify.id}) request.")
 
         return redirect(url_for('admin'))
 
@@ -669,6 +679,7 @@ def make_session_permanent():
         if session.get('bound_ua') != current_ua or session.get('bound_ip') != current_ip:
             session.clear()
             flash("Session ended for security reasons.", "danger")
+            log_event(session.get('user_id'), 'security', f"Session ended due to User-Agent or IP mismatch. UA: {current_ua}, IP: {current_ip}")
             return redirect(url_for('auth.auth'))
     else:
         session['bound_ua'] = current_ua
