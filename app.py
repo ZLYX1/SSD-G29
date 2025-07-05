@@ -14,9 +14,9 @@ import uuid
 from datetime import datetime
 from controllers.auth_controller import AuthController
 from flask_migrate import Migrate
+from sqlalchemy import or_
+
 from flask.cli import with_appcontext
-from flask import render_template, session
-from datetime import datetime
 
 from extensions import csrf
 
@@ -81,22 +81,19 @@ USERS = {
         'username': 'seeker@example.com',
         'password': 'password123',
         'role': 'seeker',
-        'active': True,
-        'activate': True
+        'active': True
     },
     2: {
         'username': 'escort@example.com',
         'password': 'password123',
         'role': 'escort',
-        'active': True,
-        'activate': True
+        'active': True
     },
     3: {
         'username': 'admin@example.com',
         'password': 'password123',
         'role': 'admin',
-        'active': True,
-        'activate': True
+        'active': True
     },
     # 4: {'username': 'locked@example.com', 'password': 'password123', 'role': 'seeker', 'active': False},
 }
@@ -209,12 +206,10 @@ app.register_blueprint(profile_bp)
 
 app.register_blueprint(browse_bp)
 app.register_blueprint(booking_bp)
+app.register_blueprint(messaging_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(rating_bp)
 app.register_blueprint(report_bp)
-
-app.register_blueprint(messaging_bp)
-
 
 
 # 3. BROWSE & SEARCH
@@ -313,15 +308,38 @@ def dashboard():
     data = {}
 
     if role == 'seeker':
-        data['upcoming_bookings_count'] = Booking.query.filter_by(
-            seeker_id=user_id, status='Confirmed').count()
+        data['upcoming_bookings_count'] = db.session.query(Booking).join(
+            User, Booking.escort_id == User.id
+        ).filter(
+            Booking.seeker_id == user_id,
+            Booking.status == 'Confirmed',
+            User.deleted == False,
+            User.active == True,
+            User.activate == True
+        ).count()
     elif role == 'escort':
-        data['booking_requests_count'] = Booking.query.filter_by(
-            escort_id=user_id, status='Pending').count()
+        data['booking_requests_count'] = db.session.query(Booking).join(
+            User, Booking.seeker_id == User.id
+        ).filter(
+            Booking.escort_id == user_id,
+            Booking.status == 'Pending',
+            User.deleted == False,
+            User.active == True,
+            User.activate == True
+        ).count()
     elif role == 'admin':
-        data['total_users'] = User.query.filter_by(deleted=False).count()  # Only count non-deleted users
+        data['total_users'] = User.query.count()
         data['total_reports'] = Report.query.filter_by(
             status='Pending Review').count()
+        data['seeker_to_escort_requests'] = User.query.filter(
+            User.role == 'seeker',
+            User.pending_role == 'escort'
+        ).count()
+
+        data['escort_to_seeker_requests'] = User.query.filter(
+            User.role == 'escort',
+            User.pending_role == 'seeker'
+        ).count()
 
     return render_template('dashboard.html', role=role, data=data)
 
@@ -354,51 +372,32 @@ def admin():
         if user_to_modify:
             if action == 'delete_user':
                 user_to_modify.deleted = True  # Soft delete
-                
-                # Auto-cancel all pending bookings for this user
-                pending_bookings = Booking.query.filter(
-                    ((Booking.seeker_id == user_to_modify.id) | (Booking.escort_id == user_to_modify.id)) &
-                    (Booking.status.in_(['Pending', 'Confirmed']))
-                ).all()
-                
-                cancelled_count = 0
-                for booking in pending_bookings:
-                    booking.status = 'Cancelled'
-                    cancelled_count += 1
-                
                 db.session.commit()
-                
-                flash(f"User {user_to_modify.email} has been deleted. {cancelled_count} bookings were automatically cancelled.",
+                flash(f"User {user_to_modify.email} has been deleted.",
                       "success")
             elif action == 'toggle_ban':
                 user_to_modify.active = not user_to_modify.active
-                
-                # Auto-cancel all pending bookings for banned users
-                if not user_to_modify.active:  # User is being banned
-                    pending_bookings = Booking.query.filter(
-                        ((Booking.seeker_id == user_to_modify.id) | (Booking.escort_id == user_to_modify.id)) &
-                        (Booking.status.in_(['Pending', 'Confirmed']))
-                    ).all()
-                    
-                    cancelled_count = 0
-                    for booking in pending_bookings:
-                        booking.status = 'Cancelled'
-                        cancelled_count += 1
-                    
-                    db.session.commit()
-                    flash(f"User {user_to_modify.email} has been banned. {cancelled_count} bookings were automatically cancelled.",
-                          "warning")
-                else:
-                    db.session.commit()
-                    flash(f"User {user_to_modify.email} has been unbanned.",
-                          "success")
+                db.session.commit()
+                status = "unbanned" if user_to_modify.active else "banned"
+                flash(f"User {user_to_modify.email} has been {status}.",
+                      "success")
+            elif action == 'approve_role_change':
+                user_to_modify.role = user_to_modify.pending_role
+                user_to_modify.pending_role = None
+                db.session.commit()
+                flash(f"Role change approved for {user_to_modify.email}.", "success")
+            elif action == 'reject_role_change':
+                user_to_modify.pending_role = None
+                db.session.commit()
+                flash(f"Role change rejected for {user_to_modify.email}.", "warning")
+
         return redirect(url_for('admin'))
 
-    users = User.query.filter_by(deleted=False).all()  # Only show non-deleted users
-    banned_users = User.query.filter_by(deleted=False, active=False).all()  # Show banned users separately
+    users = User.query.all()
     reports = Report.query.all()
-    return render_template('admin.html', users=users, banned_users=banned_users, reports=reports)
+    role_requests = User.query.filter(User.pending_role.isnot(None)).all()
 
+    return render_template('admin.html', users=users, reports=reports, role_requests=role_requests)
 
 # --- Add a command to seed the database ---
 @app.cli.command("seed")
@@ -427,7 +426,7 @@ def seed_database():
 
     for _ in range(20):
         user = User(email=faker.unique.email(), role='seeker', active=True,
-                    gender=random.choice(['Male', 'Female', 'Non-binary']), activate=True)
+                    gender=random.choice(['Male', 'Female', 'Non-binary']))
         user.set_password('password123')
         profile = Profile(user=user, name=faker.name(), bio=faker.paragraph(nb_sentences=3))
         db.session.add(user)
@@ -441,8 +440,7 @@ def seed_database():
                           name=faker.name(),
                           bio=faker.paragraph(nb_sentences=5),
                           rating=round(random.uniform(3.5, 5.0), 1),
-                          age=random.randint(19, 35),
-                          )
+                          age=random.randint(19, 35))
         db.session.add(user)
         escorts.append(user)
 
@@ -711,6 +709,7 @@ def register():
             flash("Email already registered", "danger")
 
     return render_template("register.html")
+
 
 if __name__ == "__main__":
     app.run(debug=True)

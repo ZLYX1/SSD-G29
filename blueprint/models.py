@@ -21,6 +21,8 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     # NEW FIELDS
     gender = db.Column(db.String(20), nullable=False)  # e.g. Male, Female, Non-binary
+    # For role change requests
+    pending_role = db.Column(db.String(10), nullable=True)  # e.g. 'seeker' or 'escort'
     
     # Email verification fields
     email_verified = db.Column(db.Boolean, default=False, nullable=False)
