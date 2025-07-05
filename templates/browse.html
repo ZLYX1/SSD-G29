@@ -3,8 +3,47 @@
 {% block title %}Browse Escorts{% endblock %}
 
 {% block content %}
+
+
+{% if session.role == 'escort' %}
+<h2>Browse Seeker</h2>
+{% elif session.role == 'seeker' %}
 <h2>Browse Escorts</h2>
-<p>Filters: [Age Range] [Availability] [Rating]</p>
+{% endif %}
+
+
+<!-- to test -->
+<form method="get" class="mb-4">
+	<div class="row g-2">
+		<div class="col-md-3">
+			<label for="min_age" class="form-label">Min Age</label>
+			<input type="number" class="form-control" name="min_age" value="{{ request.args.get('min_age', '') }}">
+		</div>
+		<div class="col-md-3">
+			<label for="max_age" class="form-label">Max Age</label>
+			<input type="number" class="form-control" name="max_age" value="{{ request.args.get('max_age', '') }}">
+		</div>
+		<div class="col-md-3">
+			<label for="availability" class="form-label">Availability</label>
+			<select class="form-select" name="availability">
+				<option value="">Any</option>
+				<option value="yes" {% if request.args.get('availability')=='yes' %}selected{% endif %}>Available
+				</option>
+				<option value="no" {% if request.args.get('availability')=='no' %}selected{% endif %}>Unavailable
+				</option>
+			</select>
+		</div>
+		<div class="col-md-3">
+			<label for="min_rating" class="form-label">Min Rating</label>
+			<input type="number" step="0.1" min="0" max="5" class="form-control" name="min_rating"
+				value="{{ request.args.get('min_rating', '') }}">
+		</div>
+		<div class="col-md-12 text-end">
+			<button type="submit" class="btn btn-primary">Apply Filters</button>
+			<a href="{{ request.path }}" class="btn btn-secondary">Reset</a>
+		</div>
+	</div>
+</form>
 
 <div class="row row-cols-1 row-cols-md-3 g-4">
 	{% for profile in profiles %}

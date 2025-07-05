@@ -79,19 +79,22 @@ USERS = {
         'username': 'seeker@example.com',
         'password': 'password123',
         'role': 'seeker',
-        'active': True
+        'active': True,
+        'activate': True
     },
     2: {
         'username': 'escort@example.com',
         'password': 'password123',
         'role': 'escort',
-        'active': True
+        'active': True,
+        'activate': True
     },
     3: {
         'username': 'admin@example.com',
         'password': 'password123',
         'role': 'admin',
-        'active': True
+        'active': True,
+        'activate': True
     },
     # 4: {'username': 'locked@example.com', 'password': 'password123', 'role': 'seeker', 'active': False},
 }
@@ -392,7 +395,7 @@ def seed_database():
 
     for _ in range(20):
         user = User(email=faker.unique.email(), role='seeker', active=True,
-                    gender=random.choice(['Male', 'Female', 'Non-binary']))
+                    gender=random.choice(['Male', 'Female', 'Non-binary']), activate=True)
         user.set_password('password123')
         profile = Profile(user=user, name=faker.name(), bio=faker.paragraph(nb_sentences=3))
         db.session.add(user)
@@ -406,7 +409,8 @@ def seed_database():
                           name=faker.name(),
                           bio=faker.paragraph(nb_sentences=5),
                           rating=round(random.uniform(3.5, 5.0), 1),
-                          age=random.randint(19, 35))
+                          age=random.randint(19, 35),
+                          )
         db.session.add(user)
         escorts.append(user)
 
