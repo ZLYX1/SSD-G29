@@ -4,151 +4,161 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header bg-info text-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-flag me-2"></i>
-                        My Reports
-                    </h4>
-                </div>
-                <div class="card-body">
-                    {% if reports %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Report #</th>
-                                    <th>Reported User</th>
-                                    <th>Type</th>
-                                    <th>Title</th>
-                                    <th>Severity</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for report in reports %}
-                                <tr>
-                                    <td><span class="badge bg-secondary">#{{ report.id }}</span></td>
-                                    <td>
-                                        {{ report.reported.email }}
-                                        {% if report.reported.profile and report.reported.profile.name %}
-                                        <br><small class="text-muted">{{ report.reported.profile.name }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-light text-dark">
-                                            {{ report.report_type.replace('_', ' ').title() }}
-                                        </span>
-                                    </td>
-                                    <td>{{ report.title }}</td>
-                                    <td>
-                                        {% if report.severity == 'Critical' %}
-                                        <span class="badge bg-danger">{{ report.severity }}</span>
-                                        {% elif report.severity == 'High' %}
-                                        <span class="badge bg-warning">{{ report.severity }}</span>
-                                        {% elif report.severity == 'Medium' %}
-                                        <span class="badge bg-info">{{ report.severity }}</span>
-                                        {% else %}
-                                        <span class="badge bg-secondary">{{ report.severity }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if report.status == 'Pending Review' %}
-                                        <span class="badge bg-warning">{{ report.status }}</span>
-                                        {% elif report.status == 'Under Investigation' %}
-                                        <span class="badge bg-info">{{ report.status }}</span>
-                                        {% elif report.status == 'Resolved' %}
-                                        <span class="badge bg-success">{{ report.status }}</span>
-                                        {% elif report.status == 'Dismissed' %}
-                                        <span class="badge bg-secondary">{{ report.status }}</span>
-                                        {% else %}
-                                        <span class="badge bg-light text-dark">{{ report.status }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary" 
-                                                onclick="viewReportDetails({{ report.id }})">
-                                            <i class="fas fa-eye"></i> View
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-flag fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">No Reports Submitted</h5>
-                        <p class="text-muted">You haven't submitted any reports yet.</p>
-                        <a href="{{ url_for('browse.browse') }}" class="btn btn-primary">
-                            <i class="fas fa-search"></i> Browse Users
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+	<div class="row">
+		<div class="col-12">
+			<div class="card shadow">
+				<div class="card-header bg-info text-white">
+					<h4 class="mb-0">
+						<i class="fas fa-flag me-2"></i>
+						My Reports
+					</h4>
+				</div>
+				<div class="card-body">
+					{% if reports %}
+					<div class="table-responsive">
+						<table class="table table-hover">
+							<thead>
+								<tr>
+									<th>Report #</th>
+									<th>Reported User</th>
+									<th>Type</th>
+									<th>Title</th>
+									<th>Severity</th>
+									<th>Status</th>
+									<th>Date</th>
+									<th>Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for report in reports %}
+								<tr>
+									<td><span class="badge bg-secondary">#{{ report.id }}</span></td>
+									<td>
+										{{ report.reported.email }}
+										{% if report.reported.profile and report.reported.profile.name %}
+										<br><small class="text-muted">{{ report.reported.profile.name }}</small>
+										{% endif %}
+									</td>
+									<td>
+										<span class="badge bg-light text-dark">
+											{{ report.report_type.replace('_', ' ').title() }}
+										</span>
+									</td>
+									<td>{{ report.title }}</td>
+									<td>
+										{% if report.severity == 'Critical' %}
+										<span class="badge bg-danger">{{ report.severity }}</span>
+										{% elif report.severity == 'High' %}
+										<span class="badge bg-warning">{{ report.severity }}</span>
+										{% elif report.severity == 'Medium' %}
+										<span class="badge bg-info">{{ report.severity }}</span>
+										{% else %}
+										<span class="badge bg-secondary">{{ report.severity }}</span>
+										{% endif %}
+									</td>
+									<td>
+										{% if report.status == 'Pending Review' %}
+										<span class="badge bg-warning">{{ report.status }}</span>
+										{% elif report.status == 'Under Investigation' %}
+										<span class="badge bg-info">{{ report.status }}</span>
+										{% elif report.status == 'Resolved' %}
+										<span class="badge bg-success">{{ report.status }}</span>
+										{% elif report.status == 'Dismissed' %}
+										<span class="badge bg-secondary">{{ report.status }}</span>
+										{% else %}
+										<span class="badge bg-light text-dark">{{ report.status }}</span>
+										{% endif %}
+									</td>
+									<td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+									<td>
+										<button class="btn btn-sm btn-outline-primary"
+											onclick="viewReportDetails({{ report.id }})">
+											<i class="fas fa-eye"></i> View
+										</button>
+									</td>
+								</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					{% else %}
+					<div class="text-center py-5">
+						<i class="fas fa-flag fa-3x text-muted mb-3"></i>
+						<h5 class="text-muted">No Reports Submitted</h5>
+						<p class="text-muted">You haven't submitted any reports yet.</p>
+						{% if session.role == 'escort' %}
+						<a href="{{ url_for('browse.browseSeeker') }}" class="btn btn-primary">
+							<i class="fas fa-search"></i> Browse Users
+						</a>
+						{% elif session.role == 'seeker' %}
+						<a href="{{ url_for('browse.browseEscort') }}" class="btn btn-primary">
+							<i class="fas fa-search"></i> Browse Users
+						</a>
+						{% endif %}
+
+
+					</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <!-- Report Details Modal -->
-<div class="modal fade" id="reportDetailsModal" tabindex="-1" aria-labelledby="reportDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="reportDetailsModalLabel">Report Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="reportDetailsContent">
-                <!-- Content will be loaded here -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
+<div class="modal fade" id="reportDetailsModal" tabindex="-1" aria-labelledby="reportDetailsModalLabel"
+	aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="reportDetailsModalLabel">Report Details</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body" id="reportDetailsContent">
+				<!-- Content will be loaded here -->
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
 </div>
 
 <script>
-function viewReportDetails(reportId) {
-    // Find the report in the table
-    const reports = {{ reports | tojson }};
-    const report = reports.find(r => r.id === reportId);
-    
-    if (report) {
-        let evidenceHtml = '';
-        if (report.evidence_urls) {
-            try {
-                const urls = JSON.parse(report.evidence_urls);
-                if (urls.length > 0) {
-                    evidenceHtml = '<h6>Evidence:</h6><ul>';
-                    urls.forEach(url => {
-                        evidenceHtml += `<li><a href="${url}" target="_blank">${url}</a></li>`;
-                    });
-                    evidenceHtml += '</ul>';
-                }
-            } catch (e) {
-                // Handle invalid JSON
-            }
-        }
-        
-        let adminNotesHtml = '';
-        if (report.admin_notes) {
-            adminNotesHtml = `<h6>Admin Notes:</h6><p class="text-muted">${report.admin_notes}</p>`;
-        }
-        
-        let resolutionHtml = '';
-        if (report.resolution) {
-            resolutionHtml = `<h6>Resolution:</h6><p class="text-success">${report.resolution}</p>`;
-        }
-        
-        const content = `
+	function viewReportDetails(reportId) {
+		// Find the report in the table
+		const reports = {{ reports | tojson
+	}};
+	const report = reports.find(r => r.id === reportId);
+
+	if (report) {
+		let evidenceHtml = '';
+		if (report.evidence_urls) {
+			try {
+				const urls = JSON.parse(report.evidence_urls);
+				if (urls.length > 0) {
+					evidenceHtml = '<h6>Evidence:</h6><ul>';
+					urls.forEach(url => {
+						evidenceHtml += `<li><a href="${url}" target="_blank">${url}</a></li>`;
+					});
+					evidenceHtml += '</ul>';
+				}
+			} catch (e) {
+				// Handle invalid JSON
+			}
+		}
+
+		let adminNotesHtml = '';
+		if (report.admin_notes) {
+			adminNotesHtml = `<h6>Admin Notes:</h6><p class="text-muted">${report.admin_notes}</p>`;
+		}
+
+		let resolutionHtml = '';
+		if (report.resolution) {
+			resolutionHtml = `<h6>Resolution:</h6><p class="text-success">${report.resolution}</p>`;
+		}
+
+		const content = `
             <div class="row">
                 <div class="col-md-6">
                     <h6>Report Information:</h6>
@@ -171,10 +181,10 @@ function viewReportDetails(reportId) {
             ${adminNotesHtml}
             ${resolutionHtml}
         `;
-        
-        document.getElementById('reportDetailsContent').innerHTML = content;
-        new bootstrap.Modal(document.getElementById('reportDetailsModal')).show();
-    }
+
+		document.getElementById('reportDetailsContent').innerHTML = content;
+		new bootstrap.Modal(document.getElementById('reportDetailsModal')).show();
+	}
 }
 </script>
 {% endblock %}

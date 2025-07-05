@@ -256,3 +256,18 @@ class Rating(db.Model):
     
     def __repr__(self):
         return f'<Rating {self.rating}/5 for booking {self.booking_id}>'
+    
+# // To test
+class Favourite(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    favourite_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.datetime)
+
+    # Optional relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='favourites_given')
+    favourited_user = db.relationship('User', foreign_keys=[favourite_user_id], backref='favourites_received')
+
+    def __repr__(self):
+        return f"<Favourite by {self.user_id} → {self.favourite_user_id}>"

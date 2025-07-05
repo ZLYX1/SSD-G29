@@ -43,7 +43,14 @@
 				<ul class="navbar-nav me-auto mb-2 mb-md-0">
 					{% if session.user_id %}
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
-					<li class="nav-item"><a class="nav-link" href="{{ url_for('browse.browse') }}">Browse</a></li>
+
+					{% if session.role == 'escort' %}
+					<li class="nav-item"><a class="nav-link" href="{{ url_for('browse.browseSeeker') }}">Browse</a></li>
+
+					{% elif session.role == 'seeker' %}
+					<li class="nav-item"><a class="nav-link" href="{{ url_for('browse.browseEscort') }}">Browse</a></li>
+					{% endif %}
+
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('profile.profile') }}">Profile</a></li>
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('booking.booking') }}">Bookings</a></li>
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('messaging.messaging') }}">Messages</a>
@@ -115,7 +122,7 @@
 
 		function resetIdle() {
 			idleTime = 0;
-			console.log("Activity detected, reset idle timer.");
+			// console.log("Activity detected, reset idle timer.");
 		}
 
 		document.onload = resetIdle;
@@ -127,7 +134,7 @@
 		function startIdleTimer() {
 			setInterval(function () {
 				idleTime++;
-				console.log("Idle time:", idleTime, "seconds");
+				// console.log("Idle time:", idleTime, "seconds");
 				if (idleTime >= idleLimit) {
 					console.log("Redirecting to logout...");
 					window.location.href = "/logout";

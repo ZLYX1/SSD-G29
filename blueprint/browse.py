@@ -10,8 +10,21 @@ browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
 @browse_bp.route('/browse', methods=['GET', 'POST'])
 @login_required
-def browse():
-    escort_profiles = Profile.query.join(User).filter(User.role == 'escort').all()
+def browseEscort():
+    escort_profiles = (Profile.query.join(User)
+    # .filter(User.role == 'escort')
+    .filter(User.role == 'escort', User.activate == True)
+    .all())
+    return render_template('browse.html', profiles=escort_profiles)
+
+# Shoud have 1 for escorts to see
+@browse_bp.route('/browseSeeker', methods=['GET', 'POST'])
+@login_required
+def browseSeeker():
+    escort_profiles = (Profile.query.join(User)
+    # .filter(User.role == 'escort')
+    .filter(User.role == 'seeker', User.activate == True)
+    .all())
     return render_template('browse.html', profiles=escort_profiles)
 
 @browse_bp.route('/profile/<int:user_id>')
@@ -111,3 +124,28 @@ def view_profile(user_id):
 #     db.session.commit()
 
 #     return {'message': 'Photo saved successfully'}, 200
+
+# to test
+@browse_bp.route('/browse', methods=['GET'])
+@login_required
+def browseEscort():
+    query = Profile.query.join(User).filter(User.role == 'escort', User.activate == True)
+
+    min_age = request.args.get('min_age', type=int)
+    max_age = request.args.get('max_age', type=int)
+    availability = request.args.get('availability')
+    min_rating = request.args.get('min_rating', type=float)
+
+    if min_age is not None:
+        query = query.filter(Profile.age >= min_age)
+    if max_age is not None:
+        query = query.filter(Profile.age <= max_age)
+    if availability == 'yes':
+        query = query.filter(Profile.availability == True)
+    elif availability == 'no':
+        query = query.filter(Profile.availability == False)
+    if min_rating is not None:
+        query = query.filter(Profile.rating >= min_rating)
+
+    escort_profiles = query.all()
+    return render_template('browse.html', profiles=escort_profiles)
