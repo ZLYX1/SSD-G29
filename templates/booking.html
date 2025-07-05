@@ -84,7 +84,7 @@
             </div>
             <div>
                 {% if role == 'seeker' and booking.status == 'Confirmed' %}
-                <a href="{{ url_for('payment.payment', booking_id=booking.id) }}" class="btn btn-sm btn-primary">Pay Now</a>
+                <a href="{{ url_for('payment.initiate_payment', booking_id=booking.id) }}" class="btn btn-sm btn-primary">Pay Now</a>
                 {% endif %}
             </div>
         </li>

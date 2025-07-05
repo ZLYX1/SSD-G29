@@ -32,9 +32,17 @@ def generate_payment_token(user_id, booking_id):
 
 def validate_payment_token(token, user_id):
     entry = payment_tokens.get(token)
-    if not entry or entry['user_id'] != user_id:
+    if not entry:
+        logger.warning(f"Token {token} not found.")
         return False
-    if entry['used'] or datetime.utcnow() > entry['expires_at']:
+    if entry['user_id'] != user_id:
+        logger.warning(f"Token {token} user_id mismatch: {entry['user_id']} != {user_id}")
+        return False
+    if entry['used']:
+        logger.warning(f"Token {token} already used.")
+        return False
+    if datetime.utcnow() > entry['expires_at']:
+        logger.warning(f"Token {token} expired at {entry['expires_at']}, current time {datetime.utcnow()}.")
         return False
     return True
 
@@ -63,7 +71,11 @@ def initiate_payment(booking_id):
 @payment_bp.route('/pay', methods=['GET', 'POST'])
 @login_required
 def payment_page():
-    token = request.args.get('token')
+    if request.method == 'POST':
+        token = request.form.get('token')
+    else:
+        token = request.args.get('token')
+
     user_id = session['user_id']
 
     if not validate_payment_token(token, user_id):
