@@ -21,13 +21,19 @@ def view_profile(user_id):
         flash("Escort not found.", "danger")
         return redirect(url_for('home'))
 
-    # Only show upcoming time slots
     available_slots = TimeSlot.query.filter(
         TimeSlot.user_id == user_id,
         TimeSlot.start_time >= datetime.utcnow()
     ).order_by(TimeSlot.start_time.asc()).all()
 
-    return render_template('view_profile.html', profile=profile, time_slots=available_slots)
+    # ✅ ADD csrf_token TO TEMPLATE CONTEXT
+    return render_template(
+        'view_profile.html',
+        profile=profile,
+        time_slots=available_slots,
+        csrf_token=generate_csrf()
+    )
+
 
 # 2. PROFILE MANAGEMENT
 # @app.route('/profile', methods=['GET', 'POST'])

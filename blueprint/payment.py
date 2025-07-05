@@ -53,6 +53,5 @@ def payment():
 
  	# GET request - show payment form
     history = Payment.query.filter_by(user_id=session['user_id']).order_by(Payment.created_at.desc()).all()
-    return render_template('payment.html', history=history)
-
- 
+    csrf_token = generate_csrf()  # Generate CSRF token for the form
+    return render_template('payment.html', history=history, csrf_token=csrf_token)

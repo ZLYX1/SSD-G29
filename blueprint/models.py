@@ -43,42 +43,15 @@ class User(db.Model):
     
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
-    bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
-    bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', backref='escort', lazy='dynamic')
+    # bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
+
+    # bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', backref='escort', lazy='dynamic')
     time_slots = db.relationship('TimeSlot', backref='user', lazy='dynamic', cascade="all, delete-orphan")
-    password_history = db.relationship('PasswordHistory', backref='user', lazy='dynamic', cascade="all, delete-orphan")
     
-    def set_password(self, password, check_history=True, password_expiry_days=90):
-        """
-        Set user password with history checking and expiration
-        
-        Args:
-            password (str): New password to set
-            check_history (bool): Whether to check against password history
-            password_expiry_days (int): Number of days until password expires
-        
-        Returns:
-            tuple: (success: bool, message: str)
-        """
-        if check_history and self.id and db.session.object_session(self):
-            # Check if password was used in the last 5 passwords
-            if self.is_password_in_history(password, limit=5):
-                return False, "Password cannot be the same as any of your last 5 passwords."
-        
-        # Store current password in history before changing (only for existing users)
-        if self.password_hash and self.id and db.session.object_session(self):
-            try:
-                password_history_entry = PasswordHistory(
-                    user_id=self.id,
-                    password_hash=self.password_hash,
-                    created_at=self.password_created_at or datetime.datetime.utcnow()
-                )
-                db.session.add(password_history_entry)
-            except:
-                # If there's an issue adding to history, continue without it
-                pass
-        
-        # Set new password
+    bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', back_populates='seeker', lazy='dynamic')
+    bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', back_populates='escort', lazy='dynamic')
+
+    def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         self.password_created_at = datetime.datetime.utcnow()
         
@@ -175,7 +148,7 @@ class Profile(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
     name = db.Column(db.String(100))
     bio = db.Column(db.Text)
-    photo = db.Column(db.String(100), default='default.jpg')
+    photo = db.Column(db.String(2000), default='default.jpg')
     availability = db.Column(db.String(50), default='Available')
     rating = db.Column(db.Float)
     age = db.Column(db.Integer)
@@ -194,7 +167,15 @@ class Booking(db.Model):
     start_time = db.Column(db.DateTime, nullable=False)  # Booking start time
     end_time = db.Column(db.DateTime, nullable=False)    # Booking end time
     status = db.Column(db.String(20), default='Pending', nullable=False)  # 'Pending', 'Confirmed', 'Rejected'
-
+    
+    # booking_date = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(20), default='Pending', nullable=False) # 'Pending', 'Confirmed', 'Rejected'
+    # seeker = db.relationship('User', foreign_keys=[seeker_id])
+    # escort = db.relationship('User', foreign_keys=[escort_id])
+    # seeker = db.relationship('User', foreign_keys=[seeker_id], back_populates='bookings_made')
+    # escort = db.relationship('User', foreign_keys=[escort_id], back_populates='bookings_received')
+    seeker = db.relationship('User', foreign_keys=[seeker_id], back_populates='bookings_made')
+    escort = db.relationship('User', foreign_keys=[escort_id], back_populates='bookings_received')
     def __repr__(self):
         return f'<Booking {self.id} escort:{self.escort_id} seeker:{self.seeker_id} from {self.start_time} to {self.end_time}>'
     

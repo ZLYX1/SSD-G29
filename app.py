@@ -15,6 +15,8 @@ from datetime import datetime
 from controllers.auth_controller import AuthController
 from flask_migrate import Migrate
 from flask.cli import with_appcontext
+from flask import render_template, session
+from datetime import datetime
 
 from extensions import csrf
 
@@ -673,7 +675,6 @@ def register():
             flash("Email already registered", "danger")
 
     return render_template("register.html")
-
 
 if __name__ == "__main__":
     app.run(debug=True)

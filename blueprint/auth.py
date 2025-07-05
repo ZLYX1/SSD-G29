@@ -33,13 +33,11 @@ def auth():
         password = request.form.get('password', '').strip()
 
         # reCAPTCHA only for register (based on your JS)
-        # if form_type == 'register':
-        #     print("Submitted for Register\n");
-            
-        #     recaptcha_token = request.form.get('g-recaptcha-response')
-        #     if not recaptcha_token or not verify_recaptcha(recaptcha_token):
-        #         flash("CAPTCHA verification failed.", "danger")
-        #         return redirect(url_for('auth.auth', mode='register'))
+        if form_type == 'register':
+           ''' recaptcha_token = request.form.get('g-recaptcha-response')
+            if not recaptcha_token or not verify_recaptcha(recaptcha_token):
+                flash("CAPTCHA verification failed.", "danger")
+                return redirect(url_for('auth.auth', mode='register'))'''
 
         if form_type == 'login':
             user = User.query.filter_by(email=email).first()
