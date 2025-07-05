@@ -59,6 +59,8 @@ app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secr
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable HTTPS requirement
 app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP cookies
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # More lenient than 'Strict'
+app.config['SESSION_COOKIE_HTTPONLY'] = False # Prevent JavaScript access to session cookies (set True for production)
+
 
 # Configure CSRF Protection
 # csrf = CSRFProtect(app)  # This initializes CSRF protection
@@ -657,6 +659,9 @@ def login():
         password = request.form.get("password")
 
         if auth_controller.authenticate(email, password):
+            regenerate_session()
+            session['bound_ua'] = request.headers.get('User-Agent')
+            session['bound_ip'] = request.remote_addr
             # Successful login
             return redirect(url_for("index"))
         else:
