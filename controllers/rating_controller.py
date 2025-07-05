@@ -16,7 +16,7 @@ class RatingController:
             return False, "Not authorized to rate this booking"
         
         # Booking must be completed
-        if booking.status != 'Completed':
+        if booking.status.lower() != 'completed':
             return False, "Can only rate completed bookings"
         
         # Check if already rated
@@ -33,6 +33,12 @@ class RatingController:
     def submit_rating(booking_id, reviewer_id, rating_value, feedback=None):
         """Submit a rating for a booking"""
         try:
+            # Start with a clean session
+            try:
+                db.session.rollback()  # Clear any previous state
+            except:
+                pass  # Ignore if no transaction to rollback
+                
             # Validate rating
             if not (1 <= rating_value <= 5):
                 return False, "Rating must be between 1 and 5"
@@ -42,6 +48,15 @@ class RatingController:
                 return False, result
             
             booking = result
+            
+            # Check if this specific reviewer has already rated this booking
+            existing_rating = Rating.query.filter_by(
+                booking_id=booking_id,
+                reviewer_id=reviewer_id
+            ).first()
+            
+            if existing_rating:
+                return False, "You have already rated this booking"
             
             # Determine who is being reviewed
             reviewed_id = booking.escort_id if reviewer_id == booking.seeker_id else booking.seeker_id
@@ -64,7 +79,10 @@ class RatingController:
             return True, rating
             
         except Exception as e:
-            db.session.rollback()
+            try:
+                db.session.rollback()
+            except:
+                pass  # Ignore rollback errors
             return False, str(e)
     
     @staticmethod
@@ -103,7 +121,7 @@ class RatingController:
         # Get completed bookings where user participated but hasn't rated yet
         completed_bookings = Booking.query.filter(
             ((Booking.seeker_id == user_id) | (Booking.escort_id == user_id)),
-            Booking.status == 'Completed'
+            db.func.lower(Booking.status) == 'completed'
         ).all()
         
         rateable = []

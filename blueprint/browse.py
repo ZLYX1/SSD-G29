@@ -7,22 +7,15 @@ from datetime import datetime
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
-@browse_bp.route('/browse', methods=['GET', 'POST'])
-@login_required
-def browseEscort():
-    escort_profiles = (Profile.query.join(User)
-    # .filter(User.role == 'escort')
-    .filter(User.role == 'escort', User.activate == True)
-    .all())
-    return render_template('browse.html', profiles=escort_profiles)
 
-# Shoud have 1 for escorts to see
+
+# Should have 1 for escorts to see
 @browse_bp.route('/browseSeeker', methods=['GET', 'POST'])
 @login_required
 def browseSeeker():
     escort_profiles = (Profile.query.join(User)
     # .filter(User.role == 'escort')
-    .filter(User.role == 'seeker', User.activate == True)
+    .filter(User.role == 'seeker', User.active == True)
     .all())
     return render_template('browse.html', profiles=escort_profiles)
 
@@ -122,7 +115,7 @@ def view_profile(user_id):
 @browse_bp.route('/browse', methods=['GET'])
 @login_required
 def browseEscort():
-    query = Profile.query.join(User).filter(User.role == 'escort', User.activate == True)
+    query = Profile.query.join(User).filter(User.role == 'escort', User.active == True)
 
     min_age = request.args.get('min_age', type=int)
     max_age = request.args.get('max_age', type=int)

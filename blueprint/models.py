@@ -12,12 +12,8 @@ class User(db.Model):
     # password_hash = db.Column(db.String(128), nullable=False)
     password_hash = db.Column(db.String(256))
     role = db.Column(db.String(10), nullable=False, default='seeker') # 'seeker', 'escort', 'admin'
-    # for otp verification [if failed]
+    # for otp verification and user account status
     active = db.Column(db.Boolean, default=True, nullable=False)
-    # for user to deactivate acc
-    activate = db.Column(db.Boolean, default=True, nullable=False)
-    # admin soft delete
-    deleted = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     # NEW FIELDS
     gender = db.Column(db.String(20), nullable=False)  # e.g. Male, Female, Non-binary

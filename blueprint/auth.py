@@ -412,12 +412,13 @@ def send_email_ses(to_email, subject, body_text, body_html=None):
         return True
    
 
-@auth_bp.route("/send-test-email" , methods=["POST"])
+@auth_bp.route("/send-test-email", methods=["POST"])
 def send_test_email():
     success = send_email_ses(
-        to_email="13eddie07@gmail.com",
-        subject="Welcome!",
-        body_text="This is a test email from Flask + AWS SES."
+        to_email="ryangankangting97@gmail.com",
+        subject="Safe Companions - Test Email",
+        body_text="This is a test email from Safe Companions Flask app using AWS SES.",
+        body_html="<h1>Test Email</h1><p>This is a test email from <strong>Safe Companions</strong> Flask app using AWS SES.</p>"
     )
 
     if success:
