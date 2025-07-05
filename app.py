@@ -195,7 +195,7 @@ def test_session():
 def logout():
     session.clear()
     flash("You have been logged out.", "success")
-    return redirect(url_for('auth.auth', mode='timeout'))
+    return redirect(url_for('auth.auth', mode='login'))
 
 
 app.register_blueprint(
@@ -312,7 +312,7 @@ def dashboard():
         data['booking_requests_count'] = Booking.query.filter_by(
             escort_id=user_id, status='Pending').count()
     elif role == 'admin':
-        data['total_users'] = User.query.count()
+        data['total_users'] = User.query.filter_by(deleted=False).count()  # Only count non-deleted users
         data['total_reports'] = Report.query.filter_by(
             status='Pending Review').count()
 
@@ -346,21 +346,51 @@ def admin():
         user_to_modify = User.query.get(user_id_to_modify)
         if user_to_modify:
             if action == 'delete_user':
-                db.session.delete(user_to_modify)
+                user_to_modify.deleted = True  # Soft delete
+                
+                # Auto-cancel all pending bookings for this user
+                pending_bookings = Booking.query.filter(
+                    ((Booking.seeker_id == user_to_modify.id) | (Booking.escort_id == user_to_modify.id)) &
+                    (Booking.status.in_(['Pending', 'Confirmed']))
+                ).all()
+                
+                cancelled_count = 0
+                for booking in pending_bookings:
+                    booking.status = 'Cancelled'
+                    cancelled_count += 1
+                
                 db.session.commit()
-                flash(f"User {user_to_modify.email} has been deleted.",
+                
+                flash(f"User {user_to_modify.email} has been deleted. {cancelled_count} bookings were automatically cancelled.",
                       "success")
             elif action == 'toggle_ban':
                 user_to_modify.active = not user_to_modify.active
-                db.session.commit()
-                status = "unbanned" if user_to_modify.active else "banned"
-                flash(f"User {user_to_modify.email} has been {status}.",
-                      "success")
+                
+                # Auto-cancel all pending bookings for banned users
+                if not user_to_modify.active:  # User is being banned
+                    pending_bookings = Booking.query.filter(
+                        ((Booking.seeker_id == user_to_modify.id) | (Booking.escort_id == user_to_modify.id)) &
+                        (Booking.status.in_(['Pending', 'Confirmed']))
+                    ).all()
+                    
+                    cancelled_count = 0
+                    for booking in pending_bookings:
+                        booking.status = 'Cancelled'
+                        cancelled_count += 1
+                    
+                    db.session.commit()
+                    flash(f"User {user_to_modify.email} has been banned. {cancelled_count} bookings were automatically cancelled.",
+                          "warning")
+                else:
+                    db.session.commit()
+                    flash(f"User {user_to_modify.email} has been unbanned.",
+                          "success")
         return redirect(url_for('admin'))
 
-    users = User.query.all()
+    users = User.query.filter_by(deleted=False).all()  # Only show non-deleted users
+    banned_users = User.query.filter_by(deleted=False, active=False).all()  # Show banned users separately
     reports = Report.query.all()
-    return render_template('admin.html', users=users, reports=reports)
+    return render_template('admin.html', users=users, banned_users=banned_users, reports=reports)
 
 
 # --- Add a command to seed the database ---

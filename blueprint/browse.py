@@ -10,13 +10,21 @@ browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 @browse_bp.route('/browse', methods=['GET', 'POST'])
 @login_required
 def browse():
-    escort_profiles = Profile.query.join(User).filter(User.role == 'escort').all()
+    escort_profiles = Profile.query.join(User).filter(
+        User.role == 'escort',
+        User.deleted == False,  # Exclude deleted users
+        User.active == True     # Only show active users
+    ).all()
     return render_template('browse.html', profiles=escort_profiles)
 
 @browse_bp.route('/profile/<int:user_id>')
 @login_required
 def view_profile(user_id):
-    profile = Profile.query.filter_by(user_id=user_id).first()
+    profile = Profile.query.join(User).filter(
+        Profile.user_id == user_id,
+        User.deleted == False,  # Exclude deleted users
+        User.active == True     # Only show active users
+    ).first()
     if not profile:
         flash("Escort not found.", "danger")
         return redirect(url_for('home'))

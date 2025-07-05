@@ -45,6 +45,11 @@ def auth():
             user = User.query.filter_by(email=email).first()
             print("Submitted for login\n");
             if user:
+                # Check if user has been soft deleted
+                if user.deleted:
+                    flash("This account is no longer available. Please contact support if you believe this is an error.", "danger")
+                    return redirect(url_for('auth.auth', mode='login'))
+                
                 # Check if account is locked
                 if user.is_account_locked():
                     flash("Account is temporarily locked due to too many failed login attempts. Please try again later.", "danger")

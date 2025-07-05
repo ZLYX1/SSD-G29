@@ -148,10 +148,20 @@ class User(db.Model):
         return f"Invalid credentials. {attempts_left} attempts remaining before account lockout."
     
     def reset_failed_logins(self):
-        """Reset failed login attempts after successful login"""
+        """Reset failed login attempts and unlock account"""
         self.failed_login_attempts = 0
         self.account_locked_until = None
-
+    
+    def is_available(self):
+        """Check if user account is available (not deleted and active)"""
+        return not self.deleted and self.active
+    
+    def get_display_name(self):
+        """Get display name for user - shows 'Deleted User' if account is deleted"""
+        if self.deleted:
+            return "Deleted User"
+        return self.profile.name if self.profile else self.email.split('@')[0]
+    
     def check_password(self, password):
         """Enhanced password checking with security features"""
         return check_password_hash(self.password_hash, password)

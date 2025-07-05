@@ -1,6 +1,6 @@
 
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
-from blueprint.models import Booking, TimeSlot
+from blueprint.models import Booking, TimeSlot, User
 from extensions import db
 from blueprint.decorators import login_required
 from datetime import datetime, timedelta
@@ -17,9 +17,19 @@ def booking():
     time_slots = None  # default for non-escorts
     
     if role == 'seeker':
-        bookings_data = Booking.query.filter_by(seeker_id=user_id).order_by(Booking.start_time.desc()).all()
+        # Exclude bookings where the escort is deleted or banned
+        bookings_data = Booking.query.join(User, Booking.escort_id == User.id).filter(
+            Booking.seeker_id == user_id,
+            User.deleted == False,
+            User.active == True  # Also exclude banned users
+        ).order_by(Booking.start_time.desc()).all()
     elif role == 'escort':
-        bookings_data = Booking.query.filter_by(escort_id=user_id).order_by(Booking.start_time.desc()).all()
+        # Exclude bookings where the seeker is deleted or banned
+        bookings_data = Booking.query.join(User, Booking.seeker_id == User.id).filter(
+            Booking.escort_id == user_id,
+            User.deleted == False,
+            User.active == True  # Also exclude banned users
+        ).order_by(Booking.start_time.desc()).all()
         time_slots = TimeSlot.query.filter(
             TimeSlot.user_id == user_id,
             TimeSlot.start_time >= datetime.utcnow()
@@ -102,24 +112,28 @@ def book(escort_id):
             flash("Requested time is not within escort's available slots.", "danger")
             return redirect(url_for('browse.view_profile', user_id=escort_id))
 
-        # Check overlapping bookings (confirmed or pending)
-       # Check overlapping bookings (confirmed or pending) for escort
-        escort_overlap = Booking.query.filter(
+
+        # Check overlapping bookings (confirmed or pending) for escort
+        escort_overlap = Booking.query.join(User, Booking.seeker_id == User.id).filter(
             Booking.escort_id == escort_id,
             Booking.status.in_(["Pending", "Confirmed"]),
             Booking.start_time < end_time,
-            Booking.end_time > start_time
+            Booking.end_time > start_time,
+            User.deleted == False,  # Exclude bookings from deleted users
+            User.active == True     # Exclude bookings from banned users
         ).first()
         if escort_overlap:
             flash("This time overlaps with an existing booking for the escort.", "danger")
             return redirect(url_for('browse.view_profile', user_id=escort_id))
 
         # Check overlapping bookings for seeker
-        seeker_overlap = Booking.query.filter(
+        seeker_overlap = Booking.query.join(User, Booking.escort_id == User.id).filter(
             Booking.seeker_id == seeker_id,
             Booking.status.in_(["Pending", "Confirmed"]),
             Booking.start_time < end_time,
-            Booking.end_time > start_time
+            Booking.end_time > start_time,
+            User.deleted == False,  # Exclude bookings from deleted users
+            User.active == True     # Exclude bookings from banned users
         ).first()
         if seeker_overlap:
             flash("You have another booking that overlaps with this time.", "danger")
@@ -153,9 +167,14 @@ def handle_booking_action():
     booking_id = request.form.get('booking_id')
     action = request.form.get('action')
 
-    booking = Booking.query.get(booking_id)
-    if not booking or booking.escort_id != session['user_id']:
-        flash("Booking not found or unauthorized.", "danger")
+    booking = Booking.query.join(User, Booking.seeker_id == User.id).filter(
+        Booking.id == booking_id,
+        Booking.escort_id == session['user_id'],
+        User.deleted == False,  # Exclude bookings from deleted users
+        User.active == True     # Exclude bookings from banned users
+    ).first()
+    if not booking:
+        flash("Booking not found, unauthorized, or user account is deleted/banned.", "danger")
         return redirect(url_for('booking.booking'))
 
     if action == 'accept':
