@@ -1,4 +1,3 @@
-
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from blueprint.models import Profile, User, TimeSlot
 from extensions import db
@@ -8,24 +7,17 @@ from flask_wtf.csrf import generate_csrf
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
-@browse_bp.route('/browse', methods=['GET', 'POST'])
-@login_required
-def browseEscort():
-    escort_profiles = (Profile.query.join(User)
-    # .filter(User.role == 'escort')
-    .filter(User.role == 'escort', User.activate == True)
-    .all())
-    return render_template('browse.html', profiles=escort_profiles)
 
 # Shoud have 1 for escorts to see
 @browse_bp.route('/browseSeeker', methods=['GET', 'POST'])
 @login_required
 def browseSeeker():
     escort_profiles = (Profile.query.join(User)
-    # .filter(User.role == 'escort')
-    .filter(User.role == 'seeker', User.activate == True)
-    .all())
+                       # .filter(User.role == 'escort')
+                       .filter(User.role == 'seeker', User.activate == True)
+                       .all())
     return render_template('browse.html', profiles=escort_profiles)
+
 
 @browse_bp.route('/profile/<int:user_id>')
 @login_required
@@ -89,7 +81,7 @@ def view_profile(user_id):
 #     file_name = request.json.get('file_name')
 #     file_type = request.json.get('file_type')
 #     S3_BUCKET = os.environ['S3_BUCKET_NAME']
-    
+
 #     if not file_name or not file_type:
 #         return {'error': 'Missing file name or type'}, 400
 
@@ -111,7 +103,7 @@ def view_profile(user_id):
 #         return presigned_post
 #     except Exception as e:
 #         return {'error': str(e)}, 500
-    
+
 # @profile_bp.route('/save-photo', methods=['POST'])
 # @login_required
 # def save_photo():
