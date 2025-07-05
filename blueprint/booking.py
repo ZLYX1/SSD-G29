@@ -4,8 +4,9 @@ from extensions import db
 from blueprint.decorators import login_required
 from datetime import datetime, timedelta
 from flask_wtf.csrf import generate_csrf
-from markupsafe import escape
 import logging
+
+from controllers.security_controller import SecurityController
 
 booking_bp = Blueprint('booking', __name__, url_prefix='/booking')
 logger = logging.getLogger(__name__)
@@ -36,19 +37,17 @@ def booking():
             TimeSlot.start_time >= datetime.utcnow()
         ).order_by(TimeSlot.start_time.asc()).all()
 
-    return render_template('booking.html', bookings=bookings_data, time_slots=time_slots, role=role, csrf_token=generate_csrf)
+    return render_template('booking.html', bookings=bookings_data, time_slots=time_slots, role=role, csrf_token=generate_csrf())
 
 
 @booking_bp.route('/slots/create', methods=['POST'])
 @login_required
 def create_slot():
-    role = session['role']
-    if role != 'escort':
-        flash("Only escorts can create availability slots.", "danger")
-        return redirect(url_for('booking.booking'))
+    SecurityController.enforce_rbac('escort')
+    SecurityController.check_csrf_token(request.form.get('csrf_token'))
 
-    start_time_str = request.form.get('start_time')
-    end_time_str = request.form.get('end_time')
+    start_time_str = SecurityController.sanitize_input(request.form.get('start_time'))
+    end_time_str = SecurityController.sanitize_input(request.form.get('end_time'))
 
     if not is_valid_datetime(start_time_str) or not is_valid_datetime(end_time_str):
         flash("Invalid datetime format.", "danger")
@@ -88,8 +87,8 @@ def create_slot():
 @login_required
 def book(escort_id):
     seeker_id = session['user_id']
-    start_time_str = request.form.get('start_time')
-    duration_minutes = int(request.form.get('duration'))
+    start_time_str = SecurityController.sanitize_input(request.form.get('start_time'))
+    duration_minutes = int(SecurityController.sanitize_input(request.form.get('duration')))
 
     if not is_valid_datetime(start_time_str):
         flash("Invalid start time format.", "danger")
@@ -110,15 +109,6 @@ def book(escort_id):
     if not available_slot:
         flash("Requested time is not within escort's available slots.", "danger")
         return redirect(url_for('browse.view_profile', user_id=escort_id))
-
-    recent_booking = Booking.query.filter_by(seeker_id=seeker_id).filter(
-        Booking.start_time >= datetime.utcnow() - timedelta(minutes=1)
-    ).first()
-    '''
-    if recent_booking:
-        flash("You're booking too frequently. Please wait a bit.", "danger")
-        return redirect(url_for('browse.view_profile', user_id=escort_id))
-        '''
 
     escort_overlap = Booking.query.filter(
         Booking.escort_id == escort_id,
@@ -163,14 +153,11 @@ def book(escort_id):
 @booking_bp.route('/handle', methods=['POST'])
 @login_required
 def handle_booking_action():
-    role = session.get('role')
-    if role != 'escort':
-        flash("Unauthorized action.", "danger")
-        return redirect(url_for('booking.booking'))
+    SecurityController.enforce_rbac('escort')
+    SecurityController.check_csrf_token(request.form.get('csrf_token'))
 
-    booking_id = request.form.get('booking_id')
-    action = request.form.get('action')
-    csrf_token = request.form.get('csrf_token')
+    booking_id = SecurityController.sanitize_input(request.form.get('booking_id'))
+    action = SecurityController.sanitize_input(request.form.get('action'))
 
     booking = Booking.query.get(booking_id)
     if not booking or booking.escort_id != session['user_id']:
