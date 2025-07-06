@@ -55,7 +55,7 @@ class User(db.Model):
 
     def set_password(self, password, password_expiry_days=90):
         self.password_hash = generate_password_hash(password)
-        self.password_created_at = datetime.datetime()
+        self.password_created_at = datetime.datetime().utcnow()
         
         # Set expiration date
         if password_expiry_days > 0:
@@ -275,7 +275,7 @@ class Favourite(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     favourite_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    created_at = db.Column(db.DateTime, default=datetime.datetime)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow())
 
     # Optional relationships
     user = db.relationship('User', foreign_keys=[user_id], backref='favourites_given')
