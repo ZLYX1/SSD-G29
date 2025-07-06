@@ -26,6 +26,7 @@ if nc -z db 5432; then
   
   # Initialize database with sample data if needed
   echo "🔄 Initializing database..."
+fi
 
 # Launch based on environment.
 if [ "$FLASK_ENV" = "production" ]; then
