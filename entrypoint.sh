@@ -19,6 +19,10 @@ done
 if nc -z db 5432; then
   echo "✅ PostgreSQL is up and running!"
   
+  # Run Alembic migrations
+  echo "🔄 Running database migrations..."
+  flask db upgrade || echo "⚠️ Database migrations failed or no migrations found"
+
   
   # Initialize database with sample data if needed
   echo "🔄 Initializing database..."
