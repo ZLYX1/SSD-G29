@@ -42,7 +42,15 @@
 		<hr>
 		<h4>Account Actions</h4>
 		<button class="btn btn-warning">Change Password</button>
-		<button class="btn btn-danger">Deactivate Profile</button>
+		<form method="POST" action="{{ url_for('profile.request_role_change') }}" style="display:inline;">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+			<button type="submit" class="btn btn-warning">Request Role Change</button>
+		</form>
+
+		<form method="POST" action="{{ url_for('profile.deactivate_profile') }}" style="display:inline;">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+			<button type="submit" class="btn btn-danger">Deactivate Profile</button>
+		</form>
 	</div>
 </div>
 {% endblock %}

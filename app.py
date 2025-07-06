@@ -14,6 +14,8 @@ import uuid
 from datetime import datetime
 from controllers.auth_controller import AuthController
 from flask_migrate import Migrate
+from sqlalchemy import or_
+
 from flask.cli import with_appcontext
 
 from extensions import csrf
@@ -26,6 +28,7 @@ from blueprint.messaging import messaging_bp
 from blueprint.payment import payment_bp
 from blueprint.rating import rating_bp
 from blueprint.report import report_bp
+from blueprint.audit_log import audit_bp, log_event
 
 from dotenv import load_dotenv
 
@@ -56,6 +59,8 @@ app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secr
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable HTTPS requirement
 app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP cookies
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # More lenient than 'Strict'
+app.config['SESSION_COOKIE_HTTPONLY'] = False # Prevent JavaScript access to session cookies (set True for production)
+
 
 # Configure CSRF Protection
 # csrf = CSRFProtect(app)  # This initializes CSRF protection
@@ -180,12 +185,6 @@ def role_required(role):
 
 
 # --- ROUTES ---
-@app.before_request
-def make_session_permanent():
-    session.permanent = True
-    app.permanent_session_lifetime = timedelta(minutes=30)
-
-
 @app.route("/test-session")
 def test_session():
     return render_template("index.html")
@@ -195,21 +194,19 @@ def test_session():
 def logout():
     session.clear()
     flash("You have been logged out.", "success")
-    return redirect(url_for('auth.auth', mode='timeout'))
+    return redirect(url_for('auth.auth', mode='login'))
 
 
 app.register_blueprint(
     auth_bp)  # registers at /auth because of prefix in auth.py
 app.register_blueprint(profile_bp)
-
+app.register_blueprint(audit_bp)
 app.register_blueprint(browse_bp)
 app.register_blueprint(booking_bp)
+app.register_blueprint(messaging_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(rating_bp)
 app.register_blueprint(report_bp)
-
-app.register_blueprint(messaging_bp)
-
 
 
 # 3. BROWSE & SEARCH
@@ -308,15 +305,38 @@ def dashboard():
     data = {}
 
     if role == 'seeker':
-        data['upcoming_bookings_count'] = Booking.query.filter_by(
-            seeker_id=user_id, status='Confirmed').count()
+        data['upcoming_bookings_count'] = db.session.query(Booking).join(
+            User, Booking.escort_id == User.id
+        ).filter(
+            Booking.seeker_id == user_id,
+            Booking.status == 'Confirmed',
+            User.deleted == False,
+            User.active == True,
+            User.activate == True
+        ).count()
     elif role == 'escort':
-        data['booking_requests_count'] = Booking.query.filter_by(
-            escort_id=user_id, status='Pending').count()
+        data['booking_requests_count'] = db.session.query(Booking).join(
+            User, Booking.seeker_id == User.id
+        ).filter(
+            Booking.escort_id == user_id,
+            Booking.status == 'Pending',
+            User.deleted == False,
+            User.active == True,
+            User.activate == True
+        ).count()
     elif role == 'admin':
         data['total_users'] = User.query.count()
         data['total_reports'] = Report.query.filter_by(
             status='Pending Review').count()
+        data['seeker_to_escort_requests'] = User.query.filter(
+            User.role == 'seeker',
+            User.pending_role == 'escort'
+        ).count()
+
+        data['escort_to_seeker_requests'] = User.query.filter(
+            User.role == 'escort',
+            User.pending_role == 'seeker'
+        ).count()
 
     return render_template('dashboard.html', role=role, data=data)
 
@@ -348,22 +368,48 @@ def admin():
         user_to_modify = User.query.get(user_id_to_modify)
         if user_to_modify:
             if action == 'delete_user':
-                db.session.delete(user_to_modify)
+                user_to_modify.deleted = True  # Soft delete
                 db.session.commit()
-                flash(f"User {user_to_modify.email} has been deleted.",
-                      "success")
+                flash(f"User {user_to_modify.email} has been deleted.", "success")
+                log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin delete user',
+                        f"Deleted user {user_to_modify.email} (id={user_to_modify.id})")
             elif action == 'toggle_ban':
                 user_to_modify.active = not user_to_modify.active
                 db.session.commit()
-                status = "unbanned" if user_to_modify.active else "banned"
-                flash(f"User {user_to_modify.email} has been {status}.",
-                      "success")
+                if user_to_modify.active:
+                    flash(f"User {user_to_modify.email} has been unbanned.", "success")
+                    log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin unban user',
+                        f"Unbanned user {user_to_modify.email} (id={user_to_modify.id})")
+                else:
+                    flash(f"User {user_to_modify.email} has been banned.", "warning")
+                    log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin ban user',
+                        f"Banned user {user_to_modify.email} (id={user_to_modify.id})")
+            elif action == 'approve_role_change':
+                user_to_modify.role = user_to_modify.pending_role
+                user_to_modify.pending_role = None
+                db.session.commit()
+                flash(f"Role change approved for {user_to_modify.email}.", "success")
+                log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin approved role change',
+                        f"Deleted user {user_to_modify.email} (id={user_to_modify.id})")
+            elif action == 'reject_role_change':
+                user_to_modify.pending_role = None
+                db.session.commit()
+                flash(f"Role change rejected for {user_to_modify.email}.", "warning")
+                log_event(session.get('user_id'),  # the admin who performed the action
+                        'admin rejected role change',
+                        f"Rejected user {user_to_modify.email} (id={user_to_modify.id}) request.")
+
         return redirect(url_for('admin'))
 
     users = User.query.all()
     reports = Report.query.all()
-    return render_template('admin.html', users=users, reports=reports)
+    role_requests = User.query.filter(User.pending_role.isnot(None)).all()
 
+    return render_template('admin.html', users=users, reports=reports, role_requests=role_requests)
 
 # --- Add a command to seed the database ---
 @app.cli.command("seed")
@@ -406,20 +452,19 @@ def seed_database():
                           name=faker.name(),
                           bio=faker.paragraph(nb_sentences=5),
                           rating=round(random.uniform(3.5, 5.0), 1),
-                          age=random.randint(19, 35),
-                          )
+                          age=random.randint(19, 35))
         db.session.add(user)
         escorts.append(user)
 
-    admin_user = User(email='admin@example.com', role='admin', active=True, gender="male")
+    admin_user = User(email='admin@example.com', role='admin', active=True, gender="male", phone_verified=True, email_verified=True)
     admin_user.set_password('password123')
     admin_profile = Profile(user=admin_user, name='Admin User')
 
-    seeker_user = User(email='seeker@example.com', role='seeker', active=True, gender="male")
+    seeker_user = User(email='seeker@example.com', role='seeker', active=True, gender="male", phone_verified=True, email_verified=True)
     seeker_user.set_password('password123')
     seeker_profile = Profile(user=seeker_user, name='Alex the Seeker')
 
-    escort_user = User(email='escort@example.com', role='escort', active=True, gender="male")
+    escort_user = User(email='escort@example.com', role='escort', active=True, gender="male", phone_verified=True, email_verified=True)
     escort_user.set_password('password123')
     escort_profile = Profile(user=escort_user,
                              name='Bella the Escort',
@@ -614,6 +659,9 @@ def login():
         password = request.form.get("password")
 
         if auth_controller.authenticate(email, password):
+            regenerate_session()
+            session['bound_ua'] = request.headers.get('User-Agent')
+            session['bound_ip'] = request.remote_addr
             # Successful login
             return redirect(url_for("index"))
         else:
@@ -636,6 +684,7 @@ def make_session_permanent():
         if session.get('bound_ua') != current_ua or session.get('bound_ip') != current_ip:
             session.clear()
             flash("Session ended for security reasons.", "danger")
+            log_event(session.get('user_id'), 'security', f"Session ended due to User-Agent or IP mismatch. UA: {current_ua}, IP: {current_ip}")
             return redirect(url_for('auth.auth'))
     else:
         session['bound_ua'] = current_ua

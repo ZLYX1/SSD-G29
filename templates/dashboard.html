@@ -28,6 +28,15 @@
 	<li class="list-group-item">Total Users: {{ data.total_users }}</li>
 	<li class="list-group-item">Pending Reports: {{ data.total_reports }}</li>
 </ul>
+<h3>User Request</h3>
+<ul class="list-group">
+	<li class="list-group-item">
+		{{ data.seeker_to_escort_requests }} seeker(s) requested to become escort
+	</li>
+	<li class="list-group-item">
+		{{ data.escort_to_seeker_requests }} escort(s) requested to become seeker
+	</li>
+</ul>
 {% endif %}
 
 {% endblock %}

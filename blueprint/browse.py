@@ -1,13 +1,20 @@
-
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from blueprint.models import Profile, User, TimeSlot
 from extensions import db
 from blueprint.decorators import login_required
 from datetime import datetime
+from flask_wtf.csrf import generate_csrf
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
-
+@browse_bp.route('/browse', methods=['GET', 'POST'])
+@login_required
+def browseEscort():
+    escort_profiles = (Profile.query.join(User)
+    # .filter(User.role == 'escort')
+    .filter(User.role == 'escort', User.activate == True)
+    .all())
+    return render_template('browse.html', profiles=escort_profiles)
 
 # Should have 1 for escorts to see
 @browse_bp.route('/browseSeeker', methods=['GET', 'POST'])
@@ -19,21 +26,32 @@ def browseSeeker():
     .all())
     return render_template('browse.html', profiles=escort_profiles)
 
+
 @browse_bp.route('/profile/<int:user_id>')
 @login_required
 def view_profile(user_id):
-    profile = Profile.query.filter_by(user_id=user_id).first()
+    profile = Profile.query.join(User).filter(
+        Profile.user_id == user_id,
+        User.deleted == False,  # Exclude deleted users
+        User.active == True     # Only show active users
+    ).first()
     if not profile:
         flash("Escort not found.", "danger")
         return redirect(url_for('home'))
 
-    # Only show upcoming time slots
     available_slots = TimeSlot.query.filter(
         TimeSlot.user_id == user_id,
         TimeSlot.start_time >= datetime.utcnow()
     ).order_by(TimeSlot.start_time.asc()).all()
 
-    return render_template('view_profile.html', profile=profile, time_slots=available_slots)
+    # ✅ ADD csrf_token TO TEMPLATE CONTEXT
+    return render_template(
+        'view_profile.html',
+        profile=profile,
+        time_slots=available_slots,
+        csrf_token=generate_csrf()
+    )
+
 
 # 2. PROFILE MANAGEMENT
 # @app.route('/profile', methods=['GET', 'POST'])
@@ -75,7 +93,7 @@ def view_profile(user_id):
 #     file_name = request.json.get('file_name')
 #     file_type = request.json.get('file_type')
 #     S3_BUCKET = os.environ['S3_BUCKET_NAME']
-    
+
 #     if not file_name or not file_type:
 #         return {'error': 'Missing file name or type'}, 400
 
@@ -97,7 +115,7 @@ def view_profile(user_id):
 #         return presigned_post
 #     except Exception as e:
 #         return {'error': str(e)}, 500
-    
+
 # @profile_bp.route('/save-photo', methods=['POST'])
 # @login_required
 # def save_photo():

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Security Audit Log{% endblock %}
+
+{% block content %}
+<h2>Security Audit Log</h2>
+
+<div class="mb-3">
+    <a href="{{ url_for('audit.view_logs') }}" class="btn btn-outline-primary btn-sm">All</a>
+    <a href="{{ url_for('audit.view_logs', filter='fail') }}" class="btn btn-outline-warning btn-sm">Failures / Bans</a>
+    <a href="{{ url_for('audit.view_logs', filter='suspicious') }}" class="btn btn-outline-danger btn-sm">Lockout / Deletes</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Time</th>
+            <th>Role</th>
+            <th>Email</th>
+            <th>User ID</th>
+            <th>Action</th>
+            <th>Details</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for log in logs %}
+        {% set row_class = "" %}
+        {% if 'fail' in log.action or 'ban' in log.action %}
+            {% set row_class = "table-warning" %}
+        {% elif 'lockout' in log.action or 'deleted' in log.action or 'deactivated' in log.action %}
+            {% set row_class = "table-danger" %}
+        {% endif %}
+        <tr class="{{ row_class }}">
+            <td>{{ loop.index }}</td>
+            <td>{{ log.created_at }}</td>
+            <td>{{ log.user.role if log.user else '-' }}</td>
+            <td>{{ log.user.email if log.user else 'System' }}</td>
+            <td>{{ log.user_id or 'System' }}</td>
+            <td>{{ log.action }}</td>
+            <td>{{ log.details or '' }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
