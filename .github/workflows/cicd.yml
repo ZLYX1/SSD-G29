@@ -79,21 +79,17 @@ jobs:
             exit 1
           fi
 
-      - name: Initialize test database schema
-        env:
-          PGPASSWORD: testpassword
-          DATABASE_USERNAME: testuser
-          DATABASE_NAME: testdb
-          DATABASE_HOST: localhost
-        run: |
-          psql -h "$DATABASE_HOST" -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" <<-EOF
-            CREATE TABLE IF NOT EXISTS users (
-              id SERIAL PRIMARY KEY,
-              email VARCHAR(255) UNIQUE NOT NULL,
-              password_hash VARCHAR(255) NOT NULL
-            );
-          EOF
+      - name: Initialise full test database schema via SQLAlchemy
         shell: bash
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_NAME: testdb
+          DATABASE_USERNAME: testuser
+          DATABASE_PASSWORD: testpassword
+        run: |
+          source .venv/bin/activate
+          python -c "from app import db; db.create_all()"
 
       - name: Run tests
         env:
