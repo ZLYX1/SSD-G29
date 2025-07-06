@@ -102,6 +102,12 @@ jobs:
           python -c "from app import app, db; exec('with app.app_context(): db.create_all()')"
 
       - name: Run tests
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_NAME: testdb
+          DATABASE_USERNAME: testuser
+          DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
         shell: bash
         run: |
           source .venv/bin/activate
