@@ -83,6 +83,10 @@ jobs:
         run: |
           echo "SQLALCHEMY_DATABASE_URI=postgresql://testuser:testpassword@localhost:5432/testdb" >> $GITHUB_ENV
 
+      - name: Debug SQLALCHEMY_DATABASE_URI value
+        run: |
+          echo "SQLALCHEMY_DATABASE_URI is: $SQLALCHEMY_DATABASE_URI"
+
       - name: Initialise full test database schema via SQLAlchemy
         shell: bash
         run: |
