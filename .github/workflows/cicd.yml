@@ -87,6 +87,7 @@ jobs:
           DATABASE_NAME: testdb
           DATABASE_USERNAME: testuser
           DATABASE_PASSWORD: testpassword
+          SQLALCHEMY_DATABASE_URI: postgresql://testuser:testpassword@localhost:5432/testdb
         run: |
           source .venv/bin/activate
           python -c "from app import db; db.create_all()"
