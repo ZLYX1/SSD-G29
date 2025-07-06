@@ -87,7 +87,7 @@ jobs:
           DATABASE_USERNAME: testuser
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          echo "DATABASE_URL=postgresql://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://${DATABASE_USERNAME}:${DB_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}" >> $GITHUB_ENV
 
       - name: Initialise full test database schema via SQLAlchemy
         env:
