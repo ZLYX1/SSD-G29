@@ -456,15 +456,15 @@ def seed_database():
         db.session.add(user)
         escorts.append(user)
 
-    admin_user = User(email='admin@example.com', role='admin', active=True, gender="male")
+    admin_user = User(email='admin@example.com', role='admin', active=True, gender="male", phone_verified=True, email_verified=True)
     admin_user.set_password('password123')
     admin_profile = Profile(user=admin_user, name='Admin User')
 
-    seeker_user = User(email='seeker@example.com', role='seeker', active=True, gender="male")
+    seeker_user = User(email='seeker@example.com', role='seeker', active=True, gender="male", phone_verified=True, email_verified=True)
     seeker_user.set_password('password123')
     seeker_profile = Profile(user=seeker_user, name='Alex the Seeker')
 
-    escort_user = User(email='escort@example.com', role='escort', active=True, gender="male")
+    escort_user = User(email='escort@example.com', role='escort', active=True, gender="male", phone_verified=True, email_verified=True)
     escort_user.set_password('password123')
     escort_profile = Profile(user=escort_user,
                              name='Bella the Escort',
