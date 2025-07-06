@@ -99,7 +99,8 @@ jobs:
         shell: bash
         run: |
           source .venv/bin/activate
-          python -c "from app import db; db.create_all()"
+          python -c "from app import db; \
+          with app.app_context(): db.create_all()"
 
       - name: Run tests
         shell: bash
