@@ -45,6 +45,7 @@ class User(db.Model):
     
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
+    password_history = db.relationship('PasswordHistory', backref='user', lazy='dynamic', cascade="all, delete-orphan")
     # bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', backref='seeker', lazy='dynamic')
 
     # bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', backref='escort', lazy='dynamic')
@@ -53,7 +54,16 @@ class User(db.Model):
     bookings_made = db.relationship('Booking', foreign_keys='Booking.seeker_id', back_populates='seeker', lazy='dynamic')
     bookings_received = db.relationship('Booking', foreign_keys='Booking.escort_id', back_populates='escort', lazy='dynamic')
 
-    def set_password(self, password, password_expiry_days=90):
+    def set_password(self, password, password_expiry_days=90, check_history=True):
+        # Check password history if requested (skip for new users)
+        if check_history and self.id:
+            if self.is_password_in_history(password):
+                return False, "Password has been used recently. Please choose a different password."
+        
+        # Store old password in history before updating (if user exists)
+        if self.id and self.password_hash:
+            self.add_password_to_history(self.password_hash)
+        
         self.password_hash = generate_password_hash(password)
         self.password_created_at = datetime.datetime.utcnow()
         
@@ -69,6 +79,23 @@ class User(db.Model):
         self.account_locked_until = None
         
         return True, "Password updated successfully."
+    
+    def add_password_to_history(self, password_hash):
+        """Add current password to password history"""
+        try:
+            history_entry = PasswordHistory(
+                user_id=self.id,
+                password_hash=password_hash,
+                created_at=datetime.datetime.utcnow()
+            )
+            db.session.add(history_entry)
+            # Keep only last 5 passwords in history
+            old_entries = self.password_history.order_by(PasswordHistory.created_at.desc()).offset(5).all()
+            for entry in old_entries:
+                db.session.delete(entry)
+        except Exception as e:
+            # If there's an error with password history, don't fail the password update
+            print(f"Warning: Could not add password to history: {e}")
     
     def is_password_in_history(self, password, limit=5):
         """Check if password exists in user's password history"""
