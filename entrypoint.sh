@@ -26,19 +26,6 @@ if nc -z db 5432; then
   
   # Initialize database with sample data if needed
   echo "🔄 Initializing database..."
-  python -c "
-from app import app
-from blueprint.models import db
-with app.app_context():
-    try:
-        db.create_all()
-        print('✅ Database tables created successfully')
-    except Exception as e:
-        print(f'⚠️  Database initialization: {e}')
-" || echo "⚠️  Database initialization completed with warnings"
-else
-  echo "⚠️  Starting without database connection"
-fi
 
 # Launch based on environment.
 if [ "$FLASK_ENV" = "production" ]; then
