@@ -6,11 +6,12 @@ import os
 import sys
 from werkzeug.security import generate_password_hash
 import psycopg2
+import datetime
 
 # Database connection
 try:
     conn = psycopg2.connect(
-        host='localhost',
+        host='db',
         port=5432,
         database='ssd_database',
         user='ssd_user',
@@ -25,13 +26,46 @@ try:
     
     # Insert test user
     cursor.execute("""
-        INSERT INTO "user" (email, password_hash, role, active, gender, email_verified)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO "user" (
+            email, 
+            password_hash, 
+            role, 
+            active,
+            activate,
+            deleted,
+            gender, 
+            email_verified, 
+            phone_verified,
+            otp_attempts,
+            password_created_at,
+            password_change_required,
+            failed_login_attempts
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (email) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
-        email_verified = EXCLUDED.email_verified
+            password_hash = EXCLUDED.password_hash,
+            email_verified = EXCLUDED.email_verified,
+            phone_verified = EXCLUDED.phone_verified,
+            otp_attempts = EXCLUDED.otp_attempts,
+            password_created_at = EXCLUDED.password_created_at,
+            password_change_required = EXCLUDED.password_change_required,
+            failed_login_attempts = EXCLUDED.failed_login_attempts
         RETURNING id, email
-    """, ('testuser@example.com', password_hash, 'seeker', True, 'Male', True))
+    """, (
+        'testuser2@example.com',
+        password_hash,
+        'escort',
+        True,
+        True,
+        False,
+        'Male',
+        True,          # email_verified
+        True,         # phone_verified
+        0,             # otp_attempts
+        datetime.datetime.now(), # password_created_at
+        False,         # password_change_required
+        0              # failed_login_attempts
+    ))
     
     user_id, email = cursor.fetchone()
     print(f"✅ Created/updated user: ID={user_id}, Email={email}")
