@@ -79,27 +79,17 @@ jobs:
             exit 1
           fi
 
+      - name: Set SQLALCHEMY_DATABASE_URI at runtime
+        run: |
+          echo "SQLALCHEMY_DATABASE_URI=postgresql://testuser:testpassword@localhost:5432/testdb" >> $GITHUB_ENV
+
       - name: Initialise full test database schema via SQLAlchemy
         shell: bash
-        env:
-          DATABASE_HOST: localhost
-          DATABASE_PORT: 5432
-          DATABASE_NAME: testdb
-          DATABASE_USERNAME: testuser
-          DATABASE_PASSWORD: testpassword
-          SQLALCHEMY_DATABASE_URI: postgresql://testuser:testpassword@localhost:5432/testdb
         run: |
           source .venv/bin/activate
           python -c "from app import db; db.create_all()"
 
       - name: Run tests
-        env:
-          DATABASE_HOST: localhost
-          DATABASE_PORT: 5432
-          DATABASE_NAME: testdb
-          DATABASE_USERNAME: testuser
-          DATABASE_PASSWORD: testpassword
-          DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
         shell: bash
         run: |
           source .venv/bin/activate
