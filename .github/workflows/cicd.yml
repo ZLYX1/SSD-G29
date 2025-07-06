@@ -101,6 +101,7 @@ jobs:
           DATABASE_PORT: 5432
           DATABASE_NAME: testdb
           DATABASE_USERNAME: testuser
+          DATABASE_PASSWORD: testpassword
           DATABASE_URL: postgresql://testuser:testpassword@postgres:5432/testdb
         shell: bash
         run: |
