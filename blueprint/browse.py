@@ -122,7 +122,7 @@ def view_profile(user_id):
 #     return {'message': 'Photo saved successfully'}, 200
 
 # to test
-@browse_bp.route('/browse', methods=['GET', 'POST'])
+@browse_bp.route('/browse', methods=['GET'])
 @login_required
 def browseEscort():
     query = Profile.query.join(User).filter(User.role == 'escort', User.activate == True)
