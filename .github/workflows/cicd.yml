@@ -24,7 +24,7 @@ jobs:
         image: postgres:bullseye
         env:
           POSTGRES_USER: testuser
-          POSTGRES_PASSWORD: testpassword
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
           POSTGRES_DB: testdb
         ports:
           - 5432:5432
@@ -80,12 +80,10 @@ jobs:
           fi
 
       - name: Set SQLALCHEMY_DATABASE_URI at runtime
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          echo "SQLALCHEMY_DATABASE_URI=postgresql://testuser:testpassword@localhost:5432/testdb" >> $GITHUB_ENV
-
-      - name: Debug SQLALCHEMY_DATABASE_URI value
-        run: |
-          echo "SQLALCHEMY_DATABASE_URI is: $SQLALCHEMY_DATABASE_URI"
+          echo "SQLALCHEMY_DATABASE_URI=postgresql://testuser:${DB_PASSWORD}@localhost:5432/testdb" >> $GITHUB_ENV  
 
       - name: Initialise full test database schema via SQLAlchemy
         shell: bash
