@@ -281,7 +281,7 @@ class Message(db.Model):
 
 class Rating(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False, unique=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False)
     reviewer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     reviewed_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     rating = db.Column(db.Integer, nullable=False)  # 1-5 stars
@@ -292,6 +292,10 @@ class Rating(db.Model):
     booking = db.relationship('Booking', backref=db.backref('rating', uselist=False))
     reviewer = db.relationship('User', foreign_keys=[reviewer_id], backref='ratings_given')
     reviewed = db.relationship('User', foreign_keys=[reviewed_id], backref='ratings_received')
+
+    __table_args__ = (
+        db.UniqueConstraint('booking_id', 'reviewer_id', name='unique_booking_reviewer'),
+    )
     
     def __repr__(self):
         return f'<Rating {self.rating}/5 for booking {self.booking_id}>'
