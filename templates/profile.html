@@ -42,7 +42,7 @@
 		<hr>
 		<h4>Account Actions</h4>
 		<form method="POST" action="{{ url_for('profile.view_rating') }}" style="display:inline;">
-			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 			<button type="submit" class="btn btn-warning">View Rating</button>
 		</form>
 
