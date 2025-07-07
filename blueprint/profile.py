@@ -211,6 +211,12 @@ def deactivate_profile():
     log_event(user_id, 'deactivate', f"User {user.email} deactivated their account.")
     return redirect(url_for('auth.auth', mode='login'))
 
+@profile_bp.route('/my-ratings', methods=['POST'])
+@login_required
+def view_rating():
+    return redirect(url_for('rating.my_ratings'))
+
+
 # @profile_bp.route('/photo', methods=['GET'])
 # @login_required
 # def get_profile_photo():

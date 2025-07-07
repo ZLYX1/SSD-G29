@@ -7,12 +7,15 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <h2 class="card-title">{{ profile.name }}'s Profile</h2>
-                    <p><strong>Bio:</strong> {{ profile.bio }}</p>
-                    <p><strong>Availability:</strong> {{ profile.availability }}</p>
                     {% if profile.photo %}
                     <img src="{{ profile.photo }}" alt="Profile Photo" width="200" class="rounded">
                     {% endif %}
+                    <h2 class="card-title">{{ profile.name }}'s Profile</h2>
+                    <p><strong>Bio:</strong> {{ profile.bio }}</p>
+                    <p><strong>Availability:</strong> {{ profile.availability }}</p>
+                    <div>
+                        <a href="{{ url_for('rating.user_ratings', user_id=profile.user_id) }}" class="btn btn-sm btn-warning">View Rating</a>
+                    </div>
                 </div>
             </div>
 

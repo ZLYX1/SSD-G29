@@ -83,8 +83,13 @@
                 Status: <span class="badge bg-secondary">{{ booking.status }}</span>
             </div>
             <div>
-                {% if role == 'seeker' and booking.status == 'Confirmed' %}
-                <a href="{{ url_for('payment.initiate_payment', booking_id=booking.id) }}" class="btn btn-sm btn-primary">Pay Now</a>
+                {% if booking.status == 'Confirmed' %}
+                    {% if role == 'seeker' %}
+                    <a href="{{ url_for('payment.initiate_payment', booking_id=booking.id) }}" class="btn btn-sm btn-primary me-2">Pay Now</a>
+                    {% endif %}
+                    <a href="{{ url_for('rating.rateable_bookings') }}#booking-{{ booking.id }}" class="btn btn-sm btn-warning">
+                        Rate User
+                    </a>
                 {% endif %}
             </div>
         </li>
