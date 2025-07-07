@@ -7,14 +7,14 @@ from flask_wtf.csrf import generate_csrf
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
-@browse_bp.route('/browse', methods=['GET', 'POST'])
-@login_required
-def browseEscort():
-    escort_profiles = (Profile.query.join(User)
-    # .filter(User.role == 'escort')
-    .filter(User.role == 'escort', User.activate == True)
-    .all())
-    return render_template('browse.html', profiles=escort_profiles)
+# @browse_bp.route('/browse', methods=['GET', 'POST'])
+# @login_required
+# def browseEscort():
+#     escort_profiles = (Profile.query.join(User)
+#     # .filter(User.role == 'escort')
+#     .filter(User.role == 'escort', User.activate == True)
+#     .all())
+#     return render_template('browse.html', profiles=escort_profiles)
 
 # Should have 1 for escorts to see
 @browse_bp.route('/browseSeeker', methods=['GET', 'POST'])

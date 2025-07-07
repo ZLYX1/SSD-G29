@@ -66,7 +66,11 @@ class User(db.Model):
     gender = db.Column(db.String(20), nullable=False)  # e.g. Male, Female, Non-binary
     # For role change requests
     pending_role = db.Column(db.String(10), nullable=True)  # e.g. 'seeker' or 'escort'
-    
+    # for user to deactivate acc
+    activate = db.Column(db.Boolean, default=True, nullable=False)
+    # admin soft delete
+    deleted = db.Column(db.Boolean, default=False, nullable=False)
+
     # Email verification fields
     email_verified = db.Column(db.Boolean, default=False, nullable=False)
     email_verification_token = db.Column(db.String(100), unique=True, nullable=True)

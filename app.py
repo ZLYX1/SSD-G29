@@ -35,6 +35,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from blueprint.models import db, User, Profile, Booking, Payment, Report, Rating, TimeSlot, Message
+from blueprint.models import Favourite, AuditLog, PasswordHistory
+
 
 
 app = Flask(__name__)
@@ -433,6 +435,12 @@ def seed_database():
     db.session.query(Payment).delete()
     db.session.query(Booking).delete()
     db.session.query(TimeSlot).delete()
+    
+    # Added these model as new models have been added
+    db.session.query(Favourite).delete()
+    db.session.query(AuditLog).delete()
+    db.session.query(PasswordHistory).delete()
+
     db.session.query(Profile).delete()
     db.session.query(User).delete()
     db.session.commit()
