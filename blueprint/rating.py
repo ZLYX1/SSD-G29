@@ -46,22 +46,14 @@ def submit_rating():
 @rating_bp.route('/my-ratings')
 @login_required
 def my_ratings():
-    """View user's received and given ratings"""
+    """View user's received ratings"""
     user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    # Get ratings received (for all users)
-    ratings_received = RatingController.get_user_ratings(user_id)
+    ratings = RatingController.get_user_ratings(user_id)
     statistics = RatingController.get_rating_statistics(user_id)
     
-    # Get ratings given (especially useful for seekers)
-    ratings_given = RatingController.get_user_given_ratings(user_id)
-    
     return render_template('ratings/my_ratings.html', 
-                         ratings_received=ratings_received,
-                         ratings_given=ratings_given,
-                         statistics=statistics,
-                         user=user)
+                         ratings=ratings, 
+                         statistics=statistics)
 
 @rating_bp.route('/rateable-bookings')
 @login_required

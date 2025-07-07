@@ -6,7 +6,7 @@
 <div class="card">
 	<div class="card-body">
 		<form method="post" enctype="multipart/form-data" onsubmit="return beforeSubmit()">
-			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 			<input type="hidden" name="photo_url" id="photo_url" value="{{ profile.photo or '' }}">
 
 			<div class="mb-3">
@@ -43,12 +43,12 @@
 		<h4>Account Actions</h4>
 		<button class="btn btn-warning">Change Password</button>
 		<form method="POST" action="{{ url_for('profile.request_role_change') }}" style="display:inline;">
-			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 			<button type="submit" class="btn btn-warning">Request Role Change</button>
 		</form>
 
 		<form method="POST" action="{{ url_for('profile.deactivate_profile') }}" style="display:inline;">
-			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 			<button type="submit" class="btn btn-danger">Deactivate Profile</button>
 		</form>
 	</div>

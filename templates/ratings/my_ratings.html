@@ -8,14 +8,14 @@
         My Ratings & Reviews
     </h2>
     
-    <!-- Rating Statistics (for received ratings) -->
+    <!-- Rating Statistics -->
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="fas fa-chart-bar"></i>
-                        Rating Overview (Received)
+                        Rating Overview
                     </h5>
                 </div>
                 <div class="card-body">
@@ -53,140 +53,63 @@
             </div>
         </div>
     </div>
-
-    <!-- Navigation Tabs -->
-    <ul class="nav nav-tabs" id="ratingTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="received-tab" data-bs-toggle="tab" data-bs-target="#received" type="button" role="tab" aria-controls="received" aria-selected="true">
-                <i class="fas fa-inbox"></i>
-                Ratings Received ({{ ratings_received|length }})
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="given-tab" data-bs-toggle="tab" data-bs-target="#given" type="button" role="tab" aria-controls="given" aria-selected="false">
-                <i class="fas fa-paper-plane"></i>
-                Ratings Given ({{ ratings_given|length }})
-            </button>
-        </li>
-    </ul>
-
-    <!-- Tab Content -->
-    <div class="tab-content mt-3" id="ratingTabsContent">
-        <!-- Ratings Received Tab -->
-        <div class="tab-pane fade show active" id="received" role="tabpanel" aria-labelledby="received-tab">
-            {% if ratings_received %}
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-comments"></i>
-                        Reviews I've Received
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% for rating in ratings_received %}
-                    <div class="rating-item {% if not loop.last %}border-bottom{% endif %} pb-3 {% if not loop.last %}mb-3{% endif %}">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="me-3">
-                                        {% for i in range(1, 6) %}
-                                        <i class="fas fa-star {% if i <= rating.rating %}text-warning{% else %}text-muted{% endif %}"></i>
-                                        {% endfor %}
-                                    </div>
-                                    <h6 class="mb-0">{{ rating.rating }}/5 Stars</h6>
-                                </div>
-                                
-                                {% if rating.feedback %}
-                                <blockquote class="blockquote">
-                                    <p class="mb-2">"{{ rating.feedback }}"</p>
-                                </blockquote>
-                                {% else %}
-                                <p class="text-muted fst-italic">No written feedback provided.</p>
-                                {% endif %}
-                                
-                                <small class="text-muted">
-                                    From: {{ rating.reviewer.email }} |
-                                    Booking #{{ rating.booking_id }} |
-                                    {{ rating.created_at.strftime('%B %d, %Y') }}
-                                </small>
-                            </div>
-                            <div class="col-md-4 text-end">
-                                <small class="text-muted">
-                                    Service Date: {{ rating.booking.start_time.strftime('%Y-%m-%d') }}
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% else %}
-            <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle"></i>
-                <h5>No Ratings Received Yet</h5>
-                <p>You haven't received any ratings yet. {% if user.role == 'escort' %}Complete some bookings to start receiving feedback!{% else %}As a seeker, you typically give ratings rather than receive them.{% endif %}</p>
-            </div>
-            {% endif %}
+    
+    <!-- Individual Ratings -->
+    {% if ratings %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-comments"></i>
+                Recent Reviews
+            </h5>
         </div>
-
-        <!-- Ratings Given Tab -->
-        <div class="tab-pane fade" id="given" role="tabpanel" aria-labelledby="given-tab">
-            {% if ratings_given %}
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-star"></i>
-                        Reviews I've Given
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% for rating in ratings_given %}
-                    <div class="rating-item {% if not loop.last %}border-bottom{% endif %} pb-3 {% if not loop.last %}mb-3{% endif %}">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="me-3">
-                                        {% for i in range(1, 6) %}
-                                        <i class="fas fa-star {% if i <= rating.rating %}text-warning{% else %}text-muted{% endif %}"></i>
-                                        {% endfor %}
-                                    </div>
-                                    <h6 class="mb-0">{{ rating.rating }}/5 Stars</h6>
-                                </div>
-                                
-                                {% if rating.feedback %}
-                                <blockquote class="blockquote">
-                                    <p class="mb-2">"{{ rating.feedback }}"</p>
-                                </blockquote>
-                                {% else %}
-                                <p class="text-muted fst-italic">No written feedback provided.</p>
-                                {% endif %}
-                                
-                                <small class="text-muted">
-                                    To: {{ rating.reviewed.email }} |
-                                    Booking #{{ rating.booking_id }} |
-                                    {{ rating.created_at.strftime('%B %d, %Y') }}
-                                </small>
+        <div class="card-body">
+            {% for rating in ratings %}
+            <div class="rating-item {% if not loop.last %}border-bottom{% endif %} pb-3 {% if not loop.last %}mb-3{% endif %}">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-3">
+                                {% for i in range(1, 6) %}
+                                <i class="fas fa-star {% if i <= rating.rating %}text-warning{% else %}text-muted{% endif %}"></i>
+                                {% endfor %}
                             </div>
-                            <div class="col-md-4 text-end">
-                                <small class="text-muted">
-                                    Service Date: {{ rating.booking.start_time.strftime('%Y-%m-%d') }}
-                                </small>
-                            </div>
+                            <h6 class="mb-0">{{ rating.rating }}/5 Stars</h6>
                         </div>
+                        
+                        {% if rating.feedback %}
+                        <blockquote class="blockquote">
+                            <p class="mb-2">"{{ rating.feedback }}"</p>
+                        </blockquote>
+                        {% else %}
+                        <p class="text-muted fst-italic">No written feedback provided.</p>
+                        {% endif %}
+                        
+                        <small class="text-muted">
+                            From: {{ rating.reviewer.email }} |
+                            Booking #{{ rating.booking_id }} |
+                            {{ rating.created_at.strftime('%B %d, %Y') }}
+                        </small>
                     </div>
-                    {% endfor %}
+                    <div class="col-md-4 text-end">
+                        <small class="text-muted">
+                            Service Date: {{ rating.booking.start_time.strftime('%Y-%m-%d') }}
+                        </small>
+                    </div>
                 </div>
             </div>
-            {% else %}
-            <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle"></i>
-                <h5>No Ratings Given Yet</h5>
-                <p>You haven't given any ratings yet. Check if you have any bookings you can rate!</p>
-            </div>
-            {% endif %}
+            {% endfor %}
         </div>
     </div>
-
+    
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle"></i>
+        <h5>No Ratings Yet</h5>
+        <p>You haven't received any ratings yet. Complete some bookings to start receiving feedback!</p>
+    </div>
+    {% endif %}
+    
     <!-- Action Buttons -->
     <div class="text-center mt-4">
         <a href="{{ url_for('rating.rateable_bookings') }}" class="btn btn-primary me-2">
