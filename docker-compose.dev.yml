@@ -7,15 +7,26 @@ services:
       args:
         REQ_FILE: requirements.txt  # Use development requirements
     environment:
-      - DATABASE_URL=postgresql://ssd_user:ssd_password@db:5432/ssd_database
-      - DATABASE_USERNAME=ssd_user
-      - DATABASE_PASSWORD=ssd_password
-      - DATABASE_NAME=ssd_database
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=${DATABASE_NAME}
       - DATABASE_HOST=db
       - DATABASE_PORT=5432
       - FLASK_APP=app.py
       - FLASK_ENV=development
       - FLASK_DEBUG=1
+      # Google reCAPTCHA - loaded from .env file
+      - SITEKEY=${SITEKEY}
+      - RECAPTCHA_SECRET_KEY=${RECAPTCHA_SECRET_KEY}
+      # AWS - loaded from .env file
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      # Secret keys - loaded from .env file
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
+      - CSRF_SECRET_KEY=${CSRF_SECRET_KEY}
     ports:
       - "5000:5000"  # Expose Flask directly for development
     depends_on:
@@ -32,9 +43,9 @@ services:
     image: postgres:15-alpine  # Lighter image for development
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ssd_user
-      POSTGRES_PASSWORD: ssd_password
-      POSTGRES_DB: ssd_database
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
     ports:
       - "5432:5432"  # Direct access for development tools
     volumes:
@@ -53,8 +64,8 @@ services:
     container_name: safe-companions-pgadmin-dev
     image: dpage/pgadmin4:latest
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@ssd.local
-      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@ssd.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "8080:80"

@@ -18,14 +18,36 @@ from flask import current_app
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 def verify_recaptcha(token):
-    url = "https://www.google.com/recaptcha/api/siteverify"
-    payload = {
-        'secret': os.environ['RECAPTCHA_SECRET_KEY'],
-        'response': token
-    }
-    response = requests.post(url, data=payload)
-    result = response.json()
-    return result.get('success') and result.get('score', 0) >= 0.5  # threshold adjustable
+    """Verify reCAPTCHA token with Google's servers"""
+    try:
+        url = "https://www.google.com/recaptcha/api/siteverify"
+        payload = {
+            'secret': os.environ.get('RECAPTCHA_SECRET_KEY'),
+            'response': token
+        }
+        
+        print(f"🔧 DEBUG: Verifying CAPTCHA token: {token[:20]}...")
+        
+        response = requests.post(url, data=payload, timeout=10)
+        result = response.json()
+        
+        print(f"🔧 DEBUG: CAPTCHA response: {result}")
+        
+        success = result.get('success', False)
+        score = result.get('score', 0)
+        
+        if success and score >= 0.5:
+            print(f"✅ CAPTCHA verified successfully (score: {score})")
+            return True
+        else:
+            print(f"❌ CAPTCHA verification failed (success: {success}, score: {score})")
+            if 'error-codes' in result:
+                print(f"🚨 CAPTCHA errors: {result['error-codes']}")
+            return False
+            
+    except Exception as e:
+        print(f"🚨 CAPTCHA verification error: {e}")
+        return False
 
 # @auth_bp.route('/', methods=['GET', 'POST'])
 @auth_bp.route('/', methods=['GET', 'POST']) 
@@ -84,11 +106,13 @@ def auth():
                     if days_left is not None and days_left <= 7:
                         flash(f"Your password will expire in {days_left} days. Consider changing it soon.", "info")
                     
-                    # Check if phone is verified (OTP System)
+                    # Check if phone is verified (OTP System) - COMMENTED OUT FOR EMAIL-ONLY
+                    '''
                     if not user.phone_verified:
                         db.session.commit()  # Save reset of failed logins
                         flash("Please verify your phone number first. Complete the phone verification process.", "warning")
                         return redirect(url_for('auth.verify_phone', user_id=user.id))
+                    '''
                     
                     # Check if email is verified
                     if not user.email_verified:
@@ -119,7 +143,12 @@ def auth():
             recaptcha_token = request.form.get('g-recaptcha-response')
             if not recaptcha_token:
                 flash("CAPTCHA verification failed.", "danger")
-                # return redirect(url_for('auth.auth', mode='register'))
+                return redirect(url_for('auth.auth', mode='register'))
+            
+            # Verify the CAPTCHA token with Google
+            if not verify_recaptcha(recaptcha_token):
+                flash("CAPTCHA verification failed. Please try again.", "danger")
+                return redirect(url_for('auth.auth', mode='register'))
 
             if User.query.filter_by(email=email).first():
                 flash("Email already registered.", "danger")
@@ -130,27 +159,12 @@ def auth():
                 flash("You must be at least 18 years old.", "danger")
                 return redirect(url_for('auth.auth', mode='register'))
 
-            # Get phone number and validate
-            phone_number = request.form.get('phone_number', '').strip()
-            if not phone_number:
-                flash("Phone number is required for verification.", "danger")
-                return redirect(url_for('auth.auth', mode='register'))
-            
-            is_valid_phone, formatted_phone_or_error = validate_phone_number(phone_number)
-            if not is_valid_phone:
-                flash(formatted_phone_or_error, "danger")
-                return redirect(url_for('auth.auth', mode='register'))
-
-            # Check if phone number is already registered
-            if User.query.filter_by(phone_number=formatted_phone_or_error).first():
-                flash("Phone number already registered with another account.", "danger")
-                return redirect(url_for('auth.auth', mode='register'))
-
+            # UPDATED: Skip phone verification, use email verification only
             gender = request.form.get('gender')
             role = request.form.get('role')
             preference = request.form.get('preference')
 
-            # Create user but don't activate yet (pending phone verification)
+            # Create user but don't activate yet (pending email verification)
             new_user = User(email=email, role=role, gender=gender)
             
             # Set password with history checking disabled for new users
@@ -159,10 +173,11 @@ def auth():
                 flash(f"Password error: {message}", "danger")
                 return redirect(url_for('auth.auth', mode='register'))
             
-            new_user.phone_number = formatted_phone_or_error
-            new_user.active = False  # Will be activated after phone verification
-            new_user.email_verified = False
-            new_user.phone_verified = False
+            # Skip phone verification - set as verified by default
+            new_user.phone_number = None  # No phone number required
+            new_user.active = False  # Will be activated after email verification
+            new_user.email_verified = False  # Requires email verification
+            new_user.phone_verified = True  # Skip phone verification
             db.session.add(new_user)
 
             new_profile = Profile(
@@ -174,17 +189,16 @@ def auth():
             db.session.add(new_profile)
             db.session.commit()
 
-            # Generate and send OTP
-            otp_code = generate_otp()
-            print(f"🔧 DEBUG: Generated OTP: {otp_code} for user: {new_user.email}")
+            # Send email verification to user's email address using AWS SES
+            print(f"🔧 DEBUG: Sending email verification to: {new_user.email}")
             
-            if send_otp_sms(new_user, otp_code):
-                print(f"🔧 DEBUG: OTP sent successfully to {formatted_phone_or_error}")
-                flash(f"Registration successful! Please verify your phone number. An OTP code has been sent to {formatted_phone_or_error}.", "success")
-                return redirect(url_for('auth.verify_phone', user_id=new_user.id))
+            if send_verification_email_ses(new_user):
+                print(f"🔧 DEBUG: Email verification sent successfully to {new_user.email}")
+                flash(f"Registration successful! Please check your email ({new_user.email}) for a verification link.", "success")
+                return redirect(url_for('auth.auth', mode='login'))
             else:
-                print(f"🔧 DEBUG: Failed to send OTP to {formatted_phone_or_error}")
-                flash("Registration successful, but there was an issue sending the OTP. Please contact support.", "warning")
+                print(f"🔧 DEBUG: Failed to send email verification to {new_user.email}")
+                flash("Registration successful, but there was an issue sending the verification email. Please contact support.", "warning")
                 return redirect(url_for('auth.auth', mode='register'))
 
         elif form_type == 'reset':
@@ -192,16 +206,20 @@ def auth():
             return redirect(url_for('auth.auth', mode='reset'))
 
     csrf_token = generate_csrf()  # Generate CSRF token for the form
-    return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token)
+    sitekey = os.environ.get('SITEKEY', '6Lcz0W4rAAAAAMaoHyYe_PzkZhJuzqefCtavEmYt')  # Get SITEKEY from environment
+    return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token, sitekey=sitekey)
 
 @auth_bp.route('/verify-email/<token>')
 def verify_email(token):
-    """Handle email verification"""
+    """Handle email verification and activate user account"""
     user, message = verify_email_token(token)
     
     if user:
         if "successfully" in message:
-            flash("Email verified successfully! You can now log in.", "success")
+            # Since we're skipping phone verification, activate the user account
+            user.active = True
+            db.session.commit()
+            flash("Email verified successfully! Your account is now active. You can now log in.", "success")
         else:
             flash(message, "info")
     else:
@@ -224,7 +242,7 @@ def resend_verification():
         flash("Email is already verified.", "info")
         return redirect(url_for('auth.auth', mode='login'))
     
-    if send_verification_email(user):
+    if send_verification_email_ses(user):
         flash("Verification email sent! Please check your inbox.", "success")
     else:
         flash("Failed to send verification email. Please try again later.", "danger")
@@ -424,16 +442,70 @@ def send_email_ses(to_email, subject, body_text, body_html=None):
         return True
    
 
-@auth_bp.route("/send-test-email" , methods=["POST"])
-def send_test_email():
-    success = send_email_ses(
-        to_email="13eddie07@gmail.com",
-        subject="Welcome!",
-        body_text="This is a test email from Flask + AWS SES."
-    )
+def send_verification_email_ses(user):
+    """Send email verification using AWS SES"""
+    try:
+        # Generate verification token using the existing utility function
+        from utils.utils import generate_verification_token
+        import datetime
+        
+        # Generate verification token
+        token = generate_verification_token()
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        
+        # Update user with verification token
+        user.email_verification_token = token
+        user.email_verification_token_expires = expires_at
+        db.session.commit()
+        
+        # Create verification URL
+        verification_url = url_for('auth.verify_email', token=token, _external=True)
+        
+        # Email content
+        subject = "Verify Your Email Address - Safe Companion"
+        body_text = f"""
+Hello,
 
-    if success:
-        flash("Email sent!", "success")
-    else:
-        flash("Failed to send email.", "danger")
-    return redirect(url_for("auth.auth"))
+Welcome to Safe Companion! Please click the link below to verify your email address:
+
+{verification_url}
+
+This link will expire in 24 hours.
+
+If you didn't create an account, please ignore this email.
+
+Best regards,
+Safe Companion Team
+        """
+        
+        body_html = f"""
+<html>
+<head></head>
+<body>
+    <h2>Welcome to Safe Companion!</h2>
+    <p>Hello,</p>
+    <p>Please click the link below to verify your email address:</p>
+    <p><a href="{verification_url}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email Address</a></p>
+    <p>Or copy and paste this link into your browser:</p>
+    <p>{verification_url}</p>
+    <p>This link will expire in 24 hours.</p>
+    <p>If you didn't create an account, please ignore this email.</p>
+    <p>Best regards,<br>Safe Companion Team</p>
+</body>
+</html>
+        """
+        
+        # Send email using AWS SES to the user's email address
+        success = send_email_ses(user.email, subject, body_text, body_html)
+        
+        if success:
+            print(f"✅ Email verification sent successfully to {user.email}")
+            print(f"📧 Verification URL: {verification_url}")
+            return True
+        else:
+            print(f"❌ Failed to send email verification to {user.email}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error sending verification email: {e}")
+        return False
