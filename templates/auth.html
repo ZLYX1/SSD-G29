@@ -47,14 +47,6 @@
 			</div>
 		</form>
 
-
-		<div>
-			SEND TEST EMAIL HERE
-			<form method="post" action="/auth/send-test-email" method="get">
-				<button type="submit">Send Test Email</button>
-			</form>
-		</div>
-
 		{% elif mode == 'register' %}
 		<h2 class="text-center mb-4">Register</h2>
 		<form method="post" id="register-form">
@@ -71,13 +63,15 @@
 				<label for="password">Password</label>
 			</div>
 
-			<!-- Phone Number for OTP Verification -->
+			<!-- Phone Number for OTP Verification - COMMENTED OUT -->
+			<!-- 
 			<div class="form-floating mb-3">
 				<input type="tel" class="form-control" id="phone_number" name="phone_number" placeholder="Phone Number"
 					required>
 				<label for="phone_number">Phone Number</label>
 				<div class="form-text">Required for security verification via SMS OTP</div>
 			</div>
+			-->
 
 			<div class="col-12">
 				<label for="gender" class="form-label">Gender</label>
@@ -132,7 +126,7 @@
 
 					const csrfToken = document.querySelector('input[name="csrf_token"]').value;
 
-					grecaptcha.execute('6Lcz0W4rAAAAAMaoHyYe_PzkZhJuzqefCtavEmYt', { action: 'register' }).then(function (token) {
+					grecaptcha.execute('{{ sitekey }}', { action: 'register' }).then(function (token) {
 
 						console.log("reCAPTCHA token received:", token);
 						document.getElementById('g-recaptcha-response').value = token;

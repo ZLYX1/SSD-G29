@@ -11,7 +11,7 @@ This file defines the systematic approach for completing any task in the Safe Co
 
 #### 1. **Understanding & Planning Phase**
 - [ ] **Analyze Request**: Thoroughly understand the user's request
-- [ ] **Review Context**: Check `.github/copilot-context.md` for project context
+- [ ] **Review Context**: Check `.github/prompt-files.prompt.md` for project context
 - [ ] **Plan Execution**: Break down the task into step-by-step checklist items
 - [ ] **Document Plan**: List out each step clearly in this file
 - [ ] **Identify Dependencies**: Note any prerequisites or related components
