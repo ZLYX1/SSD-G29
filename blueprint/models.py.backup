@@ -1,57 +1,10 @@
 # models.py
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 import datetime
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, HashingError
 
 from extensions import db  # ✅ Correct place to import from
 # db = SQLAlchemy()
-
-
-
-def generate_argon2_hash(password):
-    try:
-        ph = PasswordHasher(
-            memory_cost=19456,      # 19.5 MB memory usage
-            time_cost=2,            # 2 iterations
-            parallelism=1,          # Single thread
-            hash_len=32,            # 32-byte hash output
-            salt_len=16,            # 16-byte salt
-        )
-        return ph.hash(password)
-    except HashingError as e:
-        raise ValueError(f"Password hashing failed: {e}")
-
-def verify_argon2_hash(password_hash, password):
-    try:
-        ph = PasswordHasher(
-            memory_cost=19456,
-            time_cost=2,
-            parallelism=1,
-            hash_len=32,
-            salt_len=16,
-        )
-        ph.verify(password_hash, password)
-        return True
-    except VerifyMismatchError:
-        return False
-    except Exception:
-        # Fail silently for security - any other exception means verification failed
-        return False
-
-def is_argon2_hash(password_hash):
-    if not password_hash:
-        return False
-    return password_hash.startswith('$argon2')
-
-# Legacy function compatibility - these replace the Werkzeug imports
-def generate_password_hash(password):
-    """Drop-in replacement for Werkzeug's generate_password_hash"""
-    return generate_argon2_hash(password)
-
-def check_password_hash(password_hash, password):
-    """Drop-in replacement for Werkzeug's check_password_hash"""
-    return verify_argon2_hash(password_hash, password)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
