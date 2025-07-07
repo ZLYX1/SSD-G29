@@ -67,11 +67,14 @@ app.config['SESSION_COOKIE_HTTPONLY'] = False # Prevent JavaScript access to ses
 
 csrf.init_app(app)
 
-# Add CSRF token to template context
+# Add CSRF token and environment variables to template context
 @app.context_processor
 def inject_csrf_token():
     from flask_wtf.csrf import generate_csrf
-    return dict(csrf_token=generate_csrf)
+    return dict(
+        csrf_token=generate_csrf(),
+        sitekey=os.environ.get('SITEKEY', 'your-recaptcha-site-key-here')
+    )
 
 
 # Initialize extensions
@@ -79,26 +82,29 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 # --- DUMMY DATA (Replaces a database for this example) ---
+# Use environment variable for test password (default for development)
+TEST_PASSWORD = os.getenv('TEST_PASSWORD', 'password123')
+
 USERS = {
     1: {
         'username': 'seeker@example.com',
-        'password': 'password123',
+        'password': TEST_PASSWORD,
         'role': 'seeker',
         'active': True
     },
     2: {
         'username': 'escort@example.com',
-        'password': 'password123',
+        'password': TEST_PASSWORD,
         'role': 'escort',
         'active': True
     },
     3: {
         'username': 'admin@example.com',
-        'password': 'password123',
+        'password': TEST_PASSWORD,
         'role': 'admin',
         'active': True
     },
-    # 4: {'username': 'locked@example.com', 'password': 'password123', 'role': 'seeker', 'active': False},
+    # 4: {'username': 'locked@example.com', 'password': TEST_PASSWORD, 'role': 'seeker', 'active': False},
 }
 
 
@@ -439,7 +445,7 @@ def seed_database():
     for _ in range(20):
         user = User(email=faker.unique.email(), role='seeker', active=True,
                     gender=random.choice(['Male', 'Female', 'Non-binary']))
-        user.set_password('password123')
+        user.set_password(TEST_PASSWORD)
         profile = Profile(user=user, name=faker.name(), bio=faker.paragraph(nb_sentences=3))
         db.session.add(user)
         seekers.append(user)
@@ -447,7 +453,7 @@ def seed_database():
     for _ in range(10):
         user = User(email=faker.unique.email(), role='escort', active=True,
                     gender=random.choice(['Male', 'Female', 'Non-binary']))
-        user.set_password('password123')
+        user.set_password(TEST_PASSWORD)
         profile = Profile(user=user,
                           name=faker.name(),
                           bio=faker.paragraph(nb_sentences=5),
@@ -457,15 +463,15 @@ def seed_database():
         escorts.append(user)
 
     admin_user = User(email='admin@example.com', role='admin', active=True, gender="male", phone_verified=True, email_verified=True)
-    admin_user.set_password('password123')
+    admin_user.set_password(TEST_PASSWORD)
     admin_profile = Profile(user=admin_user, name='Admin User')
 
     seeker_user = User(email='seeker@example.com', role='seeker', active=True, gender="male", phone_verified=True, email_verified=True)
-    seeker_user.set_password('password123')
+    seeker_user.set_password(TEST_PASSWORD)
     seeker_profile = Profile(user=seeker_user, name='Alex the Seeker')
 
     escort_user = User(email='escort@example.com', role='escort', active=True, gender="male", phone_verified=True, email_verified=True)
-    escort_user.set_password('password123')
+    escort_user.set_password(TEST_PASSWORD)
     escort_profile = Profile(user=escort_user,
                              name='Bella the Escort',
                              bio='Experienced and professional.',
@@ -556,7 +562,7 @@ def seed_database():
     db.session.commit()
 
     print("\n✅ Database seeding complete!")
-    print("Test login accounts (password: 'password123'):")
+    print(f"Test login accounts (password: '{TEST_PASSWORD}'):")
     print("  - Admin:   admin@example.com")
     print("  - Seeker:  seeker@example.com")
     print("  - Escort:  escort@example.com")

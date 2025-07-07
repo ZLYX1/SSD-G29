@@ -114,11 +114,11 @@ def send_email(to_email, subject, body):
     This is a placeholder implementation
     """
     try:
-        # Configure your SMTP settings
-        smtp_server = "smtp.gmail.com"  # or your SMTP server
-        smtp_port = 587
-        smtp_username = "your-email@gmail.com"
-        smtp_password = "your-app-password"
+        # Configure your SMTP settings - USE ENVIRONMENT VARIABLES IN PRODUCTION
+        smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+        smtp_port = int(os.getenv('SMTP_PORT', '587'))
+        smtp_username = os.getenv('SMTP_USERNAME', 'your-email@gmail.com')
+        smtp_password = os.getenv('SMTP_PASSWORD', 'your-app-password')
         
         msg = MIMEMultipart()
         msg['From'] = smtp_username
