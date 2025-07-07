@@ -18,14 +18,27 @@ from flask import current_app
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 def verify_recaptcha(token):
+    """Verify reCAPTCHA token. Returns True in development if no secret key is set."""
+    recaptcha_secret = os.environ.get('RECAPTCHA_SECRET_KEY')
+    
+    # For development: if no secret key is set, skip verification
+    if not recaptcha_secret:
+        print("⚠️  WARNING: RECAPTCHA_SECRET_KEY not set - skipping reCAPTCHA verification (development mode)")
+        return True
+    
     url = "https://www.google.com/recaptcha/api/siteverify"
     payload = {
-        'secret': os.environ['RECAPTCHA_SECRET_KEY'],
+        'secret': recaptcha_secret,
         'response': token
     }
-    response = requests.post(url, data=payload)
-    result = response.json()
-    return result.get('success') and result.get('score', 0) >= 0.5  # threshold adjustable
+    
+    try:
+        response = requests.post(url, data=payload)
+        result = response.json()
+        return result.get('success') and result.get('score', 0) >= 0.5  # threshold adjustable
+    except Exception as e:
+        print(f"❌ reCAPTCHA verification error: {e}")
+        return False
 
 # @auth_bp.route('/', methods=['GET', 'POST'])
 @auth_bp.route('/', methods=['GET', 'POST']) 
@@ -116,21 +129,33 @@ def auth():
                 flash("Invalid credentials.", "danger")
 
         elif form_type == 'register':
-            print("Submitted for Register\n");
+            print("🔧 DEBUG: Registration form submitted")
 
             recaptcha_token = request.form.get('g-recaptcha-response')
+            print(f"🔧 DEBUG: reCAPTCHA token received: {bool(recaptcha_token)}")
+            
             if not recaptcha_token:
+                print("❌ DEBUG: No reCAPTCHA token provided")
                 flash("CAPTCHA verification failed.", "danger")
                 return redirect(url_for('auth.auth', mode='register'))
             
             # Verify the CAPTCHA token with Google
-            if not verify_recaptcha(recaptcha_token):
+            recaptcha_result = verify_recaptcha(recaptcha_token)
+            print(f"🔧 DEBUG: reCAPTCHA verification result: {recaptcha_result}")
+            
+            if not recaptcha_result:
+                print("❌ DEBUG: reCAPTCHA verification failed")
                 flash("CAPTCHA verification failed. Please try again.", "danger")
                 return redirect(url_for('auth.auth', mode='register'))
 
+            print("✅ DEBUG: reCAPTCHA verification passed")
+
             if User.query.filter_by(email=email).first():
+                print(f"❌ DEBUG: Email {email} already registered")
                 flash("Email already registered.", "danger")
                 return redirect(url_for('auth.auth', mode='register'))
+
+            print(f"✅ DEBUG: Email {email} is available for registration")
 
             age = int(request.form.get('age', 0))
             if age < 18:
@@ -170,13 +195,20 @@ def auth():
             # Send email verification to user's email address using AWS SES
             print(f"🔧 DEBUG: Sending email verification to: {new_user.email}")
             
-            if send_verification_email_ses(new_user):
-                print(f"🔧 DEBUG: Email verification sent successfully to {new_user.email}")
-                flash(f"Registration successful! Please check your email ({new_user.email}) for a verification link.", "success")
+            email_sent = send_verification_email_ses(new_user)
+            print(f"🔧 DEBUG: Email sending result: {email_sent}")
+            
+            if email_sent:
+                print(f"✅ DEBUG: Email verification sent successfully to {new_user.email}")
+                success_message = f"Registration successful! Please check your email ({new_user.email}) for a verification link."
+                print(f"🔧 DEBUG: Flashing success message: {success_message}")
+                flash(success_message, "success")
                 return redirect(url_for('auth.auth', mode='login'))
             else:
-                print(f"🔧 DEBUG: Failed to send email verification to {new_user.email}")
-                flash("Registration successful, but there was an issue sending the verification email. Please contact support.", "warning")
+                print(f"❌ DEBUG: Failed to send email verification to {new_user.email}")
+                warning_message = "Registration successful, but there was an issue sending the verification email. Please contact support."
+                print(f"🔧 DEBUG: Flashing warning message: {warning_message}")
+                flash(warning_message, "warning")
                 return redirect(url_for('auth.auth', mode='register'))
 
         elif form_type == 'reset':
@@ -423,18 +455,16 @@ def send_email_ses(to_email, subject, body_text, body_html=None):
 def send_verification_email_ses(user):
     """Send email verification using AWS SES"""
     try:
-        # Generate verification token using the existing utility function
-        from utils.utils import generate_verification_token
-        import datetime
+        # Use the existing utility function for consistency
+        from utils.utils import send_verification_email
         
-        # Generate verification token
-        token = generate_verification_token()
-        expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        # Call the utility function which handles token generation and saving
+        success = send_verification_email(user)
+        if not success:
+            return False
         
-        # Update user with verification token
-        user.email_verification_token = token
-        user.email_verification_token_expires = expires_at
-        db.session.commit()
+        # Get the token that was just generated and saved
+        token = user.email_verification_token
         
         # Create verification URL
         verification_url = url_for('auth.verify_email', token=token, _external=True)
