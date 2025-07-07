@@ -15,9 +15,9 @@ class RatingController:
         if user_id not in [booking.seeker_id, booking.escort_id]:
             return False, "Not authorized to rate this booking"
         
-        # Booking must be completed
-        if booking.status.lower() != 'completed':
-            return False, "Can only rate completed bookings"
+        # Booking must be confirmed (completed)
+        if booking.status != 'Confirmed':
+            return False, "Can only rate confirmed bookings"
         
         # Check if already rated
         existing_rating = Rating.query.filter_by(
@@ -111,6 +111,13 @@ class RatingController:
                           .limit(limit).all()
     
     @staticmethod
+    def get_user_given_ratings(user_id, limit=10):
+        """Get ratings given by a user"""
+        return Rating.query.filter_by(reviewer_id=user_id)\
+                          .order_by(Rating.created_at.desc())\
+                          .limit(limit).all()
+    
+    @staticmethod
     def get_booking_ratings(booking_id):
         """Get all ratings for a specific booking"""
         return Rating.query.filter_by(booking_id=booking_id).all()
@@ -118,14 +125,14 @@ class RatingController:
     @staticmethod
     def get_rateable_bookings(user_id):
         """Get bookings that user can rate"""
-        # Get completed bookings where user participated but hasn't rated yet
-        completed_bookings = Booking.query.filter(
+        # Get confirmed bookings where user participated but hasn't rated yet
+        confirmed_bookings = Booking.query.filter(
             ((Booking.seeker_id == user_id) | (Booking.escort_id == user_id)),
-            db.func.lower(Booking.status) == 'completed'
+            Booking.status == 'Confirmed'
         ).all()
         
         rateable = []
-        for booking in completed_bookings:
+        for booking in confirmed_bookings:
             # Check if user has already rated this booking
             existing_rating = Rating.query.filter_by(
                 booking_id=booking.id,

@@ -1,57 +1,10 @@
 # models.py
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 import datetime
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, HashingError
 
 from extensions import db  # ✅ Correct place to import from
 # db = SQLAlchemy()
-
-
-
-def generate_argon2_hash(password):
-    try:
-        ph = PasswordHasher(
-            memory_cost=19456,      # 19.5 MB memory usage
-            time_cost=2,            # 2 iterations
-            parallelism=1,          # Single thread
-            hash_len=32,            # 32-byte hash output
-            salt_len=16,            # 16-byte salt
-        )
-        return ph.hash(password)
-    except HashingError as e:
-        raise ValueError(f"Password hashing failed: {e}")
-
-def verify_argon2_hash(password_hash, password):
-    try:
-        ph = PasswordHasher(
-            memory_cost=19456,
-            time_cost=2,
-            parallelism=1,
-            hash_len=32,
-            salt_len=16,
-        )
-        ph.verify(password_hash, password)
-        return True
-    except VerifyMismatchError:
-        return False
-    except Exception:
-        # Fail silently for security - any other exception means verification failed
-        return False
-
-def is_argon2_hash(password_hash):
-    if not password_hash:
-        return False
-    return password_hash.startswith('$argon2')
-
-# Legacy function compatibility - these replace the Werkzeug imports
-def generate_password_hash(password):
-    """Drop-in replacement for Werkzeug's generate_password_hash"""
-    return generate_argon2_hash(password)
-
-def check_password_hash(password_hash, password):
-    """Drop-in replacement for Werkzeug's check_password_hash"""
-    return verify_argon2_hash(password_hash, password)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -59,8 +12,12 @@ class User(db.Model):
     # password_hash = db.Column(db.String(128), nullable=False)
     password_hash = db.Column(db.String(256))
     role = db.Column(db.String(10), nullable=False, default='seeker') # 'seeker', 'escort', 'admin'
-    # for otp verification and user account status
+    # for otp verification [if failed]
     active = db.Column(db.Boolean, default=True, nullable=False)
+    # for user to deactivate acc
+    activate = db.Column(db.Boolean, default=True, nullable=False)
+    # admin soft delete
+    deleted = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     # NEW FIELDS
     gender = db.Column(db.String(20), nullable=False)  # e.g. Male, Female, Non-binary
@@ -324,7 +281,7 @@ class Message(db.Model):
 
 class Rating(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False, unique=True)
     reviewer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     reviewed_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     rating = db.Column(db.Integer, nullable=False)  # 1-5 stars
@@ -335,10 +292,6 @@ class Rating(db.Model):
     booking = db.relationship('Booking', backref=db.backref('rating', uselist=False))
     reviewer = db.relationship('User', foreign_keys=[reviewer_id], backref='ratings_given')
     reviewed = db.relationship('User', foreign_keys=[reviewed_id], backref='ratings_received')
-
-    __table_args__ = (
-        db.UniqueConstraint('booking_id', 'reviewer_id', name='unique_booking_reviewer'),
-    )
     
     def __repr__(self):
         return f'<Rating {self.rating}/5 for booking {self.booking_id}>'
