@@ -127,6 +127,21 @@ jobs:
           source .venv/bin/activate
           pytest tests/
 
+      - name: Clean up Docker to free disk space
+        run: |
+          # Show disk usage before cleanup
+          df -h
+          
+          # Clean up Docker resources
+          docker container prune -f
+          docker image prune -f
+          docker volume prune -f -a
+          docker network prune -f
+          docker system prune -f
+          
+          # Show disk usage after cleanup
+          df -h
+          
       - name: Build Docker image
         run: |
           docker build --build-arg REQ_FILE=requirements-prod.txt \
@@ -183,7 +198,7 @@ jobs:
       - name: SSH and deploy
         shell: bash
         run: |
-          timeout 120s ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+          timeout 180s ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
           set -e
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"          
@@ -191,6 +206,23 @@ jobs:
           git fetch origin main
           git reset --hard origin/main        
           chmod +x entrypoint.sh
+          chmod +x scripts/docker-cleanup.sh
+          
+          # Check disk space before cleanup
+          echo "💾 Disk space before cleanup:"
+          df -h
+          
+          # Clean up Docker resources to free space
+          echo "🧹 Cleaning up Docker resources..."
+          docker container prune -f
+          docker image prune -af
+          docker volume prune -f
+          docker network prune -f
+          docker system prune -f
+          
+          # Check disk space after cleanup
+          echo "💾 Disk space after cleanup:"
+          df -h
           
           # Copy production environment file
           echo "$(cat .env.production)" > .env.production
