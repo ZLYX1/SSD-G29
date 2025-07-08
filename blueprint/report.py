@@ -64,7 +64,7 @@ def submit_report():
     report_types = ReportController.get_report_types()
     severity_levels = ReportController.get_severity_levels()
     
-    return render_template('reports/submit_report.html',
+    return render_template('reports/quick_report.html',
                          reported_user=reported_user,
                          report_types=report_types,
                          severity_levels=severity_levels)
@@ -74,9 +74,29 @@ def submit_report():
 def my_reports():
     """View reports made by current user"""
     reports_made = ReportController.get_user_reports(session['user_id'], 'made')
+
+    reports_serialized = []
+    for r in reports_made:
+        reports_serialized.append({
+            'id': r.id,
+            'report_type': r.report_type,
+            'title': r.title,
+            'description': r.description,
+            'severity': r.severity,
+            'status': r.status,
+            'created_at': r.created_at.isoformat(),
+            'admin_notes': r.admin_notes,
+            'resolution': r.resolution,
+            'reported': {
+                'email': r.reported.email if r.reported else None,
+                'profile': {
+                    'name': r.reported.profile.name if r.reported and r.reported.profile else None
+                }
+            }
+        })
     
     return render_template('reports/my_reports.html',
-                         reports=reports_made)
+                         reports=reports_serialized)
 
 @report_bp.route('/admin')
 @admin_required
@@ -129,18 +149,11 @@ def update_report_status():
             admin_notes=admin_notes,
             resolution=resolution
         )
-        
-        if request.is_json:
-            return jsonify(result)
-        
-        # Handle regular form submission
-        if result['success']:
-            flash(result['message'], 'success')
+
+        if result and result.get('success'):
+            return jsonify({'success': True, 'message': result.get('message', 'Status updated')})
         else:
-            flash(result['message'], 'error')
-        
-        # Redirect back to report details or dashboard
-        return redirect(url_for('report.view_report_details', report_id=report_id))
+            return jsonify({'success': False, 'message': result.get('message', 'Failed to update status')}), 400
         
     except Exception as e:
         error_msg = f'Error updating report: {str(e)}'
@@ -212,7 +225,7 @@ def user_report_history(user_id):
                          reports_received=reports_received)
 
 # Public reporting (for reporting profiles from browse page)
-@report_bp.route('/report-user/<int:user_id>')
+@report_bp.route('/report-user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def report_user(user_id):
     """Quick report form for a specific user"""
@@ -221,7 +234,35 @@ def report_user(user_id):
     
     report_types = ReportController.get_report_types()
     severity_levels = ReportController.get_severity_levels()
-    
+
+    if request.method == 'POST':
+        # Get form data
+        report_type = request.form.get('report_type')
+        title = request.form.get('title')
+        description = request.form.get('description')
+        severity = request.form.get('severity', 'Medium')
+        
+        # Validate fields
+        if not all([report_type, title, description]):
+            flash('All fields are required.', 'danger')
+            return redirect(request.url)
+        
+        # Submit report
+        result = ReportController.create_report(
+            reporter_id=session['user_id'],
+            reported_id=user_id,
+            report_type=report_type,
+            title=title,
+            description=description,
+            severity=severity
+        )
+        
+        if result['success']:
+            flash(result['message'], 'success')
+            return redirect(url_for('report.my_reports', user_id=user_id))
+        else:
+            flash(result['message'], 'danger')
+        
     return render_template('reports/quick_report.html',
                          reported_user=user,
                          profile=profile,

@@ -51,6 +51,11 @@
 			<button type="submit" class="btn btn-warning">Request Role Change</button>
 		</form>
 
+		<form method="POST" action="{{ url_for('profile.view_report') }}" style="display:inline;">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+			<button type="submit" class="btn btn-warning">View Report</button>
+		</form>
+
 		<form method="POST" action="{{ url_for('profile.deactivate_profile') }}" style="display:inline;">
 			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 			<button type="submit" class="btn btn-danger">Deactivate Profile</button>

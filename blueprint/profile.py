@@ -216,6 +216,11 @@ def deactivate_profile():
 def view_rating():
     return redirect(url_for('rating.my_ratings'))
 
+@profile_bp.route('my-reports', methods=['POST'])
+@login_required
+def view_report():
+    return redirect(url_for('report.my_reports'))
+
 
 # @profile_bp.route('/photo', methods=['GET'])
 # @login_required

@@ -56,7 +56,7 @@
 										<span class="badge bg-secondary">{{ report.severity }}</span>
 										{% endif %}
 									</td>
-									<td>
+									<td>	
 										{% if report.status == 'Pending Review' %}
 										<span class="badge bg-warning">{{ report.status }}</span>
 										{% elif report.status == 'Under Investigation' %}
@@ -69,7 +69,7 @@
 										<span class="badge bg-light text-dark">{{ report.status }}</span>
 										{% endif %}
 									</td>
-									<td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+									<td>{{ report.created_at }}</td>
 									<td>
 										<button class="btn btn-sm btn-outline-primary"
 											onclick="viewReportDetails({{ report.id }})">

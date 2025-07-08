@@ -20,7 +20,7 @@
             </div>
 
             <hr>
-            
+            {% if session.role == 'seeker' %}
             <div class="card mt-3">
                 <div class="card-header">
                     <h3 class="mb-0">Book This Escort</h3>
@@ -47,6 +47,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         
         <div class="col-md-4">
             <!-- Safety and Reporting Section -->
