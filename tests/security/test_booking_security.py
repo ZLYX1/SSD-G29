@@ -17,68 +17,76 @@ from extensions import db
 # === Fixtures ===
 
 @pytest.fixture
-def seeker_user(app_context):
-    """Create a seeker user for testing."""
-    user = User(
-        email="testseeker@example.com",
-        role="seeker",
-        gender="Other",
-        active=True,
-        activate=True,
-        deleted=False,
-        created_at=datetime.now(timezone.utc),  
-        password_hash=generate_password_hash("ValidPass123"),
-        password_created_at=datetime.now(timezone.utc) 
-    )
-    db.session.add(user)
-    db.session.commit()
-    return user
+def client():
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client:
+        yield client
 
 @pytest.fixture
-def seeker_session(client, seeker_user):
-    """Create an authenticated seeker session."""
-    with client.session_transaction() as sess:
-        sess["user_id"] = seeker_user.id
-        sess["role"] = "seeker"
-        sess["bound_ua"] = "test-agent"
-        sess["bound_ip"] = "127.0.0.1"
+def seeker_session():
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client, flask_app.app_context():
+        user = User.query.filter_by(email="testseeker@example.com").first()
+        if not user:
+            user = User(
+                email="testseeker@example.com",
+                role="seeker",
+                gender="Other",
+                active=True,
+                activate=True,
+                deleted=False,
+                created_at=datetime.now(timezone.utc),  
+                password_hash=generate_password_hash("ValidPass123"),
+                password_created_at=datetime.now(timezone.utc) 
+            )
+            db.session.add(user)
+            db.session.commit()
 
-    client.environ_base["HTTP_USER_AGENT"] = "test-agent"
-    client.environ_base["REMOTE_ADDR"] = "127.0.0.1"
-    
-    return client
+        fake_ua = "test-agent"
+        fake_ip = "127.0.0.1"
+        client.environ_base["HTTP_USER_AGENT"] = fake_ua
+        client.environ_base["REMOTE_ADDR"] = fake_ip
+
+        with client.session_transaction() as sess:
+            sess["user_id"] = user.id
+            sess["role"] = "seeker"
+            sess["bound_ua"] = fake_ua
+            sess["bound_ip"] = fake_ip
+
+        yield client
 
 @pytest.fixture
-def escort_user(app_context):
-    """Create an escort user for testing."""
-    user = User(
-        email="testescort@example.com",
-        role="escort",
-        gender="Non-binary",
-        active=True,
-        activate=True,
-        deleted=False,
-        created_at=datetime.now(timezone.utc),
-        password_hash=generate_password_hash("ValidPass123"),
-        password_created_at=datetime.now(timezone.utc)
-    )
-    db.session.add(user)
-    db.session.commit()
-    return user
+def escort_session():
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client, flask_app.app_context():
+        user = User.query.filter_by(email="testescort@example.com").first()
+        if not user:
+            user = User(
+                email="testescort@example.com",
+                role="escort",
+                gender="Non-binary",
+                active=True,
+                activate=True,
+                deleted=False,
+                created_at=datetime.now(timezone.utc), 
+                password_hash=generate_password_hash("ValidPass123"),
+                password_created_at=datetime.now(timezone.utc) 
+            )
+            db.session.add(user)
+            db.session.commit()
 
-@pytest.fixture
-def escort_session(client, escort_user):
-    """Create an authenticated escort session."""
-    with client.session_transaction() as sess:
-        sess["user_id"] = escort_user.id
-        sess["role"] = "escort"
-        sess["bound_ua"] = "test-agent"
-        sess["bound_ip"] = "127.0.0.1"
+        fake_ua = "test-agent"
+        fake_ip = "127.0.0.1"
+        client.environ_base["HTTP_USER_AGENT"] = fake_ua
+        client.environ_base["REMOTE_ADDR"] = fake_ip
 
-    client.environ_base["HTTP_USER_AGENT"] = "test-agent"
-    client.environ_base["REMOTE_ADDR"] = "127.0.0.1"
-    
-    return client
+        with client.session_transaction() as sess:
+            sess["user_id"] = user.id
+            sess["role"] = "escort"
+            sess["bound_ua"] = fake_ua
+            sess["bound_ip"] = fake_ip
+
+        yield client
 
 # === Booking Security Tests ===
 
@@ -122,3 +130,4 @@ def test_handle_booking_action_wrong_owner(escort_session):
 
     assert response.status_code == 200
     assert b"Booking not found" in response.data or b"Access denied" in response.data
+    
