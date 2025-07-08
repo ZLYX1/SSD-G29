@@ -65,18 +65,18 @@ class User(db.Model):
     # password_hash = db.Column(db.String(128), nullable=False)
     password_hash = db.Column(db.String(256))
     role = db.Column(db.String(10), nullable=False, default='seeker') # 'seeker', 'escort', 'admin'
-    # for otp verification [if failed]
+    # for otp verification and user account status
     active = db.Column(db.Boolean, default=True, nullable=False)
-    # for user to deactivate acc
-    activate = db.Column(db.Boolean, default=True, nullable=False)
-    # admin soft delete
-    deleted = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     # NEW FIELDS
     gender = db.Column(db.String(20), nullable=False)  # e.g. Male, Female, Non-binary
     # For role change requests
     pending_role = db.Column(db.String(10), nullable=True)  # e.g. 'seeker' or 'escort'
-    
+    # for user to deactivate acc
+    activate = db.Column(db.Boolean, default=True, nullable=False)
+    # admin soft delete
+    deleted = db.Column(db.Boolean, default=False, nullable=False)
+
     # Email verification fields
     email_verified = db.Column(db.Boolean, default=False, nullable=False)
     email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
@@ -381,3 +381,27 @@ class AuditLog(db.Model):
 
     def __repr__(self):
         return f"<AuditLog {self.id} {self.action} by {self.user_id}>"
+
+class Favourite(db.Model):
+    __tablename__ = 'favourites'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # The user who favorites someone
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    # The user being favorited
+    favourite_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='favourites_given')
+    favourited_user = db.relationship('User', foreign_keys=[favourite_user_id], backref='favourites_received')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'favourite_user_id', name='unique_favourite_pair'),
+    )
+
+    def __repr__(self):
+        return f"<Favourite user={self.user_id} → favourited={self.favourite_user_id}>"

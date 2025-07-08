@@ -5,14 +5,39 @@
 {% block content %}
 <h2 class="pb-2 border-bottom">Dashboard ({{ role|capitalize }})</h2>
 
+<!-- IF SEEKER -->
 {% if role == 'seeker' %}
 <div class="alert alert-info">Welcome, Seeker!</div>
 <h3>Upcoming Bookings</h3>
 <p>You have {{ data.upcoming_bookings_count or 0 }} upcoming booking(s).</p>
+
 <!-- List bookings -->
 <h3>Favorite Escorts</h3>
 <p>[Favorite Escorts list here]</p>
 
+<!-- favourite escort-->
+{% if favourite_profiles %}
+<ul>
+	{% for profile in favourite_profiles %}
+	<li style="margin-bottom: 15px;">
+		<img src="{{ url_for('static', filename='profile_photos/' + profile.photo) }}" alt="Photo of {{ profile.name }}"
+			width="50" height="50" />
+
+		<strong>{{ profile.name }}</strong><br />
+		<em>{{ profile.bio or 'No bio provided.' }}</em><br />
+		Rating: {{ profile.rating or 'N/A' }}, Age: {{ profile.age or 'N/A' }}
+		<a href="{{ url_for('browse.view_profile', user_id=profile.user_id) }}">
+			{{ profile.name }} (Rating: {{ profile.rating or 'N/A' }}, Age: {{ profile.age }})
+		</a>
+	</li>
+	{% endfor %}
+</ul>
+{% else %}
+<p>You have no favorite escorts yet.</p>
+{% endif %}
+
+
+<!-- IF Escort-->
 {% elif role == 'escort' %}
 <div class="alert alert-info">Welcome, Escort!</div>
 <h3>Booking Requests</h3>
@@ -20,6 +45,28 @@
 <!-- List requests -->
 <h3>Earnings Summary</h3>
 <p>[Earnings chart here]</p>
+
+
+<h3>Favorite Seekers</h3>
+{% if favourite_profiles %}
+<ul>
+	{% for profile in favourite_profiles %}
+	<li style="margin-bottom: 15px;">
+		<img src="{{ url_for('static', filename='profile_photos/' + profile.photo) }}" width="50" height="50" /> <br>
+
+		<strong>{{ profile.name }}</strong><br />
+		<em>{{ profile.bio or 'No bio provided.' }}</em><br />
+		Rating: {{ profile.rating or 'N/A' }}, Age: {{ profile.age or 'N/A' }}
+		<a href="{{ url_for('browse.view_profile', user_id=profile.user_id) }}">
+			{{ profile.name }} (Rating: {{ profile.rating or 'N/A' }}, Age: {{ profile.age }})
+		</a>
+		<br>
+	</li>
+	{% endfor %}
+</ul>
+{% else %}
+<p>You have no favorite seekers yet.</p>
+{% endif %}
 
 {% elif role == 'admin' %}
 <div class="alert alert-secondary">Welcome, Admin!</div>

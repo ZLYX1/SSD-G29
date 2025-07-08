@@ -3,154 +3,277 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-body">
-                    {% if profile.photo %}
-                    <img src="{{ profile.photo }}" alt="Profile Photo" width="200" class="rounded">
-                    {% endif %}
-                    <h2 class="card-title">{{ profile.name }}'s Profile</h2>
-                    <p><strong>Bio:</strong> {{ profile.bio }}</p>
-                    <p><strong>Availability:</strong> {{ profile.availability }}</p>
-                    <div>
-                        <a href="{{ url_for('rating.user_ratings', user_id=profile.user_id) }}" class="btn btn-sm btn-warning">View Rating</a>
-                    </div>
-                </div>
-            </div>
+	<div class="row">
+		<div class="col-md-8">
+			<div class="card">
+				<div class="card-body">
+					{% if profile.photo %}
+					<img src="{{ profile.photo }}" alt="Profile Photo" width="200" class="rounded">
+					{% endif %}
+					<h2 class="card-title">{{ profile.name }}'s Profile</h2>
+					<p><strong>Bio:</strong> {{ profile.bio }}</p>
+					<p><strong>Availability:</strong> {{ profile.availability }}</p>
+					<div>
+						<a href="{{ url_for('rating.user_ratings', user_id=profile.user_id) }}"
+							class="btn btn-sm btn-warning">View Rating</a>
+					</div>
+				</div>
+			</div>
 
-            <hr>
-            {% if session.role == 'seeker' %}
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h3 class="mb-0">Book This Escort</h3>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="{{ url_for('booking.book', escort_id=profile.user_id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <div class="mb-3">
-                            <label for="start_time" class="form-label">Start Time</label>
-                            <input type="datetime-local" class="form-control" name="start_time" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="duration" class="form-label">Duration (minutes)</label>
-                            <select class="form-select" name="duration" required>
-                                <option value="15">15 minutes</option>
-                                <option value="30">30 minutes</option>
-                                <option value="60">1 hour</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-calendar"></i> Book Now
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        
-        <div class="col-md-4">
-            <!-- Safety and Reporting Section -->
-            <div class="card border-warning">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0">
-                        <i class="fas fa-shield-alt me-2"></i>
-                        Safety & Security
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <p class="small text-muted">
-                        Your safety is our priority. Report any inappropriate behavior or safety concerns.
-                    </p>
-                    
-                    <!-- Report User Button -->
-                    {% if session.user_id and session.user_id != profile.user_id %}
-                    <a href="{{ url_for('report.report_user', user_id=profile.user_id) }}" 
-                       class="btn btn-outline-danger btn-sm w-100 mb-2">
-                        <i class="fas fa-flag me-1"></i>
-                        Report This User
-                    </a>
-                    {% endif %}
-                    
-                    <!-- View Ratings Button -->
-                    <a href="{{ url_for('rating.user_ratings', user_id=profile.user_id) }}" 
-                       class="btn btn-outline-info btn-sm w-100 mb-2">
-                        <i class="fas fa-star me-1"></i>
-                        View Ratings & Reviews
-                    </a>
-                    
-                    <!-- Safety Guidelines -->
-                    <div class="mt-3">
-                        <h6 class="text-muted">Safety Tips:</h6>
-                        <ul class="small text-muted">
-                            <li>Meet in public places first</li>
-                            <li>Trust your instincts</li>
-                            <li>Keep personal info private</li>
-                            <li>Report suspicious behavior</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Ratings Summary (if available) -->
-            {% if ratings_summary %}
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-star text-warning me-2"></i>
-                        Rating Summary
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span>Average Rating:</span>
-                        <span class="h5 text-warning">
-                            {{ "%.1f"|format(ratings_summary.average) }} 
-                            <small class="text-muted">/ 5.0</small>
-                        </span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span>Total Reviews:</span>
-                        <span class="badge bg-info">{{ ratings_summary.total }}</span>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+			<hr>
+			{% if session.role == 'seeker' %}
+			<div class="card mt-3">
+				<div class="card-header">
+					<h3 class="mb-0">Book This Escort!!</h3>
+				</div>
+				<div class="card-body">
+					<form method="post" action="{{ url_for('booking.book', escort_id=profile.user_id) }}">
+						<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-    <!-- Available Time Slots -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="mb-0">Available Time Slots</h4>
-                </div>
-                <div class="card-body">
-                    {% if time_slots %}
-                    <div class="row">
-                        {% for slot in time_slots %}
-                        <div class="col-md-4 mb-2">
-                            <div class="card border-success">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-clock text-success"></i>
-                                    <p class="mb-1"><strong>{{ slot.start_time.strftime("%Y-%m-%d") }}</strong></p>
-                                    <p class="mb-0">{{ slot.start_time.strftime("%H:%M") }} - {{ slot.end_time.strftime("%H:%M") }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-calendar-times fa-2x text-muted mb-3"></i>
-                        <p class="text-muted">No upcoming availability slots.</p>
-                        <p class="small text-muted">Check back later or contact the escort directly.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+						<!-- important staff -->
+						<!-- Slot Selection -->
+						<!-- SLOT SELECT -->
+						<div class="mb-3">
+							<label class="form-label">Available Time Slot</label>
+							<select id="slotSelect" name="slot_id" class="form-select" required>
+								{% for item in slots_with_start_times %}
+								{% set slot = item.slot %}
+								<option value="{{ slot.id }}">
+									{{ slot.start_time.strftime('%Y-%m-%d %H:%M') }} - {{
+									slot.end_time.strftime('%H:%M') }}
+								</option>
+								{% endfor %}
+							</select>
+						</div>
+
+						<!-- START TIME SELECT (populated dynamically by JS) -->
+						<div class="mb-3">
+							<label class="form-label">Start Time</label>
+							<select id="startTimeSelect" name="start_time" class="form-select" required>
+								<!-- JS will populate this -->
+							</select>
+						</div>
+
+						<!-- DURATION SELECT -->
+						<div class="mb-3">
+							<label class="form-label">Duration</label>
+							<select id="durationSelect" name="duration" class="form-select" required>
+								<option value="15">15 minutes</option>
+								<option value="30">30 minutes</option>
+								<option value="45">45 minutes</option>
+								<option value="60">1 hour</option>
+							</select>
+						</div>
+						<!-- end of important staff -->
+
+						<button type="submit" class="btn btn-primary">
+							<i class="fas fa-calendar"></i> Book Now
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-md-4">
+			<!-- Safety and Reporting Section -->
+			<div class="card border-warning">
+				<div class="card-header bg-warning text-dark">
+					<h5 class="mb-0">
+						<i class="fas fa-shield-alt me-2"></i>
+						Safety & Security
+					</h5>
+				</div>
+				<div class="card-body">
+					<p class="small text-muted">
+						Your safety is our priority. Report any inappropriate behavior or safety concerns.
+					</p>
+
+					<!-- Report User Button -->
+					{% if session.user_id and session.user_id != profile.user_id %}
+					<a href="{{ url_for('report.report_user', user_id=profile.user_id) }}"
+						class="btn btn-outline-danger btn-sm w-100 mb-2">
+						<i class="fas fa-flag me-1"></i>
+						Report This User
+					</a>
+					{% endif %}
+
+					<!-- View Ratings Button -->
+					<a href="{{ url_for('rating.user_ratings', user_id=profile.user_id) }}"
+						class="btn btn-outline-info btn-sm w-100 mb-2">
+						<i class="fas fa-star me-1"></i>
+						View Ratings & Reviews
+					</a>
+
+					<!-- Safety Guidelines -->
+					<div class="mt-3">
+						<h6 class="text-muted">Safety Tips:</h6>
+						<ul class="small text-muted">
+							<li>Meet in public places first</li>
+							<li>Trust your instincts</li>
+							<li>Keep personal info private</li>
+							<li>Report suspicious behavior</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- Ratings Summary (if available) -->
+			{% if ratings_summary %}
+			<div class="card mt-3">
+				<div class="card-header">
+					<h6 class="mb-0">
+						<i class="fas fa-star text-warning me-2"></i>
+						Rating Summary
+					</h6>
+				</div>
+				<div class="card-body">
+					<div class="d-flex justify-content-between align-items-center">
+						<span>Average Rating:</span>
+						<span class="h5 text-warning">
+							{{ "%.1f"|format(ratings_summary.average) }}
+							<small class="text-muted">/ 5.0</small>
+						</span>
+					</div>
+					<div class="d-flex justify-content-between align-items-center">
+						<span>Total Reviews:</span>
+						<span class="badge bg-info">{{ ratings_summary.total }}</span>
+					</div>
+				</div>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+
+	<!-- Available Time Slots -->
+	<div class="row mt-4">
+		<div class="col-12">
+			<div class="card">
+				<div class="card-header">
+					<h4 class="mb-0">Available Time Slots</h4>
+				</div>
+				<div class="card-body">
+					{% if time_slots %}
+					<div class="row">
+						{% for slot in time_slots %}
+						<div class="col-md-4 mb-2">
+							<div class="card border-success">
+								<div class="card-body text-center">
+									<i class="fas fa-clock text-success"></i>
+									<p class="mb-1"><strong>{{ slot.start_time.strftime("%Y-%m-%d") }}</strong></p>
+									<p class="mb-0">{{ slot.start_time.strftime("%H:%M") }} - {{
+										slot.end_time.strftime("%H:%M") }}</p>
+								</div>
+							</div>
+						</div>
+						{% endfor %}
+					</div>
+					{% else %}
+					<div class="text-center py-4">
+						<i class="fas fa-calendar-times fa-2x text-muted mb-3"></i>
+						<p class="text-muted">No upcoming availability slots.</p>
+						<p class="small text-muted">Check back later or contact the escort directly.</p>
+					</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
-{% endblock %}
+{% block scripts %}
+<script>
+	document.addEventListener('DOMContentLoaded', function () {
+		const slotSelect = document.getElementById('slotSelect');
+		const startSelect = document.getElementById('startTimeSelect');
+		const durationSelect = document.getElementById('durationSelect');
+
+		if (!slotSelect || !startSelect || !durationSelect) {
+			console.error("Dropdown elements missing!");
+			return;
+		}
+
+		const slotStartTimesMap = {
+        {% for item in slots_with_start_times %}
+		"{{ item.slot.id }}": [
+			{% for st in item.valid_starts %}
+            "{{ st.strftime('%Y-%m-%d %H:%M') }}"{% if not loop.last %}, {% endif %}
+	{% endfor %}
+        ]{% if not loop.last %}, {% endif %}
+	{% endfor %}
+    };
+
+	const slotEndMap = {
+        {% for item in slots_with_start_times %}
+	"{{ item.slot.id }}": "{{ item.slot.end_time.isoformat() }}"{% if not loop.last %}, {% endif %}
+	{% endfor %}
+    };
+
+	function parseDateTime(str) {
+		if (!str || typeof str !== 'string') return null;
+		try {
+			return new Date(str.replace(' ', 'T'));
+		} catch (e) {
+			console.error("Invalid date string:", str);
+			return null;
+		}
+	}
+
+	function updateStartTimes() {
+		const selectedSlotId = slotSelect.value;
+		const startTimes = slotStartTimesMap[selectedSlotId] || [];
+
+		if (!startTimes.length) {
+			startSelect.innerHTML = '<option disabled selected>No available start times</option>';
+			durationSelect.disabled = true;
+			return;
+		}
+
+		startSelect.innerHTML = '';
+		startTimes.forEach(time => {
+			const option = document.createElement('option');
+			option.value = time;
+			option.textContent = time;
+			startSelect.appendChild(option);
+		});
+
+		durationSelect.disabled = false;
+		updateDurationOptions();
+	}
+
+	function updateDurationOptions() {
+		const selectedSlotId = slotSelect.value;
+		const selectedStartTime = startSelect.value;
+		const slotEndStr = slotEndMap[selectedSlotId];
+
+		const slotEnd = parseDateTime(slotEndStr);
+		const start = parseDateTime(selectedStartTime);
+
+		if (!slotEnd || !start) {
+			console.error("Invalid date for slotEnd or start:", slotEndStr, selectedStartTime);
+			return;
+		}
+
+		const diffMins = (slotEnd - start) / 60000;
+
+		Array.from(durationSelect.options).forEach(opt => {
+			const val = parseInt(opt.value);
+			opt.disabled = val > diffMins;
+		});
+
+		const firstValid = Array.from(durationSelect.options).find(o => !o.disabled);
+		if (firstValid) {
+			durationSelect.value = firstValid.value;
+		}
+	}
+
+	slotSelect.addEventListener('change', () => {
+		updateStartTimes();
+	});
+	startSelect.addEventListener('change', () => {
+		updateDurationOptions();
+	});
+
+	updateStartTimes(); // initialize on page load
+});
+</script>
+{% endblock %} {# scripts #}
+{% endblock %} {# content #}

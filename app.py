@@ -66,6 +66,8 @@ else:
         os.environ['RECAPTCHA_SECRET_KEY'] = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe'  # Google test key
 
 from blueprint.models import db, User, Profile, Booking, Payment, Report, Rating, TimeSlot, Message
+from blueprint.models import Favourite, AuditLog, PasswordHistory
+
 
 
 app = Flask(__name__)
@@ -341,6 +343,13 @@ def dashboard():
             User.active == True,
             User.activate == True
         ).count()
+        # Fetch favourite escorts for this seeker
+        favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=user_id).all()]
+        if favourite_ids:
+            favourite_profiles = Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
+        else:
+            favourite_profiles = []
+        
     elif role == 'escort':
         data['booking_requests_count'] = db.session.query(Booking).join(
             User, Booking.seeker_id == User.id
@@ -351,6 +360,13 @@ def dashboard():
             User.active == True,
             User.activate == True
         ).count()
+        
+        # Fetch favourite seeker
+        favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=user_id).all()]
+        if favourite_ids:
+            favourite_profiles = Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
+        else:
+            favourite_profiles = []
     elif role == 'admin':
         data['total_users'] = User.query.count()
         data['total_reports'] = Report.query.filter_by(
@@ -365,7 +381,7 @@ def dashboard():
             User.pending_role == 'seeker'
         ).count()
 
-    return render_template('dashboard.html', role=role, data=data)
+    return render_template('dashboard.html', role=role, data=data, favourite_profiles=favourite_profiles)
 
 
 # # 8. ADMIN PANEL
@@ -454,6 +470,12 @@ def seed_database():
     db.session.query(Payment).delete()
     db.session.query(Booking).delete()
     db.session.query(TimeSlot).delete()
+    
+    # Added these model as new models have been added
+    db.session.query(Favourite).delete()
+    db.session.query(AuditLog).delete()
+    db.session.query(PasswordHistory).delete()
+
     db.session.query(Profile).delete()
     db.session.query(User).delete()
     db.session.commit()
