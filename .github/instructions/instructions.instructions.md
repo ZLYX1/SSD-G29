@@ -48,7 +48,7 @@ This file defines the systematic approach for completing any task in the Safe Co
 #### 6. **Completion & Verification Phase**
 - [ ] **Final Testing**: Comprehensive test of all functionality
 - [ ] **Documentation Update**: Update relevant documentation
-- [ ] **Context Update**: Update `copilot-context.md` if needed
+- [ ] **Context Update**: Update `instructions.instructions.md` if needed
 - [ ] **Success Verification**: Confirm task completion criteria met
 - [ ] **Summary Report**: Provide completion summary to user
 
@@ -369,7 +369,7 @@ Eddie has been working on **complementary features** to yours:
 ### Next Steps:
 1. ✅ Integration complete - all features working together
 2. ✅ Database seeded with test data
-3. ✅ Application running and accessible at http://localhost:5000
+3. ✅ Application running and accessible at http://127.0.0.1:5000
 4. Ready for feature testing and development continuation
 
 **Result:** Eddie's branch has been successfully integrated into the main/security branch with all overlapping features resolved and enhanced functionality preserved.
@@ -381,7 +381,7 @@ Eddie has been working on **complementary features** to yours:
 **Status:** INVESTIGATING - Connection Refused Error
 
 ### **Problem Description:**
-- **Issue**: Application not accessible at `http://localhost:5000/`
+- **Issue**: Application not accessible at `http://127.0.0.1:5000/`
 - **Error**: "localhost refused to connect"
 - **Context**: Clean setup after pulling integrated branch
 - **Impact**: Unable to access the Safe Companions application
@@ -389,7 +389,7 @@ Eddie has been working on **complementary features** to yours:
 ### **Environment Status:**
 - **Branch**: main/security (ryan-edit) with Eddie's integrated features
 - **Setup**: Clean pull from repository
-- **Expected**: Application should be running on localhost:5000
+- **Expected**: Application should be running on 127.0.0.1:5000
 - **Actual**: Connection refused error
 
 ### **Troubleshooting Steps:**
@@ -432,7 +432,7 @@ Eddie has been working on **complementary features** to yours:
 5. `docker-compose up --build` - Rebuild and start services
 
 ### **Expected Resolution:**
-- **Goal**: Restore application accessibility at localhost:5000
+- **Goal**: Restore application accessibility at 127.0.0.1:5000
 - **Success Criteria**: All features working as before integration
 - **Verification**: Able to login and access all integrated features
 
@@ -489,7 +489,7 @@ ModuleNotFoundError: No module named 'argon2'
 #### **Step 4: Test Application Startup**
 - [ ] Verify Flask application starts successfully
 - [ ] Check all containers are running properly
-- [ ] Test localhost:5000 accessibility
+- [ ] Test 127.0.0.1:5000 accessibility
 
 ### **✅ WORKING DIAGNOSIS:**
 
@@ -534,7 +534,7 @@ ModuleNotFoundError: No module named 'argon2'
 ### **🎯 FINAL STATUS:**
 
 **✅ Application Successfully Running:**
-- **URL**: http://localhost:5000 ✅ ACCESSIBLE
+- **URL**: http://127.0.0.1:5000 ✅ ACCESSIBLE
 - **Database**: PostgreSQL connected and initialized ✅
 - **Flask App**: Running in debug mode ✅
 - **All Containers**: Running properly ✅
