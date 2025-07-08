@@ -50,7 +50,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Configure CSRF for local development - TEMPORARILY DISABLED FOR TESTING
-app.config['WTF_CSRF_ENABLED'] = False
+app.config['WTF_CSRF_ENABLED'] = True
 # Security configurations
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-development-secret-key')
 app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
