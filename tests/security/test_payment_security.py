@@ -16,34 +16,40 @@ from extensions import db
 # === Fixtures ===
 
 @pytest.fixture
-def seeker_user(app_context):
-    """Create a seeker user for testing."""
-    user = User(
-        email="testseeker@example.com",
-        role="seeker",
-        active=True,
-        gender="Other",
-        password_hash=generate_password_hash("ValidPass123"),
-        created_at=datetime.now(timezone.utc),             
-        password_created_at=datetime.now(timezone.utc)       
-    )
-    db.session.add(user)
-    db.session.commit()
-    return user
+def seeker_session():
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client, flask_app.app_context():
+        # Clean up old test data
+        seeker = User.query.filter_by(email="testseeker@example.com").first()
+        if seeker:
+            Booking.query.filter_by(seeker_id=seeker.id).delete()
+            db.session.delete(seeker)
+            db.session.commit()
 
-@pytest.fixture
-def seeker_session(client, seeker_user):
-    """Create an authenticated seeker session."""
-    with client.session_transaction() as sess:
-        sess["user_id"] = seeker_user.id
-        sess["role"] = "seeker"
-        sess["bound_ua"] = "test-agent"
-        sess["bound_ip"] = "127.0.0.1"
+        seeker = User(
+            email="testseeker@example.com",
+            role="seeker",
+            active=True,
+            gender="Other",
+            password_hash=generate_password_hash("ValidPass123"),
+            created_at=datetime.now(timezone.utc),             
+            password_created_at=datetime.now(timezone.utc)       
+        )
+        db.session.add(seeker)
+        db.session.commit()
 
-    client.environ_base["HTTP_USER_AGENT"] = "test-agent"
-    client.environ_base["REMOTE_ADDR"] = "127.0.0.1"
-    
-    return client, seeker_user
+        fake_ua = "test-agent"
+        fake_ip = "127.0.0.1"
+        client.environ_base["HTTP_USER_AGENT"] = fake_ua
+        client.environ_base["REMOTE_ADDR"] = fake_ip
+
+        with client.session_transaction() as sess:
+            sess["user_id"] = seeker.id
+            sess["role"] = "seeker"
+            sess["bound_ua"] = fake_ua
+            sess["bound_ip"] = fake_ip
+
+        yield client, seeker
 
 # === Helpers ===
 

@@ -15,43 +15,46 @@ from extensions import db
 # === Fixtures ===
 
 @pytest.fixture
-def seeker_user(app_context):
-    """Create a seeker user for testing."""
+def seeker_session():
+    flask_app.config["TESTING"] = True
     os.environ["S3_BUCKET_NAME"] = "test-bucket"
-    
-    user = User(
-        email="seeker@test.com",
-        password_hash="dummy",
-        role="seeker",
-        gender="Male", 
-        active=True,
-        activate=True,
-        deleted=False,
-        created_at=datetime.now(timezone.utc),    
-        password_created_at=datetime.now(timezone.utc) 
-    )
-    db.session.add(user)
-    db.session.commit()
 
-    profile = Profile(user_id=user.id, name="Test Seeker", bio="Test bio")
-    db.session.add(profile)
-    db.session.commit()
-    
-    return user
+    with flask_app.test_client() as client, flask_app.app_context():
+        # Clean up any existing user with this email
+        User.query.filter_by(email="seeker@test.com").delete()
+        db.session.commit()
 
-@pytest.fixture
-def seeker_session(client, seeker_user):
-    """Create an authenticated seeker session."""
-    with client.session_transaction() as sess:
-        sess["user_id"] = seeker_user.id
-        sess["role"] = "seeker"
-        sess["bound_ua"] = "test-agent"
-        sess["bound_ip"] = "127.0.0.1"
+        # ✅ Use timezone-aware datetime
+        user = User(
+            email="seeker@test.com",
+            password_hash="dummy",
+            role="seeker",
+            gender="Male", 
+            active=True,
+            activate=True,
+            deleted=False,
+            created_at=datetime.now(timezone.utc),    
+            password_created_at=datetime.now(timezone.utc) 
+        )
+        db.session.add(user)
+        db.session.commit()
 
-    client.environ_base["HTTP_USER_AGENT"] = "test-agent"
-    client.environ_base["REMOTE_ADDR"] = "127.0.0.1"
-    
-    return client
+        profile = Profile(user_id=user.id, name="Test Seeker", bio="Test bio")
+        db.session.add(profile)
+        db.session.commit()
+
+        with client.session_transaction() as sess:
+            sess["user_id"] = user.id
+            sess["role"] = "seeker"
+            sess["bound_ua"] = "test-agent"
+            sess["bound_ip"] = "127.0.0.1"
+
+        yield client
+
+        # Cleanup
+        Profile.query.filter_by(user_id=user.id).delete()
+        User.query.filter_by(id=user.id).delete()
+        db.session.commit()
 
 # === Helper ===
 
