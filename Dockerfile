@@ -1,8 +1,8 @@
 # Use official Python image
 FROM python:3.11-slim
 
-# Install netcat (OpenBSD version) for database wait script
-RUN apt-get update && apt-get install -y netcat-openbsd && apt-get clean
+# Install netcat (OpenBSD version) for database wait script and curl for health checks
+RUN apt-get update && apt-get install -y netcat-openbsd curl && apt-get clean
 
 # Set working directory
 WORKDIR /app

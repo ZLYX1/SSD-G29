@@ -38,26 +38,37 @@ from blueprint.models import db, User, Profile, Booking, Payment, Report, Rating
 
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
 
 def str2bool(val, default=False):
     if val is None:
         return default
     return val.lower() in ("1", "true", "yes", "y", "on")
 
-
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Configure CSRF for local development - TEMPORARILY DISABLED FOR TESTING
-app.config['WTF_CSRF_ENABLED'] = True
-# Security configurations
+# Security configurations - Environment-specific
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-development-secret-key')
 app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
 
-# Disable these security measures for local development
-app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable HTTPS requirement
-app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP cookies
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Environment-specific security settings
+is_production = os.environ.get('FLASK_ENV') == 'production'
+
+if is_production:
+    # Production security settings
+    app.config['WTF_CSRF_ENABLED'] = True
+    app.config['WTF_CSRF_SSL_STRICT'] = True
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'
+else:
+    # Development settings
+    app.config['WTF_CSRF_ENABLED'] = False  # For easier development
+    app.config['WTF_CSRF_SSL_STRICT'] = False
+    app.config['SESSION_COOKIE_SECURE'] = False
+    app.config['SESSION_COOKIE_HTTPONLY'] = False
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # More lenient than 'Strict'
 app.config['SESSION_COOKIE_HTTPONLY'] = False # Prevent JavaScript access to session cookies (set True for production)
 
