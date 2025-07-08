@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
-from blueprint.models import Profile, User, TimeSlot, Booking
+from blueprint.models import Profile, User, TimeSlot, Booking, Favourite
 from extensions import db
 from blueprint.decorators import login_required
 from datetime import datetime, time
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy import and_
+from flask import jsonify
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
@@ -94,6 +95,24 @@ def view_profile(user_id):
         csrf_token=generate_csrf()
     )
 
+# favourite the user. Its working
+@browse_bp.route('/favourite/<int:user_id>', methods=['POST'])
+@login_required
+def toggle_favourite(user_id):
+    current_user_id = session['user_id']
+
+    # Check if already favourited
+    existing = Favourite.query.filter_by(user_id=current_user_id, favourite_user_id=user_id).first()
+
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+        return jsonify({'status': 'removed'})
+    else:
+        new_fav = Favourite(user_id=current_user_id, favourite_user_id=user_id)
+        db.session.add(new_fav)
+        db.session.commit()
+        return jsonify({'status': 'added'})
 
 # 2. PROFILE MANAGEMENT
 # @app.route('/profile', methods=['GET', 'POST'])
@@ -197,11 +216,11 @@ def can_book(escort_id, new_start, new_end):
     # If all good
     return True, "Time slot is available for booking."
 
-# to test
+
 @browse_bp.route('/browse', methods=['GET'])
 @login_required
 def browseEscort():
-    print("console logging browse\n")
+    print("/browse\n")
     user_role = 'seeker'
     query = Profile.query.join(User).filter(
         User.role == 'escort', 
@@ -218,10 +237,10 @@ def browseEscort():
     avail_date = request.args.get('avail_date')
     avail_time = request.args.get('avail_time')
     
-    print("avail_date")
-    print(avail_date)
-    print("avail_time")
-    print(avail_time)
+    # print("log avail_date")
+    # print(avail_date)
+    # print("avail_time")
+    # print(avail_time)
 
     # Apply basic filters
     if min_age:

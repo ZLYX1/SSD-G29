@@ -322,6 +322,13 @@ def dashboard():
             User.active == True,
             User.activate == True
         ).count()
+        # Fetch favourite escorts for this seeker
+        favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=user_id).all()]
+        if favourite_ids:
+            favourite_profiles = Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
+        else:
+            favourite_profiles = []
+        
     elif role == 'escort':
         data['booking_requests_count'] = db.session.query(Booking).join(
             User, Booking.seeker_id == User.id
@@ -332,6 +339,13 @@ def dashboard():
             User.active == True,
             User.activate == True
         ).count()
+        
+        # Fetch favourite seeker
+        favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=user_id).all()]
+        if favourite_ids:
+            favourite_profiles = Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
+        else:
+            favourite_profiles = []
     elif role == 'admin':
         data['total_users'] = User.query.count()
         data['total_reports'] = Report.query.filter_by(
@@ -346,7 +360,7 @@ def dashboard():
             User.pending_role == 'seeker'
         ).count()
 
-    return render_template('dashboard.html', role=role, data=data)
+    return render_template('dashboard.html', role=role, data=data, favourite_profiles=favourite_profiles)
 
 
 # # 8. ADMIN PANEL

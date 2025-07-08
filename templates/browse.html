@@ -16,6 +16,7 @@
 <form method="get" class="mb-4">
 	<div class="row g-2">
 		<div class="col-md-3">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 			<label for="min_age" class="form-label">Min Age</label>
 			<input type="number" class="form-control" name="min_age" value="{{ request.args.get('min_age', '') }}">
 		</div>
@@ -86,8 +87,15 @@
 			<div class="card-footer">
 				<!-- Change from button to link -->
 				<a href="{{ url_for('browse.view_profile', user_id=profile.user_id) }}"
-					class="btn btn-primary btn-sm">View Profile</a>
-				<button class="btn btn-outline-danger btn-sm">♡ Favorite</button>
+					class="btn btn-primary btn-sm">View Profile!</a>
+				<!-- <button class="btn btn-outline-danger btn-sm">♡ Favorite</button> -->
+				<!-- Favorite Button -->
+				<div class="favorite-toggle" data-user-id="{{ profile.user_id }}">
+					<button
+						class="btn btn-sm {% if profile.user_id in favourited_ids %}btn-danger{% else %}btn-outline-danger{% endif %}">
+						{% if profile.user_id in favourited_ids %}♥ Unfavorite{% else %}♡ Favorite{% endif %}
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -95,4 +103,37 @@
 	<p>No profiles found.</p>
 	{% endfor %}
 </div>
+
+<script>
+	document.querySelectorAll('.favorite-toggle').forEach(toggle => {
+		toggle.addEventListener('click', async function (e) {
+			e.preventDefault();
+			const userId = this.getAttribute('data-user-id');
+			const button = this.querySelector('button');
+
+			try {
+				const res = await fetch(`/browse/favourite/${userId}`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						// 'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+					}
+				});
+
+				const data = await res.json();
+				if (data.status === 'added') {
+					button.classList.remove('btn-outline-danger');
+					button.classList.add('btn-danger');
+					button.textContent = '♥ Unfavorite';
+				} else if (data.status === 'removed') {
+					button.classList.remove('btn-danger');
+					button.classList.add('btn-outline-danger');
+					button.textContent = '♡ Favorite';
+				}
+			} catch (err) {
+				console.error('Favorite toggle failed:', err);
+			}
+		});
+	});
+</script>
 {% endblock %}

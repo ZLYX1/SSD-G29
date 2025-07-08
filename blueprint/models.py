@@ -375,3 +375,27 @@ class AuditLog(db.Model):
 
     def __repr__(self):
         return f"<AuditLog {self.id} {self.action} by {self.user_id}>"
+
+class Favourite(db.Model):
+    __tablename__ = 'favourites'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # The user who favorites someone
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    # The user being favorited
+    favourite_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='favourites_given')
+    favourited_user = db.relationship('User', foreign_keys=[favourite_user_id], backref='favourites_received')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'favourite_user_id', name='unique_favourite_pair'),
+    )
+
+    def __repr__(self):
+        return f"<Favourite user={self.user_id} → favourited={self.favourite_user_id}>"
