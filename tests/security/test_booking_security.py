@@ -1,4 +1,4 @@
-'''
+
 import sys
 import os
 import re
@@ -133,4 +133,4 @@ def test_handle_booking_action_wrong_owner(escort_session):
  
      assert response.status_code == 200
      assert b"Booking not found" in response.data or b"Access denied" in response.data
-   '''  
+   

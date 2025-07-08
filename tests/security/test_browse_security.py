@@ -84,17 +84,17 @@ def escort_session():
 
         yield client
 
-# === Test Cases ===
 
-# TEMPORARILY DISABLED DUE TO SESSION ISSUES
-# def test_access_browse_without_login(client):
-#     response = client.get('/browse/browse')
-#     assert response.status_code == 302
-# 
-# TEMPORARILY DISABLED DUE TO SESSION ISSUES
-# def test_cache_poisoning_attempt(escort_session):
-#     dangerous_input = '<script>alert("poison")</script>'
-#     response = escort_session.get(f'/browse/browse?min_age={dangerous_input}')
-#     assert dangerous_input.encode() not in response.data
-# 
-#     
+
+
+def test_access_browse_without_login(client):
+     response = client.get('/browse/browse')
+     assert response.status_code == 302
+ 
+
+def test_cache_poisoning_attempt(escort_session):
+     dangerous_input = '<script>alert("poison")</script>'
+     response = escort_session.get(f'/browse/browse?min_age={dangerous_input}')
+     assert dangerous_input.encode() not in response.data
+ 
+     
