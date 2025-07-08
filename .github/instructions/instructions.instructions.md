@@ -16,8 +16,14 @@ This file defines the systematic approach for completing any task in the Safe Co
 - [ ] **Document Plan**: List out each step clearly in this file
 - [ ] **Identify Dependencies**: Note any prerequisites or related components
 - [ ] **Risk Assessment**: Identify potential issues or complications
-
-#### 2. **Clarification Phase**
+#### **🔒 SECURITY ENHANCEMENT APPLIED:**
+**Centralized all keys to .env files only:**
+- ✅ **Removed**: All hardcoded default values from code
+- ✅ **Added**: Environment variable validation at startup
+- ✅ **Updated**: `.env.example` with all required variables
+- ✅ **Created**: CI/CD-friendly mode for testing environments
+- ✅ **Fixed**: CI/CD pipeline with proper test environment variables
+- ✅ **Result**: Application will fail fast if any required keys are missing (except in CI/CD mode)2. **Clarification Phase**
 - [ ] **Check for Ambiguities**: Identify any unclear requirements
 - [ ] **Ask Questions**: Clarify doubts before proceeding
 - [ ] **Confirm Understanding**: Ensure alignment with user expectations

@@ -96,6 +96,12 @@ jobs:
           DATABASE_NAME: testdb
           DATABASE_USERNAME: testuser
           DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # Set CI mode and required environment variables for Flask
+          CI: true
+          FLASK_SECRET_KEY: test-flask-secret-key-for-ci-cd-only
+          CSRF_SECRET_KEY: test-csrf-secret-key-for-ci-cd-only
+          SITEKEY: 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
+          RECAPTCHA_SECRET_KEY: 6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe
         shell: bash
         run: |
           source .venv/bin/activate
@@ -108,8 +114,12 @@ jobs:
           DATABASE_NAME: testdb
           DATABASE_USERNAME: testuser
           DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          FLASK_SECRET_KEY: ${{ secrets.FLASK_SECRET_KEY || 'test_secret_key_for_ci' }}
-          CSRF_SECRET_KEY: ${{ secrets.CSRF_SECRET_KEY || 'test_csrf_key_for_ci' }}
+          # Set CI mode and required environment variables for Flask
+          CI: true
+          FLASK_SECRET_KEY: test-flask-secret-key-for-ci-cd-only
+          CSRF_SECRET_KEY: test-csrf-secret-key-for-ci-cd-only
+          SITEKEY: 6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI
+          RECAPTCHA_SECRET_KEY: 6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe
         shell: bash
         run: |
           source .venv/bin/activate

@@ -34,21 +34,36 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Validate required environment variables
-required_env_vars = [
-    'FLASK_SECRET_KEY',
-    'CSRF_SECRET_KEY', 
-    'SITEKEY',
-    'RECAPTCHA_SECRET_KEY',
-    'DATABASE_URL'
-]
+# Check if running in CI/CD environment
+CI_MODE = os.getenv('CI') == 'true' or os.getenv('GITHUB_ACTIONS') == 'true'
 
-missing_vars = [var for var in required_env_vars if not os.getenv(var)]
-if missing_vars:
-    raise EnvironmentError(
-        f"❌ Missing required environment variables: {', '.join(missing_vars)}\n"
-        f"Please ensure these are set in your .env file."
-    )
+# Validate required environment variables (skip in CI/CD)
+if not CI_MODE:
+    required_env_vars = [
+        'FLASK_SECRET_KEY',
+        'CSRF_SECRET_KEY', 
+        'SITEKEY',
+        'RECAPTCHA_SECRET_KEY',
+        'DATABASE_URL'
+    ]
+
+    missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+    if missing_vars:
+        raise EnvironmentError(
+            f"❌ Missing required environment variables: {', '.join(missing_vars)}\n"
+            f"Please ensure these are set in your .env file."
+        )
+else:
+    print("🔧 CI/CD Mode detected - Using test environment variables")
+    # Set safe test values for CI/CD
+    if not os.getenv('FLASK_SECRET_KEY'):
+        os.environ['FLASK_SECRET_KEY'] = 'test-flask-secret-key-for-ci-cd-only'
+    if not os.getenv('CSRF_SECRET_KEY'):
+        os.environ['CSRF_SECRET_KEY'] = 'test-csrf-secret-key-for-ci-cd-only'
+    if not os.getenv('SITEKEY'):
+        os.environ['SITEKEY'] = '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'  # Google test key
+    if not os.getenv('RECAPTCHA_SECRET_KEY'):
+        os.environ['RECAPTCHA_SECRET_KEY'] = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe'  # Google test key
 
 from blueprint.models import db, User, Profile, Booking, Payment, Report, Rating, TimeSlot, Message
 
