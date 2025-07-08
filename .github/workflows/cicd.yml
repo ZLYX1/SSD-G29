@@ -161,7 +161,7 @@ jobs:
           docker build --build-arg REQ_FILE=requirements-prod.txt \
           --cache-from=type=gha \
           --no-cache \
-          -t flask-app .
+          -t safe-companions-web .
 
   deploy:
     name: Deploy to EC2
@@ -223,7 +223,7 @@ jobs:
           
           # Run the environment persistence script
           echo "Setting up environment persistence"
-          docker exec flask-app ./scripts/persist_env.sh
+          docker exec safe-companions-web ./scripts/persist_env.sh
           
           # Verify production environment
           echo "Verifying production environment..."

@@ -3,11 +3,18 @@
 Comprehensive Test Data Setup Script
 This script creates test users with different roles and comprehensive test data
 for all functionality in the Safe Companions application.
+
+Usage:
+  python setup_test_data.py                    # Interactive mode
+  python setup_test_data.py --clear-all        # Clear all data and recreate
+  python setup_test_data.py --production       # Production-safe mode
+  python setup_test_data.py --help             # Show help
 """
 
 import os
 import sys
 import random
+import argparse
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 
@@ -562,64 +569,167 @@ def update_profile_ratings(users):
     db.session.commit()
     print("   ✅ Updated profile ratings")
 
-def setup_test_data():
+def clear_all_users():
+    """Completely remove all users and associated data"""
+    print("🗑️  Clearing all existing users and associated data...")
+    
+    try:
+        # Delete in proper order to handle foreign key constraints
+        print("   - Deleting ratings...")
+        Rating.query.delete()
+        
+        print("   - Deleting messages...")
+        Message.query.delete()
+        
+        print("   - Deleting reports...")
+        Report.query.delete()
+        
+        print("   - Deleting payments...")
+        Payment.query.delete()
+        
+        print("   - Deleting bookings...")
+        Booking.query.delete()
+        
+        print("   - Deleting time slots...")
+        TimeSlot.query.delete()
+        
+        print("   - Deleting favourites...")
+        Favourite.query.delete()
+        
+        print("   - Deleting password history...")
+        PasswordHistory.query.delete()
+        
+        print("   - Deleting audit logs...")
+        AuditLog.query.delete()
+        
+        print("   - Deleting profiles...")
+        Profile.query.delete()
+        
+        print("   - Deleting users...")
+        User.query.delete()
+        
+        db.session.commit()
+        print("   ✅ All users and data cleared successfully")
+        return True
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"   ❌ Error clearing users: {e}")
+        return False
+
+def get_user_count():
+    """Get current user count"""
+    return User.query.count()
+
+def confirm_data_reset():
+    """Ask for confirmation before clearing data"""
+    current_users = get_user_count()
+    
+    if current_users == 0:
+        print("📊 Database is empty - no users to clear")
+        return True
+    
+    print(f"⚠️  WARNING: Found {current_users} existing users in database")
+    print("   This operation will DELETE ALL existing users and their data!")
+    print("   This includes: profiles, bookings, messages, payments, ratings, etc.")
+    
+    while True:
+        response = input("\n🤔 Do you want to continue? Type 'DELETE_ALL' to confirm: ").strip()
+        if response == 'DELETE_ALL':
+            return True
+        elif response.lower() in ['no', 'n', 'cancel', 'quit', 'exit']:
+            print("❌ Operation cancelled")
+            return False
+        else:
+            print("❌ Invalid response. Type 'DELETE_ALL' to confirm or 'no' to cancel.")
+
+def setup_test_data(clear_existing=False, production_mode=False, force_clear=False):
     """Main function to set up all test data"""
     print("🎯 Setting up comprehensive test data for Safe Companions")
     print("=" * 60)
     
+    if production_mode:
+        print("🔒 PRODUCTION MODE: Using production-safe test data")
+    
     try:
         with app.app_context():
-            # Clear existing data
-            clear_existing_data()
+            current_users = get_user_count()
+            
+            if clear_existing or current_users > 0:
+                if not force_clear and not confirm_data_reset():
+                    return False
+                
+                if not clear_all_users():
+                    return False
             
             # Create users first
             users = create_test_users()
             
-            # Create related data
-            create_time_slots(users)
-            create_bookings(users)
-            create_payments(users)
-            create_messages(users)
-            create_ratings(users)
-            create_reports(users)
-            create_favourites(users)
-            create_audit_logs(users)
-            update_profile_ratings(users)
+            # Create related data (skip some in production mode)
+            if not production_mode:
+                create_time_slots(users)
+                create_bookings(users)
+                create_payments(users)
+                create_messages(users)
+                create_favourites(users)
+                create_reports(users)
+                create_ratings(users)
+                update_profile_ratings(users)
+            else:
+                print("🔒 Production mode: Only creating essential users")
             
-            print("\n✅ Test data setup completed successfully!")
-            print("\n🔐 Test Login Credentials:")
-            print("=" * 40)
-            print(f"🔑 ADMIN: {ADMIN_EMAIL} / {ADMIN_PASSWORD}")
-            print(f"👤 SEEKER: seeker1@example.com / {TEST_PASSWORD}")
-            print(f"💼 ESCORT: escort1@example.com / {TEST_PASSWORD}")
-            print(f"🔒 LOCKED: locked@example.com / {TEST_PASSWORD}")
-            print(f"❌ UNVERIFIED: unverified@example.com / {TEST_PASSWORD}")
+            print("\n" + "=" * 60)
+            print("✅ Test data setup completed successfully!")
             
-            print("\n📊 Database Summary:")
-            print("=" * 40)
-            print(f"👥 Users: {User.query.count()}")
-            print(f"👤 Profiles: {Profile.query.count()}")
-            print(f"⏰ Time Slots: {TimeSlot.query.count()}")
-            print(f"📅 Bookings: {Booking.query.count()}")
-            print(f"💳 Payments: {Payment.query.count()}")
-            print(f"💬 Messages: {Message.query.count()}")
-            print(f"⭐ Ratings: {Rating.query.count()}")
-            print(f"🚨 Reports: {Report.query.count()}")
-            print(f"❤️ Favourites: {Favourite.query.count()}")
-            print(f"📝 Audit Logs: {AuditLog.query.count()}")
+            # Show summary
+            final_count = get_user_count()
+            print(f"📊 Total users created: {final_count}")
+            
+            if not production_mode:
+                print(f"📊 Bookings: {Booking.query.count()}")
+                print(f"📊 Messages: {Message.query.count()}")
+                print(f"📊 Ratings: {Rating.query.count()}")
+            
+            return True
             
     except Exception as e:
-        print(f"❌ Test data setup failed: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"\n💥 Error setting up test data: {e}")
         return False
-    
-    return True
 
-if __name__ == '__main__':
-    success = setup_test_data()
+def main():
+    """Main function with argument parsing"""
+    parser = argparse.ArgumentParser(
+        description="Set up comprehensive test data for Safe Companions",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python setup_test_data.py                    # Interactive mode
+  python setup_test_data.py --clear-all        # Clear all data and recreate
+  python setup_test_data.py --production       # Production-safe mode
+  python setup_test_data.py --clear-all --force  # Force clear without confirmation
+        """
+    )
+    
+    parser.add_argument('--clear-all', action='store_true',
+                       help='Clear all existing data before creating new test data')
+    parser.add_argument('--production', action='store_true',
+                       help='Production mode - only create essential users')
+    parser.add_argument('--force', action='store_true',
+                       help='Skip confirmation prompts (use with caution)')
+    
+    args = parser.parse_args()
+    
+    success = setup_test_data(
+        clear_existing=args.clear_all,
+        production_mode=args.production,
+        force_clear=args.force
+    )
+    
     if success:
         print("\n🚀 Test data is ready! You can now test all features.")
     else:
         print("\n💥 Test data setup failed. Please check the errors above.")
         sys.exit(1)
+
+if __name__ == '__main__':
+    main()

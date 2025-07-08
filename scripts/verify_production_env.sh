@@ -11,7 +11,7 @@ echo -e "${YELLOW}=== Safe Companion Production Environment Verification ===${NC
 echo
 
 # Check if container is running
-if ! docker ps | grep -q "flask-app"; then
+if ! docker ps | grep -q "safe-companions-web"; then
   echo -e "${RED}❌ Flask app container is not running!${NC}"
   echo "Please start the container with: docker compose up -d"
   exit 1
@@ -22,7 +22,7 @@ echo -e "${YELLOW}Checking environment variables...${NC}"
 # Function to check if a variable is set in the container environment
 check_var() {
   local var_name=$1
-  local var_value=$(docker exec flask-app bash -c "echo \${$var_name}")
+  local var_value=$(docker exec safe-companions-web bash -c "echo \${$var_name}")
   
   if [ -z "$var_value" ]; then
     echo -e "${RED}❌ $var_name is not set!${NC}"
@@ -76,12 +76,12 @@ done
 
 # Check persistence file
 echo -e "\n${YELLOW}Environment persistence:${NC}"
-if docker exec flask-app bash -c "[ -f /app/persistent/env.sh ]"; then
+if docker exec safe-companions-web bash -c "[ -f /app/persistent/env.sh ]"; then
   echo -e "${GREEN}✅ Persistent environment file exists${NC}"
-  echo -e "   Variables saved: $(docker exec flask-app bash -c "grep -c '^export' /app/persistent/env.sh")"
+  echo -e "   Variables saved: $(docker exec safe-companions-web bash -c "grep -c '^export' /app/persistent/env.sh")"
 else
   echo -e "${RED}❌ Persistent environment file doesn't exist!${NC}"
-  echo "   Run: docker exec flask-app ./scripts/persist_env.sh"
+  echo "   Run: docker exec safe-companions-web ./scripts/persist_env.sh"
 fi
 
 # Summary
@@ -112,7 +112,7 @@ else
   echo -e "\nTo fix missing variables:"
   echo "1. Update .env.production file"
   echo "2. Restart the application with: docker compose down && docker compose up -d"
-  echo "3. Run: docker exec flask-app ./scripts/persist_env.sh"
+  echo "3. Run: docker exec safe-companions-web ./scripts/persist_env.sh"
 fi
 
 echo

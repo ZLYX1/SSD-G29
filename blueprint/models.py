@@ -50,8 +50,14 @@ def generate_password_hash(password):
     return generate_argon2_hash(password)
 
 def check_password_hash(password_hash, password):
-    """Drop-in replacement for Werkzeug's check_password_hash"""
-    return verify_argon2_hash(password_hash, password)
+    """Drop-in replacement for Werkzeug's check_password_hash that supports Argon2, PBKDF2, and scrypt"""
+    if is_argon2_hash(password_hash):
+        # Use Argon2 verification for new hashes
+        return verify_argon2_hash(password_hash, password)
+    else:
+        # Fall back to Werkzeug's verification for legacy hashes (PBKDF2, scrypt, etc.)
+        from werkzeug.security import check_password_hash as werkzeug_check
+        return werkzeug_check(password_hash, password)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
