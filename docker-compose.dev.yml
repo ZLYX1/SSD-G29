@@ -16,6 +16,16 @@ services:
       - FLASK_APP=app.py
       - FLASK_ENV=development
       - FLASK_DEBUG=1
+      # Load environment variables from .env file
+      - SITEKEY
+      - RECAPTCHA_SECRET_KEY
+      - FLASK_SECRET_KEY
+      - CSRF_SECRET_KEY
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_REGION
+      - S3_BUCKET_NAME
+      - SES_SENDER_EMAIL
     ports:
       - "5000:5000"  # Expose Flask directly for development
     depends_on:

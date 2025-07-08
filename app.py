@@ -237,6 +237,12 @@ def logout():
 app.register_blueprint(
     auth_bp)  # registers at /auth because of prefix in auth.py
 app.register_blueprint(profile_bp)
+app.register_blueprint(browse_bp)
+app.register_blueprint(booking_bp)
+app.register_blueprint(messaging_bp)
+app.register_blueprint(payment_bp)
+app.register_blueprint(rating_bp)
+app.register_blueprint(report_bp)
 app.register_blueprint(audit_bp)
 # @login_required
 # def browse():
