@@ -61,41 +61,41 @@ def extract_csrf_token(html_data):
 
 # === Authentication Security Tests ===
 
-# TEMPORARILY DISABLED DUE TO SESSION ISSUES
-# def test_password_complexity_enforcement(seeker_session):
-#     user = User.query.filter_by(email="testseeker@example.com").first() 
-#     get_response = seeker_session.get(f"/auth/change-password/{user.id}")
-#     csrf_token = extract_csrf_token(get_response.data)
-# 
-#     response = seeker_session.post(f"/auth/change-password/{user.id}", data={
-#         "csrf_token": csrf_token,
-#         "current_password": "ValidPass123",
-#         "new_password": "123",  # Too weak
-#         "confirm_password": "123"
-#     }, follow_redirects=True)
-# 
-#     assert (
-#         b"Password requirements not met" in response.data or
-#         b"Password" in response.data or
-#         response.status_code in [400]
-#     )
-# 
-# TEMPORARILY DISABLED DUE TO SESSION ISSUES
-# def test_password_reuse(seeker_session):
-#     user = User.query.filter_by(email="testseeker@example.com").first() 
-#     get_response = seeker_session.get(f"/auth/change-password/{user.id}")
-#     csrf_token = extract_csrf_token(get_response.data)
-# 
-#     reused_password = "ValidPass123"
-#     response = seeker_session.post(f"/auth/change-password/{user.id}", data={
-#         "csrf_token": csrf_token,
-#         "current_password": reused_password,
-#         "new_password": reused_password,
-#         "confirm_password": reused_password
-#     }, follow_redirects=True)
-# 
-#     assert (
-#         b"Password has been used recently" in response.data or
-#         b"Password" in response.data or
-#         response.status_code in [200, 400]
-#     )
+
+def test_password_complexity_enforcement(seeker_session):
+     user = User.query.filter_by(email="testseeker@example.com").first() 
+     get_response = seeker_session.get(f"/auth/change-password/{user.id}")
+     csrf_token = extract_csrf_token(get_response.data)
+ 
+     response = seeker_session.post(f"/auth/change-password/{user.id}", data={
+         "csrf_token": csrf_token,
+         "current_password": "ValidPass123",
+         "new_password": "123",  # Too weak
+         "confirm_password": "123"
+     }, follow_redirects=True)
+ 
+     assert (
+         b"Password requirements not met" in response.data or
+         b"Password" in response.data or
+         response.status_code in [400]
+     )
+ 
+
+def test_password_reuse(seeker_session):
+     user = User.query.filter_by(email="testseeker@example.com").first() 
+     get_response = seeker_session.get(f"/auth/change-password/{user.id}")
+     csrf_token = extract_csrf_token(get_response.data)
+ 
+     reused_password = "ValidPass123"
+     response = seeker_session.post(f"/auth/change-password/{user.id}", data={
+         "csrf_token": csrf_token,
+         "current_password": reused_password,
+         "new_password": reused_password,
+         "confirm_password": reused_password
+     }, follow_redirects=True)
+ 
+     assert (
+         b"Password has been used recently" in response.data or
+         b"Password" in response.data or
+         response.status_code in [200, 400]
+     )
