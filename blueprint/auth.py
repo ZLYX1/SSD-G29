@@ -216,8 +216,8 @@ def auth():
             return redirect(url_for('auth.auth', mode='reset'))
 
     csrf_token = generate_csrf()  # Generate CSRF token for the form
-    sitekey = os.environ.get('SITEKEY', '6Lcz0W4rAAAAAMaoHyYe_PzkZhJuzqefCtavEmYt')  # Get SITEKEY from environment
-    return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token, sitekey=sitekey)
+    # Note: sitekey is now provided by global context processor in app.py
+    return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token)
 
 @auth_bp.route('/verify-email/<token>')
 def verify_email(token):

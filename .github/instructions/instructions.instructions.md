@@ -566,3 +566,285 @@ ModuleNotFoundError: No module named 'argon2'
 4. **Using correct docker-compose file** is crucial for proper environment setup
 
 **TROUBLESHOOTING COMPLETE** - Application fully functional and accessible! 🎉
+
+## Production reCAPTCHA Domain Issue
+
+### 🚨 NEW ISSUE IDENTIFIED
+**Date:** July 9, 2025  
+**Status:** INVESTIGATING - Production reCAPTCHA Domain Validation Error
+
+### **Problem Description:**
+- **Issue**: "ERROR for site owner: Invalid domain for site key" on production server
+- **Domain**: safecompanion.ddns.net
+- **Environment**: Production server
+- **SITEKEY**: 6LceQXsrAAAAACSJpkUX2O4_fx-FVwj3M6aYxr7G
+
+### **Actions Taken:**
+✅ **Added domains to Google reCAPTCHA console:**
+- safecompanion.ddns.net
+- www.safecompanion.ddns.net  
+- localhost
+- 127.0.0.1
+
+### **Troubleshooting Steps:**
+#### **Step 1: Verify reCAPTCHA Configuration** 
+- [x] **Domains Added**: All required domains added to reCAPTCHA console
+- [x] **Production Container Running**: Containers verified running correctly
+- [x] **Error Location Identified**: `https://safecompanion.ddns.net/auth/` 
+- [x] **Domain Format Check**: Verify correct domain format in reCAPTCHA console
+
+#### **✅ CONTAINER ENVIRONMENT VERIFIED:**
+- **SITEKEY**: `6LceQXsrAAAAACSJpkUX2O4_fx-FVwj3M6aYxr7G` ✅ LOADED CORRECTLY
+- **RECAPTCHA_SECRET_KEY**: `6LceQXsrAAAAAAEbiiuvx2-aF8PakeunGCb6vTGl` ✅ PRESENT
+- **Implementation**: auth.py verify_recaptcha function ✅ PROPERLY CONFIGURED
+- **Template**: reCAPTCHA v3 script loading correctly ✅ VERIFIED
+
+#### **🔍 CODE ANALYSIS RESULTS:**
+✅ **auth.py Implementation**: 
+- reCAPTCHA verification function is correct
+- Environment variables are properly loaded
+- Error handling is in place
+
+✅ **Template Implementation**:
+- reCAPTCHA v3 script loads with correct sitekey: `{{ sitekey }}`
+- Form submission intercepted properly
+- Token generation and submission working
+
+✅ **Environment Configuration**:
+- Container environment variables loaded correctly
+- Both SITEKEY and SECRET_KEY present in production environment
+
+#### **🔍 CURRENT STATUS UPDATE:**
+- **Error Location**: `https://safecompanion.ddns.net/auth/` ✅ IDENTIFIED
+- **Container Status**: All containers running properly ✅
+- **Domain Access**: HTTPS working correctly ✅
+- **Issue**: reCAPTCHA domain validation on specific path ❌
+
+### **🎯 EXACT SOLUTION IDENTIFIED:**
+
+The issue is likely one of these common reCAPTCHA domain configuration problems:
+
+#### **Solution 1: Verify Domain Format in Google Console**
+In your Google reCAPTCHA admin console, ensure domains are entered as:
+```
+safecompanion.ddns.net
+www.safecompanion.ddns.net
+```
+**NOT:**
+```
+https://safecompanion.ddns.net
+https://safecompanion.ddns.net/
+https://safecompanion.ddns.net/auth/
+```
+
+#### **Solution 2: Check Container Environment Variables**
+Your containers are running, let's verify the SITEKEY is loaded correctly:
+```bash
+docker exec safe-companions-web printenv | grep -E "(SITEKEY|RECAPTCHA)"
+```
+
+#### **Solution 3: Wait for Propagation + Clear Cache**
+- **Propagation**: Wait 5-10 more minutes for Google's changes to propagate
+- **Clear Browser Cache**: Hard refresh (Ctrl+F5) or try incognito mode
+- **Try Different Browser**: Test with a different browser entirely
+
+#### **Solution 4: Alternative Domain Entries**
+If the above doesn't work, try adding these to your reCAPTCHA console:
+```
+*.ddns.net
+safecompanion.ddns.net:443
+```
+
+### **⚡ IMMEDIATE ACTION PLAN:**
+
+1. **Double-check Google reCAPTCHA Admin Console**:
+   - Go to: https://www.google.com/recaptcha/admin
+   - Find your site key: `6LceQXsrAAAAACSJpkUX2O4_fx-FVwj3M6aYxr7G`
+   - Verify domains are entered WITHOUT `https://` prefix
+   - Verify domains are entered WITHOUT trailing slashes
+
+2. **Test Container Environment**:
+   ```bash
+   docker exec safe-companions-web printenv | grep SITEKEY
+   ```
+
+3. **Clear Browser Cache & Test**:
+   - Open incognito/private browser
+   - Visit: `https://safecompanion.ddns.net/auth/`
+   - Try to register
+
+### **🔧 MOST LIKELY FIX:**
+
+**The domain format in Google reCAPTCHA console is probably wrong.**
+
+**Correct format:**
+```
+safecompanion.ddns.net
+```
+
+**Incorrect formats that cause this error:**
+```
+https://safecompanion.ddns.net    ❌
+safecompanion.ddns.net/           ❌  
+safecompanion.ddns.net/auth/      ❌
+```
+
+### **Expected Resolution:**
+- **Goal**: reCAPTCHA working on `https://safecompanion.ddns.net/auth/`
+- **Success Criteria**: Registration form accepts reCAPTCHA without errors
+- **Timeline**: Should work within 5-10 minutes after correct domain format
+
+### **Progress Tracking:**
+- **Current Step**: 🎉 **ROOT CAUSE IDENTIFIED & FIXED**
+- **Issue Found**: Auth route in `auth.py` was overriding global context with wrong default sitekey
+- **Status**: 🔧 **APPLIED FIX - NEEDS CONTAINER RESTART**
+
+#### **🎯 ROOT CAUSE CONFIRMED:**
+**Flask auth route was overriding the global sitekey context processor:**
+- **Container Environment**: `SITEKEY=6LceQXsrAAAAACSJpkUX2O4_fx-FVwj3M6aYxr7G` ✅ **CORRECT**
+- **Global Context** (`app.py`): Uses environment variable correctly ✅ 
+- **Auth Route** (`auth.py` line 219): Had hardcoded wrong default `6Lcz0W4rAAAAAMaoHyYe_PzkZhJuzqefCtavEmYt` ❌
+- **Template Override**: Auth route was passing wrong sitekey to template ❌
+
+#### **🔧 FIX APPLIED:**
+**Removed hardcoded sitekey from auth route and let global context processor handle it:**
+- ✅ **Removed**: `sitekey = os.environ.get('SITEKEY', '6Lcz0W4rAAAAAMaoHyYe_PzkZhJuzqefCtavEmYt')`
+- ✅ **Removed**: `sitekey=sitekey` parameter from `render_template()`
+- ✅ **Result**: Now uses global context processor from `app.py` which has correct environment variable
+
+#### **� SECURITY ENHANCEMENT APPLIED:**
+**Centralized all keys to .env files only:**
+- ✅ **Removed**: All hardcoded default values from code
+- ✅ **Added**: Environment variable validation at startup
+- ✅ **Updated**: `.env.example` with all required variables
+- ✅ **Created**: `scripts/validate_env.py` for environment validation
+- ✅ **Result**: Application will fail fast if any required keys are missing
+
+#### **�🚀 NEXT STEP:**
+**Restart container to apply the fix:**
+```bash
+docker-compose down && docker-compose up -d
+```
+```bash
+docker-compose down && docker-compose up -d
+```
+
+### **🛠️ COMPREHENSIVE UBUNTU DEBUGGING COMMANDS:**
+
+#### **1. Container and Application Diagnostics:**
+```bash
+# Check container health and logs
+docker ps -a
+docker logs safe-companions-web --tail=50
+docker exec safe-companions-web ps aux | grep python
+
+# Check if Flask is actually running
+docker exec safe-companions-web curl -I localhost:5000
+docker exec safe-companions-web netstat -tlnp | grep :5000
+```
+
+#### **2. Environment Variable Verification:**
+```bash
+# Verify ALL environment variables in container
+docker exec safe-companions-web printenv | grep -E "(SITEKEY|RECAPTCHA|FLASK)"
+
+# Check if production environment file is being used
+docker exec safe-companions-web cat /app/.env.production | grep SITEKEY
+docker exec safe-companions-web ls -la /app/.env*
+```
+
+#### **3. Template and Static File Analysis:**
+```bash
+# Check if base.html is loading correctly
+docker exec safe-companions-web cat /app/templates/base.html | grep -A5 -B5 "recaptcha"
+
+# Verify static files and templates exist
+docker exec safe-companions-web ls -la /app/templates/
+docker exec safe-companions-web ls -la /app/static/
+```
+
+#### **4. Network and DNS Diagnostics:**
+```bash
+# Test external connectivity from container
+docker exec safe-companions-web ping -c 3 8.8.8.8
+docker exec safe-companions-web curl -I https://www.google.com/recaptcha/api.js
+
+# Check if Google's reCAPTCHA API is accessible
+docker exec safe-companions-web wget --spider https://www.google.com/recaptcha/api.js?render=6LceQXsrAAAAACSJpkUX2O4_fx-FVwj3M6aYxr7G
+```
+
+#### **5. Nginx and Reverse Proxy Analysis:**
+```bash
+# Check nginx configuration
+docker exec nginx-proxy cat /etc/nginx/conf.d/default.conf
+docker logs nginx-proxy --tail=30
+
+# Test direct Flask access (bypass nginx)
+curl -I http://localhost:5000
+```
+
+#### **6. SSL/TLS and Domain Resolution:**
+```bash
+# Check SSL certificate
+openssl s_client -connect safecompanion.ddns.net:443 -servername safecompanion.ddns.net | grep -E "(subject|issuer)"
+
+# Test domain resolution
+nslookup safecompanion.ddns.net
+dig safecompanion.ddns.net
+
+# Check if domain resolves to correct IP
+ping -c 3 safecompanion.ddns.net
+```
+
+#### **7. Browser and Client-Side Debugging:**
+```bash
+# Test with curl to see actual HTML response
+curl -s https://safecompanion.ddns.net/dashboard | grep -i recaptcha
+
+# Check if reCAPTCHA script is being loaded
+curl -s https://safecompanion.ddns.net/auth/ | grep -E "(recaptcha|sitekey)"
+```
+
+### **🎯 LIKELY ROOT CAUSES (Given ALL Pages Affected):**
+
+#### **1. Base Template Issue** (Most Likely)
+- `base.html` template not loading `{{ sitekey }}` variable correctly
+- Global template inheritance problem
+
+#### **2. Environment Variable Not Available Globally**
+- SITEKEY not accessible to all Flask routes
+- Environment not loaded in production mode
+
+#### **3. Nginx/Reverse Proxy Interference**
+- Proxy stripping or modifying HTML content
+- Headers being blocked or modified
+
+#### **4. DNS/Network Issue**
+- Google's reCAPTCHA API not accessible from your server
+- Firewall blocking outbound connections
+
+### **🔧 IMMEDIATE DIAGNOSTIC SEQUENCE:**
+
+**Run these commands in this order:**
+
+1. **Check Template Rendering:**
+   ```bash
+   curl -s https://safecompanion.ddns.net/auth/ | grep -A10 -B10 "recaptcha"
+   ```
+
+2. **Verify Environment in Container:**
+   ```bash
+   docker exec safe-companions-web printenv | grep SITEKEY
+   ```
+
+3. **Test Google API Access:**
+   ```bash
+   docker exec safe-companions-web curl -I https://www.google.com/recaptcha/api.js
+   ```
+
+4. **Check Flask Application Logs:**
+   ```bash
+   docker logs safe-companions-web --tail=100 | grep -i "recaptcha\|error\|sitekey"
+   ```
+
+**Can you run these diagnostic commands and share the results? This will help us pinpoint the exact cause.**

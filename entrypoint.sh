@@ -55,11 +55,11 @@ if [ -z "$SES_SENDER_EMAIL" ]; then
   export SES_SENDER_EMAIL="Safe Companion <noreply@example.com>"
 fi
 
-# Set recaptcha keys if empty
+# Validate required environment variables
 if [ -z "$SITEKEY" ] || [ -z "$RECAPTCHA_SECRET_KEY" ]; then
-  echo "⚠️ reCAPTCHA keys not found. Using test keys (will only work in development)"
-  export SITEKEY="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
-  export RECAPTCHA_SECRET_KEY="6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe"
+  echo "❌ ERROR: reCAPTCHA keys not found in environment variables."
+  echo "Please ensure SITEKEY and RECAPTCHA_SECRET_KEY are set in your .env file."
+  exit 1
 fi
 
 # Wait until PostgreSQL is accepting connections.

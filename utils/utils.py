@@ -114,11 +114,17 @@ def send_email(to_email, subject, body):
     This is a placeholder implementation
     """
     try:
-        # Configure your SMTP settings - USE ENVIRONMENT VARIABLES IN PRODUCTION
-        smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+        # Configure your SMTP settings - ALL VALUES MUST BE IN ENVIRONMENT VARIABLES
+        smtp_server = os.getenv('SMTP_SERVER')
         smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        smtp_username = os.getenv('SMTP_USERNAME', 'your-email@gmail.com')
-        smtp_password = os.getenv('SMTP_PASSWORD', 'your-app-password')
+        smtp_username = os.getenv('SMTP_USERNAME')
+        smtp_password = os.getenv('SMTP_PASSWORD')
+        
+        # Validate SMTP configuration
+        if not all([smtp_server, smtp_username, smtp_password]):
+            print("❌ WARNING: SMTP not configured. Email functionality disabled.")
+            print("Set SMTP_SERVER, SMTP_USERNAME, and SMTP_PASSWORD environment variables.")
+            return False
         
         msg = MIMEMultipart()
         msg['From'] = smtp_username

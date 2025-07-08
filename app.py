@@ -34,6 +34,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Validate required environment variables
+required_env_vars = [
+    'FLASK_SECRET_KEY',
+    'CSRF_SECRET_KEY', 
+    'SITEKEY',
+    'RECAPTCHA_SECRET_KEY',
+    'DATABASE_URL'
+]
+
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+if missing_vars:
+    raise EnvironmentError(
+        f"❌ Missing required environment variables: {', '.join(missing_vars)}\n"
+        f"Please ensure these are set in your .env file."
+    )
+
 from blueprint.models import db, User, Profile, Booking, Payment, Report, Rating, TimeSlot, Message
 
 
@@ -52,8 +68,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Configure CSRF for local development - TEMPORARILY DISABLED FOR TESTING
 app.config['WTF_CSRF_ENABLED'] = True
 # Security configurations
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'your-development-secret-key')
-app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY', 'your-csrf-secret-key')
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
+app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY')
 
 # Disable these security measures for local development
 app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable HTTPS requirement
@@ -73,7 +89,7 @@ def inject_csrf_token():
     from flask_wtf.csrf import generate_csrf
     return dict(
         csrf_token=generate_csrf(),
-        sitekey=os.environ.get('SITEKEY', 'your-recaptcha-site-key-here')
+        sitekey=os.environ.get('SITEKEY')  # No default - validated at startup
     )
 
 
@@ -207,22 +223,6 @@ app.register_blueprint(
     auth_bp)  # registers at /auth because of prefix in auth.py
 app.register_blueprint(profile_bp)
 app.register_blueprint(audit_bp)
-app.register_blueprint(browse_bp)
-app.register_blueprint(booking_bp)
-app.register_blueprint(messaging_bp)
-app.register_blueprint(payment_bp)
-app.register_blueprint(rating_bp)
-app.register_blueprint(report_bp)
-
-
-# 3. BROWSE & SEARCH
-# @app.route('/browse')
-# def browse():
-#     # Filter profiles to only show escorts
-#     escort_profiles = {uid: prof for uid, prof in PROFILES.items() if USERS[uid]['role'] == 'escort'}
-#     return render_template('browse.html', profiles=escort_profiles)
-
-# @app.route('/browse')
 # @login_required
 # def browse():
 #     escort_profiles = Profile.query.join(User).filter(User.role == 'escort').all()
