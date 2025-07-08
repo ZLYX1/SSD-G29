@@ -1,9 +1,9 @@
-'''
 import sys
 import os
 import re
 import pytest
 from unittest.mock import patch
+from datetime import datetime, timezone  
 
 # Ensure app module is found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -20,14 +20,11 @@ def seeker_session():
     os.environ["S3_BUCKET_NAME"] = "test-bucket"
 
     with flask_app.test_client() as client, flask_app.app_context():
-        from blueprint.models import User, Profile
-        from datetime import datetime
-
         # Clean up any existing user with this email
         User.query.filter_by(email="seeker@test.com").delete()
         db.session.commit()
 
-        # ✅ Provide all NOT NULL fields
+        # ✅ Use timezone-aware datetime
         user = User(
             email="seeker@test.com",
             password_hash="dummy",
@@ -36,8 +33,8 @@ def seeker_session():
             active=True,
             activate=True,
             deleted=False,
-            created_at=datetime.utcnow(),
-            password_created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),    
+            password_created_at=datetime.now(timezone.utc) 
         )
         db.session.add(user)
         db.session.commit()
@@ -63,8 +60,6 @@ def seeker_session():
 
 def extract_csrf_token(response_data):
     html = response_data.decode()
-    print("=== HTML RECEIVED ===")
-    print(html)
     match = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', html)
     return match.group(1) if match else None
 
@@ -91,7 +86,3 @@ def test_xss_injection_in_name(seeker_session):
     }, follow_redirects=True)
 
     assert payload.encode() not in response.data
-
-'''
-
-    
