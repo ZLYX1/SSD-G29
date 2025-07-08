@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
-from blueprint.models import Profile, User, TimeSlot
+from blueprint.models import Profile, User, TimeSlot, Booking
 from extensions import db
 from blueprint.decorators import login_required
-from datetime import datetime
+from datetime import datetime, time
 from flask_wtf.csrf import generate_csrf
+from sqlalchemy import and_
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
@@ -20,12 +21,53 @@ browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 @browse_bp.route('/browseSeeker', methods=['GET', 'POST'])
 @login_required
 def browseSeeker():
-    escort_profiles = (Profile.query.join(User)
-    # .filter(User.role == 'escort')
-    .filter(User.role == 'seeker', User.active == True)
-    .all())
-    return render_template('browse.html', profiles=escort_profiles)
+    user_role = 'escort'
+     
+    # escort_profiles = (Profile.query.join(User)
+    # # .filter(User.role == 'escort')
+    # .filter(User.role == 'seeker', User.active == True)
+    # .all())
+    # return render_template('browse.html', profiles=escort_profiles)
+    query = Profile.query.join(User).filter(
+        User.role == 'seeker',
+        User.active == True,
+        User.deleted == False
+    )
 
+    # Extract query parameters
+    min_age = request.args.get('min_age', type=int)
+    max_age = request.args.get('max_age', type=int)
+    gender = request.args.get('gender')
+    min_rating = request.args.get('min_rating', type=float)
+    avail_date = request.args.get('avail_date')
+    avail_time = request.args.get('avail_time')
+
+    # Apply basic filters
+    if min_age is not None:
+        query = query.filter(Profile.age >= min_age)
+    if max_age  is not None:
+        query = query.filter(Profile.age <= max_age)
+    if gender:
+        query = query.filter(User.gender == gender)
+    if min_rating is not None:
+        query = query.filter(Profile.rating >= min_rating)
+
+    print("browseSeeker:")
+    print(avail_date)
+    print(avail_time)
+    print("min_age:", min_age)
+    print("max_age:", max_age)
+    print("gender:", gender)
+    print("min_rating:", min_rating)
+    print("avail_date:", avail_date)
+    print("avail_time:", avail_time)
+    query = Profile.query.join(User).filter(User.role == 'seeker').limit(5)
+    profiles = query.all()
+    print(profiles)  # see if this returns anything
+
+
+    # profiles = query.distinct().all()
+    return render_template('browse.html', profiles=profiles, user_role=user_role)
 
 @browse_bp.route('/profile/<int:user_id>')
 @login_required
@@ -129,27 +171,118 @@ def view_profile(user_id):
 
 #     return {'message': 'Photo saved successfully'}, 200
 
+
+def can_book(escort_id, new_start, new_end):
+    # 1. Check if escort has availability covering the requested time
+    available_slot = TimeSlot.query.filter(
+        TimeSlot.user_id == escort_id,
+        TimeSlot.start_time <= new_start,
+        TimeSlot.end_time >= new_end
+    ).first()
+
+    if not available_slot:
+        return False, "Escort is not available for the requested time."
+
+    # 2. Check for overlapping bookings (Pending or Confirmed)
+    overlapping_booking = Booking.query.filter(
+        Booking.escort_id == escort_id,
+        Booking.status.in_(["Pending", "Confirmed"]),
+        Booking.start_time < new_end,
+        Booking.end_time > new_start
+    ).first()
+
+    if overlapping_booking:
+        return False, "The escort already has a booking that conflicts with this time."
+
+    # If all good
+    return True, "Time slot is available for booking."
+
 # to test
 @browse_bp.route('/browse', methods=['GET'])
 @login_required
 def browseEscort():
-    query = Profile.query.join(User).filter(User.role == 'escort', User.active == True)
+    print("console logging browse\n")
+    user_role = 'seeker'
+    query = Profile.query.join(User).filter(
+        User.role == 'escort', 
+		User.active == True,
+  		User.deleted == False
+    )
 
+    # Extract query parameters
     min_age = request.args.get('min_age', type=int)
     max_age = request.args.get('max_age', type=int)
-    availability = request.args.get('availability')
+    gender = request.args.get('gender')
     min_rating = request.args.get('min_rating', type=float)
+    
+    avail_date = request.args.get('avail_date')
+    avail_time = request.args.get('avail_time')
+    
+    print("avail_date")
+    print(avail_date)
+    print("avail_time")
+    print(avail_time)
 
-    if min_age is not None:
+    # Apply basic filters
+    if min_age:
         query = query.filter(Profile.age >= min_age)
-    if max_age is not None:
+    if max_age:
         query = query.filter(Profile.age <= max_age)
-    if availability == 'yes':
-        query = query.filter(Profile.availability == True)
-    elif availability == 'no':
-        query = query.filter(Profile.availability == False)
+    if gender:
+        query = query.filter(User.gender == gender)
     if min_rating is not None:
         query = query.filter(Profile.rating >= min_rating)
+    
+    if avail_date:
+        try:
+            if avail_time:
+                selected_datetime = datetime.strptime(f"{avail_date} {avail_time}", "%Y-%m-%d %H:%M")
+                print(selected_datetime)
+            else:
+                selected_datetime = datetime.combine(datetime.strptime(avail_date, "%Y-%m-%d"), time(0, 0))
+                print(selected_datetime)
 
-    escort_profiles = query.all()
-    return render_template('browse.html', profiles=escort_profiles)
+			# Filter escorts who have a TimeSlot that includes the selected time
+            query = query.join(TimeSlot).filter(
+				and_(
+					TimeSlot.start_time <= selected_datetime,
+					TimeSlot.end_time > selected_datetime
+				)
+			)
+
+			# Subquery to get escorts who are already booked during that time
+            overlapping_escorts_subq = db.session.query(Booking.escort_id).filter(
+				Booking.status.in_(["Pending", "Confirmed"]),
+				Booking.start_time < selected_datetime,
+				Booking.end_time > selected_datetime
+			).subquery()
+
+			# Exclude those who have a booking at that time
+            query = query.filter(~User.id.in_(overlapping_escorts_subq))
+
+        except ValueError:
+            pass  # ignore invalid input
+
+    profiles = query.distinct().all()
+    return render_template('browse.html', profiles=profiles,user_role=user_role)
+
+    # query = Profile.query.join(User).filter(User.role == 'escort', User.active == True)
+
+    # min_age = request.args.get('min_age', type=int)
+    # max_age = request.args.get('max_age', type=int)
+    # availability = request.args.get('availability')
+    # min_rating = request.args.get('min_rating', type=float)
+
+    # if min_age is not None:
+    #     query = query.filter(Profile.age >= min_age)
+    # if max_age is not None:
+    #     query = query.filter(Profile.age <= max_age)
+    # if availability == 'yes':
+    #     query = query.filter(Profile.availability == True)
+    # elif availability == 'no':
+    #     query = query.filter(Profile.availability == False)
+    # if min_rating is not None:
+    #     query = query.filter(Profile.rating >= min_rating)
+
+    # escort_profiles = query.all()
+    # return render_template('browse.html', profiles=escort_profiles)
