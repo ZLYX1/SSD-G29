@@ -56,9 +56,9 @@
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('messaging.messaging') }}">Messages</a>
 					</li>
 					{% if user_token %}
-  						<li class="nav-item">
-   							 <a class="nav-link" href="{{ url_for('payment.payment', token=user_token) }}">Payments</a>
- 						</li>
+					<li class="nav-item">
+						<a class="nav-link" href="{{ url_for('payment.payment', token=user_token) }}">Payments</a>
+					</li>
 					{% endif %}
 					{% if session.role == 'admin' %}
 					<li class="nav-item"><a class="nav-link" href="{{ url_for('report.admin_dashboard') }}">
@@ -77,8 +77,8 @@
 									<i class="fas fa-exclamation-triangle me-2"></i>Report Management
 								</a></li>
 							<li><a class="dropdown-item" href="{{ url_for('audit.view_logs') }}">
-								<i class="fas fa-clipboard me-2"></i>Security Audit Log
-							</a></li>
+									<i class="fas fa-clipboard me-2"></i>Security Audit Log
+								</a></li>
 
 						</ul>
 					</li>
@@ -87,11 +87,14 @@
 				</ul>
 				<ul class="navbar-nav">
 					{% if session.user_id %}
-						<li class="nav-item"><span class="navbar-text me-3">Welcome, {{ session.username }}!</span></li>
-						<li class="nav-item"><a class="btn btn-outline-warning" href="{{ url_for('logout') }}">Logout</a></li>
+					<li class="nav-item"><span class="navbar-text me-3">Welcome, {{ session.username }}!</span></li>
+					<li class="nav-item"><a class="btn btn-outline-warning" href="{{ url_for('logout') }}">Logout</a>
+					</li>
 					{% else %}
-						<li class="nav-item"><a class="btn btn-outline-light" href="{{ url_for('auth.auth', mode='login') }}">Login</a></li>
-						<li class="nav-item ms-2"><a class="btn btn-warning" href="{{ url_for('auth.auth', mode='register') }}">Register</a></li>
+					<li class="nav-item"><a class="btn btn-outline-light"
+							href="{{ url_for('auth.auth', mode='login') }}">Login</a></li>
+					<li class="nav-item ms-2"><a class="btn btn-warning"
+							href="{{ url_for('auth.auth', mode='register') }}">Register</a></li>
 					{% endif %}
 				</ul>
 			</div>
@@ -101,16 +104,16 @@
 	<main class="container">
 		<!-- Flash Messages -->
 		{% with messages = get_flashed_messages(with_categories=true) %}
-			{% if messages %}
-				<div class="flash-messages">
-					{% for category, message in messages %}
-						<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-							{{ message }}
-							<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-						</div>
-					{% endfor %}
-				</div>
-			{% endif %}
+		{% if messages %}
+		<div class="flash-messages">
+			{% for category, message in messages %}
+			<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+				{{ message }}
+				<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+			</div>
+			{% endfor %}
+		</div>
+		{% endif %}
 		{% endwith %}
 
 		{% block content %}{% endblock %}
@@ -159,6 +162,9 @@
 			});
 	</script>
 	{% endif %}
+
+	{% block scripts %}
+	{% endblock %}
 </body>
 
 </html>

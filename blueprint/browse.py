@@ -6,6 +6,7 @@ from datetime import datetime, time
 from flask_wtf.csrf import generate_csrf
 from sqlalchemy import and_
 from flask import jsonify
+from datetime import timedelta
 
 browse_bp = Blueprint('browse', __name__, url_prefix='/browse')
 
@@ -70,6 +71,26 @@ def browseSeeker():
     # profiles = query.distinct().all()
     return render_template('browse.html', profiles=profiles, user_role=user_role)
 
+def get_valid_start_times(slot, duration_minutes, escort_id):
+    valid_starts = []
+    current_start = slot.start_time
+    end_limit = slot.end_time - timedelta(minutes=duration_minutes)
+    
+    while current_start <= end_limit:
+        current_end = current_start + timedelta(minutes=duration_minutes)
+        # Check for conflicting bookings for escort during this interval
+        conflict = Booking.query.filter(
+            Booking.escort_id == escort_id,
+            Booking.status.in_(["Pending", "Confirmed"]),
+            Booking.start_time < current_end,
+            Booking.end_time > current_start
+        ).first()
+        if not conflict and current_start >= datetime.utcnow():
+            valid_starts.append(current_start)
+        current_start += timedelta(minutes=15)  # increment by 15 mins
+    return valid_starts
+
+
 @browse_bp.route('/profile/<int:user_id>')
 @login_required
 def view_profile(user_id):
@@ -78,6 +99,7 @@ def view_profile(user_id):
         User.deleted == False,  # Exclude deleted users
         User.active == True     # Only show active users
     ).first()
+    
     if not profile:
         flash("Escort not found.", "danger")
         return redirect(url_for('home'))
@@ -87,11 +109,23 @@ def view_profile(user_id):
         TimeSlot.start_time >= datetime.utcnow()
     ).order_by(TimeSlot.start_time.asc()).all()
 
+
+    # For each slot, generate valid start times for default duration (e.g., 15 mins)
+    slots_with_start_times = []
+    default_duration = 15
+    for slot in available_slots:
+        valid_starts = get_valid_start_times(slot, default_duration, user_id)
+        slots_with_start_times.append({
+            'slot': slot,
+            'valid_starts': valid_starts
+        })
+        
     # ✅ ADD csrf_token TO TEMPLATE CONTEXT
     return render_template(
         'view_profile.html',
         profile=profile,
         time_slots=available_slots,
+        slots_with_start_times=slots_with_start_times,
         csrf_token=generate_csrf()
     )
 
