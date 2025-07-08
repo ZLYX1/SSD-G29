@@ -4,6 +4,7 @@ import secrets
 import datetime
 import random
 import re
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import url_for, current_app
@@ -47,15 +48,20 @@ def send_verification_email(user):
         Safe Companion Team
         """
         
-        # For development, just print the verification URL
-        print(f"\n{'='*50}")
-        print(f"EMAIL VERIFICATION FOR: {user.email}")
-        print(f"Verification URL: {verification_url}")
-        print(f"Token expires: {expires_at}")
-        print(f"{'='*50}\n")
-        
-        # In production, you would send actual email here:
-        # send_email(user.email, subject, body)
+        # For development, print the verification URL to console
+        if current_app.config.get('FLASK_ENV') == 'development':
+            print(f"\n{'='*50}")
+            print(f"EMAIL VERIFICATION FOR: {user.email}")
+            print(f"Verification URL: {verification_url}")
+            print(f"Token expires: {expires_at}")
+            print(f"{'='*50}\n")
+        else:
+            # Production: Send actual email
+            email_sent = send_email(user.email, subject, body)
+            if not email_sent:
+                print(f"Failed to send verification email to {user.email}")
+                return False
+            print(f"Verification email sent to {user.email}")
         
         return True
     except Exception as e:

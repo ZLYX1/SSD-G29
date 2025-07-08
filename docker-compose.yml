@@ -1,11 +1,11 @@
 services:
   web:
-    container_name: flask-app
+    container_name: ${COMPOSE_PROJECT_NAME:-safe-companions}-web
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        REQ_FILE: ${REQ_FILE}
+        REQ_FILE: ${REQ_FILE:-requirements.txt}
     environment:
       - DATABASE_URL
       - DATABASE_USERNAME
@@ -15,18 +15,32 @@ services:
       - DATABASE_PORT
       - FLASK_APP
       - FLASK_ENV
+      - FLASK_SECRET_KEY
+      - CSRF_SECRET_KEY
       - SITEKEY
       - RECAPTCHA_SECRET_KEY
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_REGION
+      - S3_BUCKET_NAME
+      - SES_SENDER_EMAIL
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     entrypoint: [ "./entrypoint.sh" ]
     volumes:
       - .:/app # Live sync local files with container
     networks:
       - backend-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/auth/?mode=login"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   db:
-    container_name: postgres-db
+    container_name: ${COMPOSE_PROJECT_NAME:-safe-companions}-db
     image: postgres:bullseye
     restart: always
     environment:
@@ -38,11 +52,19 @@ services:
     volumes:
       # Persist PostgreSQL data
       - postgres_data:/var/lib/postgresql/data
+      # Mount initialization script
+      - ./scripts/init-database.sh:/docker-entrypoint-initdb.d/init-database.sh
     networks:
       - backend-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   nginx:
-    container_name: nginx-proxy
+    container_name: ${COMPOSE_PROJECT_NAME:-safe-companions}-nginx
     restart: unless-stopped
     image: nginx:stable-perl
     ports:
@@ -63,7 +85,7 @@ services:
 
   certbot:
     image: certbot/certbot
-    container_name: certbot
+    container_name: ${COMPOSE_PROJECT_NAME:-safe-companions}-certbot
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
@@ -74,7 +96,7 @@ services:
       - backend-network
 
   eslint:
-    container_name: eslint-runner
+    container_name: ${COMPOSE_PROJECT_NAME:-safe-companions}-eslint
     build:
       context: .
       dockerfile: Dockerfile.eslint
