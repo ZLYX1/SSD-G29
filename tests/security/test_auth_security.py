@@ -12,52 +12,43 @@ from app import app as flask_app
 from extensions import db
 from blueprint.models import User
 
-# === Fixtures ===
-
-@pytest.fixture
-def client():
-    flask_app.config["TESTING"] = True
-    with flask_app.test_client() as client:
-        yield client
-
-@pytest.fixture
-def seeker_session():
-    flask_app.config["TESTING"] = True
-    with flask_app.test_client() as client, flask_app.app_context():
-        user = User.query.filter_by(email="testseeker@example.com").first()
-        if not user:
-            user = User(
-                email="testseeker@example.com",
-                role="seeker",
-                gender="Other",
-                active=True,
-                activate=True,
-                deleted=False,
-                created_at=datetime.now(timezone.utc),           
-                password_hash=generate_password_hash("ValidPass123"),
-                password_created_at=datetime.now(timezone.utc)  
-            )
-            db.session.add(user)
-            db.session.commit()
-
-        fake_ua = "test-agent"
-        fake_ip = "127.0.0.1"
-        client.environ_base["HTTP_USER_AGENT"] = fake_ua
-        client.environ_base["REMOTE_ADDR"] = fake_ip
-
-        with client.session_transaction() as sess:
-            sess["user_id"] = user.id
-            sess["role"] = "seeker"
-            sess["bound_ua"] = fake_ua
-            sess["bound_ip"] = fake_ip
-
-        yield client
-
 # === Helper to extract CSRF token ===
 def extract_csrf_token(html_data):
     html = html_data.decode()
     match = re.search(r'name="csrf_token"\s+value="([^"]+)"', html)
     return match.group(1) if match else None
+
+@pytest.fixture
+def seeker_user(app_context):
+    """Create a seeker user for testing."""
+    user = User(
+        email="testseeker@example.com",
+        role="seeker",
+        gender="Other",
+        active=True,
+        activate=True,
+        deleted=False,
+        created_at=datetime.now(timezone.utc),           
+        password_hash=generate_password_hash("ValidPass123"),
+        password_created_at=datetime.now(timezone.utc)  
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+@pytest.fixture
+def seeker_session(client, seeker_user):
+    """Create an authenticated seeker session."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = seeker_user.id
+        sess["role"] = "seeker"
+        sess["bound_ua"] = "test-agent"
+        sess["bound_ip"] = "127.0.0.1"
+
+    client.environ_base["HTTP_USER_AGENT"] = "test-agent"
+    client.environ_base["REMOTE_ADDR"] = "127.0.0.1"
+    
+    return client
 
 # === Authentication Security Tests ===
 
