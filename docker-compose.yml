@@ -1,11 +1,11 @@
 services:
   web:
-    container_name: flask-app
+    container_name: ${COMPOSE_PROJECT_NAME:-safe-companions}-web
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        REQ_FILE: ${REQ_FILE}
+        REQ_FILE: ${REQ_FILE:-requirements.txt}
     environment:
       # Database configuration
       - DATABASE_URL
@@ -22,6 +22,11 @@ services:
       # External services
       - SITEKEY
       - RECAPTCHA_SECRET_KEY
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_REGION
+      - S3_BUCKET_NAME
+      - SES_SENDER_EMAIL
     depends_on:
       - db
     entrypoint: [ "./entrypoint.sh" ]

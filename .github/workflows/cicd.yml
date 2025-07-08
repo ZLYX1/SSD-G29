@@ -193,16 +193,26 @@ jobs:
           echo "Cleaning up Docker resources to free disk space..."
           docker system prune -f
           
+          # Backup production environment before git operations
+          if [ -f .env.production ]; then
+            echo "Backing up existing .env.production file"
+            cp .env.production .env.production.bak
+            echo "Current .env.production backed up successfully"
+          fi
+          
           # Update repository
           git fetch origin main
           git reset --hard origin/main        
           chmod +x entrypoint.sh
           chmod +x scripts/*.sh
           
-          # Make sure .env.production is preserved if it exists
-          if [ -f .env.production ]; then
-            echo "Backing up existing .env.production file"
-            cp .env.production .env.production.bak
+          # Restore production environment after git reset
+          if [ -f .env.production.bak ]; then
+            echo "Restoring production environment file"
+            cp .env.production.bak .env.production
+            echo "Production environment restored successfully"
+          else
+            echo "WARNING: No .env.production backup found - manual environment setup may be required"
           fi
           
           # Deploy with production environment
