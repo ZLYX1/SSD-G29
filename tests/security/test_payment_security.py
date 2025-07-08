@@ -128,4 +128,4 @@ def test_reuse_token_should_fail(seeker_session):
     response2 = client.get(f"/payment/pay?token={token}", follow_redirects=False)
     assert response2.status_code == 403
     assert b"Invalid or expired payment token" in response2.data
-    '''
+  '''

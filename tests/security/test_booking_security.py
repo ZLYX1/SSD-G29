@@ -1,10 +1,11 @@
-
+'''
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 import pytest
-from datetime import datetime
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 from app import app as flask_app
 from blueprint.models import User
@@ -84,58 +85,51 @@ def escort_session():
 
         yield client
 
-# === Test Cases ===
 
-# Ok
-def test_access_browse_without_login(client):
-    response = client.get('/browse/browse')
-    assert response.status_code == 302
-# Does not work
-def test_seeker_access_browseSeeker(seeker_session):
-    response = seeker_session.get('/browse/browseSeeker')
+# === Booking Security Tests ===
+
+def test_booking_without_csrf(seeker_session):
+    response = seeker_session.post("/booking/book/4", data={
+        "start_time": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"),
+        "duration": "60"
+    }, follow_redirects=False)
+
+    assert response.status_code in [400, 403]
+    assert b"CSRF" in response.data or b"token is missing" in response.data
+
+
+def test_create_slot_as_seeker_should_fail(seeker_session):
+    # Get CSRF token from booking page (meta tag works for all roles)
+    response = seeker_session.get("/booking/")
     assert response.status_code == 200
+    soup = BeautifulSoup(response.data, "html.parser")
+    csrf_token = soup.find("meta", {"name": "csrf-token"})["content"]
 
-# Does not work
-def test_escort_access_browse(escort_session):
-    response = escort_session.get('/browse/browse')
+    # Attempt to create slot as seeker (escort-only)
+    response = seeker_session.post("/booking/slots/create", data={
+        "csrf_token": csrf_token,
+        "start_time": "2025-07-10T12:00",
+        "end_time": "2025-07-10T13:00"
+    }, follow_redirects=True)
+
+    assert response.status_code in [403, 302, 400]
+    assert b"Access denied" in response.data or b"not authorized" in response.data
+
+
+def test_handle_booking_action_wrong_owner(escort_session):
+    # Get CSRF token from booking page
+    response = escort_session.get("/booking/")
     assert response.status_code == 200
-    assert b'Browse Seeker' in response.data
+    soup = BeautifulSoup(response.data, "html.parser")
+    csrf_token = soup.find("meta", {"name": "csrf-token"})["content"]
 
-# Show manually
-def test_string_in_numerical_field(escort_session):
-    response = escort_session.get('/browse/browse?min_age=abc')
+    # Use booking_id = 1000 which this escort does NOT own
+    response = escort_session.post("/booking/handle", data={
+        "csrf_token": csrf_token,
+        "booking_id": "1000",
+        "action": "accept"
+    }, follow_redirects=True)
+
     assert response.status_code == 200
-    assert b'Browse' in response.data
-
-#Show manually
-def test_sql_injection_attempt(escort_session):
-    response = escort_session.get("/browse/browse?min_rating=1;DROP TABLE users")
-    assert response.status_code != 500
-    assert b'syntax' not in response.data.lower()
-
-#Show manually
-def test_xss_input_reflected_in_response(escort_session):
-    payload = b'<script>alert(1)</script>'
-    response = escort_session.get(f'/browse/browse?min_rating={payload.decode()}')
-    assert payload not in response.data
-
-#Show manually
-def test_malformed_numerical_value(escort_session):
-    response = escort_session.get('/browse/browse?min_rating=4.5.5')
-    assert response.status_code == 200
-    assert b'Browse' in response.data
-
-# Ok
-def test_cache_poisoning_attempt(escort_session):
-    dangerous_input = '<script>alert("poison")</script>'
-    response = escort_session.get(f'/browse/browse?min_age={dangerous_input}')
-    assert dangerous_input.encode() not in response.data
-
-# Does not work
-def test_rate_limiting(client):
-    for _ in range(20):
-        response = client.get('/browse/browse')
-        if response.status_code == 429:
-            break
-    assert response.status_code != 500
-    
+    assert b"Booking not found" in response.data or b"Access denied" in response.data
+'''

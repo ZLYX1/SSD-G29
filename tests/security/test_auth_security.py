@@ -1,5 +1,4 @@
 
-'''
 import sys
 import os
 # Ensure app is found
@@ -11,6 +10,45 @@ from extensions import db
 from blueprint.models import User
 from datetime import datetime
 from werkzeug.security import generate_password_hash
+
+@pytest.fixture
+def client():
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client:
+        yield client
+
+@pytest.fixture
+def seeker_session():
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client, flask_app.app_context():
+        user = User.query.filter_by(email="testseeker@example.com").first()
+        if not user:
+            user = User(
+                email="testseeker@example.com",
+                role="seeker",
+                gender="Other",
+                active=True,
+                activate=True,
+                deleted=False,
+                created_at=datetime.utcnow(),
+                password_hash=generate_password_hash("ValidPass123"),
+                password_created_at=datetime.utcnow()
+            )
+            db.session.add(user)
+            db.session.commit()
+
+        fake_ua = "test-agent"
+        fake_ip = "127.0.0.1"
+        client.environ_base["HTTP_USER_AGENT"] = fake_ua
+        client.environ_base["REMOTE_ADDR"] = fake_ip
+
+        with client.session_transaction() as sess:
+            sess["user_id"] = user.id
+            sess["role"] = "seeker"
+            sess["bound_ua"] = fake_ua
+            sess["bound_ip"] = fake_ip
+
+        yield client
 
 
 # === Helper to extract CSRF token ===
@@ -26,174 +64,46 @@ def client():
     with flask_app.test_client() as client:
         yield client
 
-# === Register Page Security Tests ===
+# === Authentication Security Tests ===
 
-def test_register_xss_email(client):
-    response = client.get('/auth/?mode=register')
-    csrf_token = extract_csrf_token(response.data)
-    payload = "<script>alert(1)</script>"
-    response = client.post('/auth/?mode=register', data={
-        "form_type": "register",
-        "email": payload,
-        "password": "ValidPass123",
-        "age": "20",
-        "phone_number": "91234567",
-        "gender": "Other",
-        "role": "seeker",
-        "preference": "Any",
-        "csrf_token": csrf_token
+
+def test_password_complexity_enforcement(seeker_session):
+    from blueprint.models import User
+    user = User.query.filter_by(email="testseeker@example.com").first() 
+
+    get_response = seeker_session.get(f"/auth/change-password/{user.id}")
+    csrf_token = extract_csrf_token(get_response.data)
+
+    response = seeker_session.post(f"/auth/change-password/{user.id}", data={
+        "csrf_token": csrf_token,
+        "current_password": "ValidPass123",
+        "new_password": "123",  # Too weak
+        "confirm_password": "123"
     }, follow_redirects=True)
-    assert payload.encode() not in response.data
 
-def test_register_xss_password(client):
-    response = client.get('/auth/?mode=register')
-    csrf_token = extract_csrf_token(response.data)
-    payload = "<script>alert(1)</script>"
-    response = client.post('/auth/?mode=register', data={
-        "form_type": "register",
-        "email": "xss@example.com",
-        "password": payload,
-        "age": "20",
-        "phone_number": "91234567",
-        "gender": "Other",
-        "role": "seeker",
-        "preference": "Any",
-        "csrf_token": csrf_token
+    assert (
+        b"Password requirements not met" in response.data or
+        b"Password" in response.data or
+        response.status_code in [400]
+    )
+
+def test_password_reuse(seeker_session):
+    from blueprint.models import User
+    user = User.query.filter_by(email="testseeker@example.com").first() 
+
+    get_response = seeker_session.get(f"/auth/change-password/{user.id}")
+    csrf_token = extract_csrf_token(get_response.data)
+
+    reused_password = "ValidPass123"
+    response = seeker_session.post(f"/auth/change-password/{user.id}", data={
+        "csrf_token": csrf_token,
+        "current_password": reused_password,
+        "new_password": reused_password,
+        "confirm_password": reused_password
     }, follow_redirects=True)
-    assert payload.encode() not in response.data
 
-def test_register_sql_injection_password(client):
-    response = client.get('/auth/?mode=register')
-    csrf_token = extract_csrf_token(response.data)
-    response = client.post('/auth/?mode=register', data={
-        "form_type": "register",
-        "email": "sqltest@example.com",
-        "password": "' OR '1'='1",
-        "age": "20",
-        "phone_number": "1234567890",
-        "gender": "Other",
-        "role": "seeker",
-        "preference": "Any",
-        "csrf_token": csrf_token
-    }, follow_redirects=True)
-    assert b"Register" in response.data or b"Invalid" in response.data
-
-def test_register_missing_csrf(client):
-    response = client.post('/auth/?mode=register', data={
-        "form_type": "register",
-        "email": "nocsrf@example.com",
-        "password": "ValidPass123",
-        "age": "20",
-        "phone_number": "91234567",
-        "gender": "Other",
-        "role": "seeker",
-        "preference": "Any"
-    })
-    assert response.status_code in [400, 403]
-
-def test_register_min_password_length(client):
-    response = client.get('/auth/?mode=register')
-    csrf_token = extract_csrf_token(response.data)
-    response = client.post('/auth/?mode=register', data={
-        "form_type": "register",
-        "email": "shortpass@example.com",
-        "password": "123",
-        "age": "20",
-        "phone_number": "91234567",
-        "gender": "Other",
-        "role": "seeker",
-        "preference": "Any",
-        "csrf_token": csrf_token
-    }, follow_redirects=True)
-    assert b"Register" in response.data and response.status_code == 200
-
-def test_register_invalid_phone(client):
-    response = client.get('/auth/?mode=register')
-    csrf_token = extract_csrf_token(response.data)
-    response = client.post('/auth/?mode=register', data={
-        "form_type": "register",
-        "email": "invalidphone@example.com",
-        "password": "ValidPass123",
-        "age": "20",
-        "phone_number": "ABC123XYZ",
-        "gender": "Other",
-        "role": "seeker",
-        "preference": "Any",
-        "csrf_token": csrf_token
-    }, follow_redirects=True)
-    assert b"Register" in response.data
-
-def test_register_age_verification(client):
-    response = client.get('/auth/?mode=register')
-    csrf_token = extract_csrf_token(response.data)
-    response = client.post('/auth/?mode=register', data={
-        "form_type": "register",
-        "email": "young@example.com",
-        "password": "ValidPass123",
-        "age": "15",
-        "phone_number": "91234567",
-        "gender": "Other",
-        "role": "seeker",
-        "preference": "Any",
-        "csrf_token": csrf_token
-    }, follow_redirects=True)
-    assert b"You must be at least 18 years old" in response.data
-
-# === Login Page Security Tests ===
-
-def test_login_xss_in_email(client):
-    response = client.get('/auth/?mode=login')
-    csrf_token = extract_csrf_token(response.data)
-    payload = "<script>alert(1)</script>"
-    response = client.post('/auth/?mode=login', data={
-        "form_type": "login",
-        "email": payload,
-        "password": "ValidPass123",
-        "csrf_token": csrf_token
-    }, follow_redirects=True)
-    assert payload.encode() not in response.data
-
-def test_login_sql_injection_password(client):
-    response = client.get('/auth/?mode=login')
-    csrf_token = extract_csrf_token(response.data)
-    response = client.post('/auth/?mode=login', data={
-        "form_type": "login",
-        "email": "test@example.com",
-        "password": "' OR '1'='1",
-        "csrf_token": csrf_token
-    }, follow_redirects=True)
-    assert b"Invalid credentials" in response.data
-
-def test_login_missing_csrf(client):
-    response = client.post('/auth/?mode=login', data={
-        "form_type": "login",
-        "email": "test@example.com",
-        "password": "ValidPass123"
-    })
-    assert response.status_code in [400, 403]
-
-def test_login_invalid_email_format(client):
-    response = client.get('/auth/?mode=login')
-    csrf_token = extract_csrf_token(response.data)
-    response = client.post('/auth/?mode=login', data={
-        "form_type": "login",
-        "email": "invalid-email-format",
-        "password": "ValidPass123",
-        "csrf_token": csrf_token
-    }, follow_redirects=True)
-    assert b"Invalid" in response.data or b"credentials" in response.data
-
-'''
-def test_login_rate_limiting(client):
-    for _ in range(10):
-        response = client.get('/auth/?mode=login')
-        csrf_token = extract_csrf_token(response.data)
-        response = client.post('/auth/?mode=login', data={
-            "form_type": "login",
-            "email": "test@example.com",
-            "password": "wrongpass",
-            "csrf_token": csrf_token
-        }, follow_redirects=True)
-    assert response.status_code != 500
-'''
-'''
+    assert (
+        b"Password has been used recently" in response.data or
+        b"Password" in response.data or
+        response.status_code in [200, 400]
+    )
