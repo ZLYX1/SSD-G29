@@ -79,23 +79,15 @@ jobs:
             exit 1
           fi
 
-      - name: Set up test environment variables
+      - name: Set DATABASE_URL at runtime
         env:
           DATABASE_HOST: localhost
           DATABASE_PORT: 5432
           DATABASE_NAME: testdb
           DATABASE_USERNAME: testuser
           DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          FLASK_SECRET_KEY: ${{ secrets.FLASK_SECRET_KEY }}
-          CSRF_SECRET_KEY: ${{ secrets.CSRF_SECRET_KEY }}
-          SITEKEY: ${{ secrets.RECAPTCHA_SITEKEY }}
-          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
         run: |
           echo "DATABASE_URL=postgresql://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}" >> $GITHUB_ENV
-          echo "FLASK_SECRET_KEY=${FLASK_SECRET_KEY}" >> $GITHUB_ENV
-          echo "CSRF_SECRET_KEY=${CSRF_SECRET_KEY}" >> $GITHUB_ENV
-          echo "SITEKEY=${SITEKEY}" >> $GITHUB_ENV
-          echo "RECAPTCHA_SECRET_KEY=${RECAPTCHA_SECRET_KEY}" >> $GITHUB_ENV
 
       - name: Initialise full test database schema via SQLAlchemy
         env:
@@ -104,8 +96,6 @@ jobs:
           DATABASE_NAME: testdb
           DATABASE_USERNAME: testuser
           DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          FLASK_SECRET_KEY: ${{ secrets.FLASK_SECRET_KEY }}
-          CSRF_SECRET_KEY: ${{ secrets.CSRF_SECRET_KEY }}
         shell: bash
         run: |
           source .venv/bin/activate
@@ -118,10 +108,6 @@ jobs:
           DATABASE_NAME: testdb
           DATABASE_USERNAME: testuser
           DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          FLASK_SECRET_KEY: ${{ secrets.FLASK_SECRET_KEY }}
-          CSRF_SECRET_KEY: ${{ secrets.CSRF_SECRET_KEY }}
-          SITEKEY: ${{ secrets.RECAPTCHA_SITEKEY }}
-          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
         shell: bash
         run: |
           source .venv/bin/activate
@@ -137,7 +123,6 @@ jobs:
     name: Deploy to EC2
     needs: build-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Install SSH client
@@ -150,36 +135,6 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Create production environment file
-        run: |
-          cat > .env.production << EOF
-          COMPOSE_PROJECT_NAME=safe-companions
-          FLASK_APP=app.py
-          FLASK_ENV=production
-          DATABASE_URL=postgresql://ssd_user:${{ secrets.PROD_DATABASE_PASSWORD }}@db:5432/ssd_database
-          DATABASE_USERNAME=ssd_user
-          DATABASE_PASSWORD=${{ secrets.PROD_DATABASE_PASSWORD }}
-          DATABASE_NAME=ssd_database
-          DATABASE_HOST=db
-          DATABASE_PORT=5432
-          FLASK_SECRET_KEY=${{ secrets.PROD_FLASK_SECRET_KEY }}
-          CSRF_SECRET_KEY=${{ secrets.PROD_CSRF_SECRET_KEY }}
-          SITEKEY=${{ secrets.PROD_RECAPTCHA_SITEKEY }}
-          RECAPTCHA_SECRET_KEY=${{ secrets.PROD_RECAPTCHA_SECRET_KEY }}
-          SMTP_SERVER=${{ secrets.PROD_SMTP_SERVER }}
-          SMTP_PORT=${{ secrets.PROD_SMTP_PORT }}
-          SMTP_USERNAME=${{ secrets.PROD_SMTP_USERNAME }}
-          SMTP_PASSWORD=${{ secrets.PROD_SMTP_PASSWORD }}
-          AWS_ACCESS_KEY_ID=${{ secrets.PROD_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY=${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION=${{ secrets.PROD_AWS_REGION }}
-          S3_BUCKET_NAME=${{ secrets.PROD_S3_BUCKET_NAME }}
-          SES_SENDER_EMAIL=${{ secrets.PROD_SES_SENDER_EMAIL }}
-          CERTBOT_EMAIL=${{ secrets.PROD_CERTBOT_EMAIL }}
-          NGINX_CONF_FILE=nginx.prod.conf
-          REQ_FILE=requirements-prod.txt
-          EOF
-
       - name: SSH and deploy
         shell: bash
         run: |
@@ -191,24 +146,7 @@ jobs:
           git fetch origin main
           git reset --hard origin/main        
           chmod +x entrypoint.sh
-          
-          # Copy production environment file
-          echo "$(cat .env.production)" > .env.production
-          
-          # Deploy with production environment
           docker compose --env-file .env.production down --remove-orphans
           docker compose --env-file .env.production build --no-cache
-          docker compose --env-file .env.production up -d
-          
-          # Wait for database to be ready
-          echo "⏳ Waiting for database to be ready..."
-          sleep 10
-          
-          # Setup database user automatically
-          echo "🔧 Setting up database user..."
-          docker exec safe-companions-db psql -U postgres -c "CREATE USER IF NOT EXISTS ssd_user WITH PASSWORD '${{ secrets.PROD_DATABASE_PASSWORD }}';" || true
-          docker exec safe-companions-db psql -U postgres -c "CREATE DATABASE IF NOT EXISTS ssd_database OWNER ssd_user;" || true
-          docker exec safe-companions-db psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE ssd_database TO ssd_user;" || true
-          
-          echo "✅ Database setup complete"
+          docker compose --env-file .env.production up --pull always -d        
           EOF
