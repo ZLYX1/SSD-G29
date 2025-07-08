@@ -1,3 +1,82 @@
+# Docker ignore file to reduce build context size
+
+# Python cache files
 __pycache__/
-*.pyc
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+
+# Environment and package directories
 .venv/
+venv/
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node modules and dependencies
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Docker related
+.dockerignore
+docker-compose.dev.yml
+docker-compose.test.yml
+sonarqube-compose.yml
+
+# Git related
+.git/
+.github/
+.gitignore
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+cookies.txt
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+logs/
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Documentation - keep only what's needed
+docs/implementation/
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Large media files
+*.mp4
+*.mov
+*.wmv
+*.avi

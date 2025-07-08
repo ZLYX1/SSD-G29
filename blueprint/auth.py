@@ -4,7 +4,7 @@ from blueprint.models import User, Profile
 from extensions import db
 from blueprint.decorators import login_required
 from blueprint.audit_log import log_event
-from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength  # Import OTP and password functions
+from utils.utils import verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength, generate_verification_token  # Import OTP and password functions
 from flask_wtf.csrf import generate_csrf  # Add this import
 
 import boto3
@@ -206,10 +206,19 @@ def auth():
                 return redirect(url_for('auth.auth', mode='login'))
             else:
                 print(f"❌ DEBUG: Failed to send email verification to {new_user.email}")
-                warning_message = "Registration successful, but there was an issue sending the verification email. Please contact support."
-                print(f"🔧 DEBUG: Flashing warning message: {warning_message}")
-                flash(warning_message, "warning")
-                return redirect(url_for('auth.auth', mode='register'))
+                
+                # Check if this is development mode for better messaging
+                is_development = os.environ.get('FLASK_ENV') == 'development'
+                if is_development:
+                    success_message = f"Registration successful! Check the server logs for your verification link (development mode)."
+                    print(f"🔧 DEBUG: Flashing development success message: {success_message}")
+                    flash(success_message, "success")
+                    return redirect(url_for('auth.auth', mode='login'))
+                else:
+                    warning_message = "Registration successful, but there was an issue sending the verification email. Please contact support."
+                    print(f"🔧 DEBUG: Flashing warning message: {warning_message}")
+                    flash(warning_message, "warning")
+                    return redirect(url_for('auth.auth', mode='register'))
 
         elif form_type == 'reset':
             flash("Password reset link sent to your email.", "info")
@@ -280,8 +289,8 @@ def verify_phone(user_id):
             user.active = True
             db.session.commit()
             
-            # Send email verification
-            if send_verification_email(user):
+            # Send email verification using AWS SES
+            if send_verification_email_ses(user):
                 flash("Phone verified successfully! Please check your email to complete account verification.", "success")
             else:
                 flash("Phone verified successfully! However, there was an issue sending the email verification. Please contact support.", "warning")
@@ -417,10 +426,14 @@ def password_policy():
 # AWS SES
 
 def send_email_ses(to_email, subject, body_text, body_html=None):
-    SENDER = "Your Name <13eddie07@gmail.com>"
+    # Use environment variable for sender email, fallback to verified email only
+    SENDER = os.getenv('SES_SENDER_EMAIL', "13eddie07@gmail.com")
     CHARSET = "UTF-8"
+    
+    # Get AWS region from environment
+    aws_region = os.getenv('AWS_REGION', 'us-east-1')
 
-    client = boto3.client('ses', region_name="us-east-1")  # Replace with your SES region
+    client = boto3.client('ses', region_name=aws_region)
 
     try:
         response = client.send_email(
@@ -455,16 +468,16 @@ def send_email_ses(to_email, subject, body_text, body_html=None):
 def send_verification_email_ses(user):
     """Send email verification using AWS SES"""
     try:
-        # Use the existing utility function for consistency
-        from utils.utils import send_verification_email
+        import datetime
         
-        # Call the utility function which handles token generation and saving
-        success = send_verification_email(user)
-        if not success:
-            return False
+        # Generate verification token and save to user
+        token = generate_verification_token()
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=24)
         
-        # Get the token that was just generated and saved
-        token = user.email_verification_token
+        # Update user with verification token
+        user.email_verification_token = token
+        user.email_verification_token_expires = expires_at
+        db.session.commit()
         
         # Create verification URL
         verification_url = url_for('auth.verify_email', token=token, _external=True)
@@ -512,6 +525,23 @@ Safe Companion Team
             return True
         else:
             print(f"❌ Failed to send email verification to {user.email}")
+            
+            # Development fallback: print verification URL to console when email fails
+            is_development = os.environ.get('FLASK_ENV') == 'development'
+            if is_development:
+                print(f"\n{'='*60}")
+                print(f"🚨 EMAIL SENDING FAILED - DEVELOPMENT MODE")
+                print(f"📧 Email: {user.email}")
+                print(f"🔗 Manual Verification URL:")
+                print(f"   {verification_url}")
+                print(f"⏰ Expires: {expires_at}")
+                print(f"💡 Copy the URL above and paste it in your browser to verify the account")
+                print(f"{'='*60}\n")
+                
+                # In development, return True so registration appears successful
+                # This allows testing the verification flow manually
+                return True
+                
             return False
             
     except Exception as e:

@@ -3,10 +3,17 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy only the package files needed for dependencies
 COPY package*.json ./
 
-RUN npm install
+# Install only production dependencies to save space
+RUN npm install --only=production --no-cache
 
-COPY . .
+# Only copy necessary files for linting
+# This relies on a proper .dockerignore file to exclude node_modules
+COPY static ./static
+COPY templates ./templates
+COPY *.js *.mjs *.cjs ./
+COPY eslint.config.mjs ./
 
-CMD ["npx", "eslint", ".", "--ext", ".js,.mjs,.cjs,.tsx", "--format", "stylish"]
+CMD ["npx", "eslint", ".", "--ext", ".js,.mjs,.cjs", "--format", "stylish"]
