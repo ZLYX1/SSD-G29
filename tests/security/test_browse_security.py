@@ -1,4 +1,4 @@
-'''
+
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -94,5 +94,5 @@ def test_cache_poisoning_attempt(escort_session):
     dangerous_input = '<script>alert("poison")</script>'
     response = escort_session.get(f'/browse/browse?min_age={dangerous_input}')
     assert dangerous_input.encode() not in response.data
-'''
+
     

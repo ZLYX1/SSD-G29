@@ -1,12 +1,15 @@
-'''
+
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-
+import re
 import pytest
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone  
 from werkzeug.security import generate_password_hash
+
+# Ensure app is found
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
 from app import app as flask_app
 from blueprint.models import User
 from extensions import db
@@ -32,9 +35,9 @@ def seeker_session():
                 active=True,
                 activate=True,
                 deleted=False,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),  
                 password_hash=generate_password_hash("ValidPass123"),
-                password_created_at=datetime.utcnow()
+                password_created_at=datetime.now(timezone.utc) 
             )
             db.session.add(user)
             db.session.commit()
@@ -65,9 +68,9 @@ def escort_session():
                 active=True,
                 activate=True,
                 deleted=False,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc), 
                 password_hash=generate_password_hash("ValidPass123"),
-                password_created_at=datetime.utcnow()
+                password_created_at=datetime.now(timezone.utc) 
             )
             db.session.add(user)
             db.session.commit()
@@ -85,12 +88,11 @@ def escort_session():
 
         yield client
 
-
 # === Booking Security Tests ===
 
 def test_booking_without_csrf(seeker_session):
     response = seeker_session.post("/booking/book/4", data={
-        "start_time": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"),
+        "start_time": (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"), 
         "duration": "60"
     }, follow_redirects=False)
 
@@ -99,13 +101,11 @@ def test_booking_without_csrf(seeker_session):
 
 
 def test_create_slot_as_seeker_should_fail(seeker_session):
-    # Get CSRF token from booking page (meta tag works for all roles)
     response = seeker_session.get("/booking/")
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     csrf_token = soup.find("meta", {"name": "csrf-token"})["content"]
 
-    # Attempt to create slot as seeker (escort-only)
     response = seeker_session.post("/booking/slots/create", data={
         "csrf_token": csrf_token,
         "start_time": "2025-07-10T12:00",
@@ -117,13 +117,11 @@ def test_create_slot_as_seeker_should_fail(seeker_session):
 
 
 def test_handle_booking_action_wrong_owner(escort_session):
-    # Get CSRF token from booking page
     response = escort_session.get("/booking/")
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, "html.parser")
     csrf_token = soup.find("meta", {"name": "csrf-token"})["content"]
 
-    # Use booking_id = 1000 which this escort does NOT own
     response = escort_session.post("/booking/handle", data={
         "csrf_token": csrf_token,
         "booking_id": "1000",
@@ -132,4 +130,4 @@ def test_handle_booking_action_wrong_owner(escort_session):
 
     assert response.status_code == 200
     assert b"Booking not found" in response.data or b"Access denied" in response.data
-'''
+    

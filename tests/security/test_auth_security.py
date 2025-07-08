@@ -1,15 +1,18 @@
-
 import sys
 import os
+import re
+import pytest
+from datetime import datetime, timezone 
+from werkzeug.security import generate_password_hash
+
 # Ensure app is found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-import pytest
-import re
+
 from app import app as flask_app
 from extensions import db
 from blueprint.models import User
-from datetime import datetime
-from werkzeug.security import generate_password_hash
+
+# === Fixtures ===
 
 @pytest.fixture
 def client():
@@ -30,9 +33,9 @@ def seeker_session():
                 active=True,
                 activate=True,
                 deleted=False,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),           
                 password_hash=generate_password_hash("ValidPass123"),
-                password_created_at=datetime.utcnow()
+                password_created_at=datetime.now(timezone.utc)  
             )
             db.session.add(user)
             db.session.commit()
@@ -50,27 +53,16 @@ def seeker_session():
 
         yield client
 
-
 # === Helper to extract CSRF token ===
 def extract_csrf_token(html_data):
     html = html_data.decode()
     match = re.search(r'name="csrf_token"\s+value="([^"]+)"', html)
     return match.group(1) if match else None
 
-# === Fixtures ===
-@pytest.fixture
-def client():
-    flask_app.config["TESTING"] = True
-    with flask_app.test_client() as client:
-        yield client
-
 # === Authentication Security Tests ===
 
-
 def test_password_complexity_enforcement(seeker_session):
-    from blueprint.models import User
     user = User.query.filter_by(email="testseeker@example.com").first() 
-
     get_response = seeker_session.get(f"/auth/change-password/{user.id}")
     csrf_token = extract_csrf_token(get_response.data)
 
@@ -88,9 +80,7 @@ def test_password_complexity_enforcement(seeker_session):
     )
 
 def test_password_reuse(seeker_session):
-    from blueprint.models import User
     user = User.query.filter_by(email="testseeker@example.com").first() 
-
     get_response = seeker_session.get(f"/auth/change-password/{user.id}")
     csrf_token = extract_csrf_token(get_response.data)
 
