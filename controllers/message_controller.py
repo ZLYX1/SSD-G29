@@ -2,6 +2,7 @@ from flask import session, jsonify
 from blueprint.models import db, User, Message, Profile, Report
 from sqlalchemy import or_, and_, desc
 from datetime import datetime
+from utils.encryption_utils import MessageEncryption, ConversationKeyManager
 
 
 class MessageController:
@@ -82,8 +83,16 @@ class MessageController:
         return messages
     
     @staticmethod
-    def send_message(sender_id, recipient_id, content):
-        """Send a message between users"""
+    def send_message(sender_id, recipient_id, content=None, encrypted_data=None):
+        """
+        Send a message between users - supports both plain text and encrypted content
+        
+        Args:
+            sender_id: ID of sender
+            recipient_id: ID of recipient  
+            content: Plain text message (for backwards compatibility)
+            encrypted_data: Encrypted message data (dict with encrypted_content, nonce, algorithm)
+        """
         try:
             # Validate recipient exists
             recipient = User.query.get(recipient_id)
@@ -94,13 +103,65 @@ class MessageController:
             if sender_id == recipient_id:
                 return False, "Cannot send message to yourself"
             
+            # Validate input - must have either content or encrypted_data
+            has_content = content and content.strip()
+            has_encrypted_data = (encrypted_data and 
+                                isinstance(encrypted_data, dict) and 
+                                bool(encrypted_data.get('encrypted_content')))
+            
+            print(f"🔧 MessageController: Input validation:")
+            print(f"  - content: {repr(content)} -> has_content: {has_content}")
+            print(f"  - encrypted_data: {repr(encrypted_data)} -> has_encrypted_data: {has_encrypted_data}")
+            
+            if not has_content and not has_encrypted_data:
+                return False, "No message content provided"
+            
+            if has_content and has_encrypted_data:
+                return False, "Cannot send both plain text and encrypted content"
+            
             # Create message
             message = Message(
                 sender_id=sender_id,
                 recipient_id=recipient_id,
-                content=content.strip(),
                 timestamp=datetime.utcnow()
             )
+            
+            # Handle encrypted content
+            if encrypted_data:
+                print(f"🔧 MessageController: Processing encrypted data: {encrypted_data}")
+                # Extract encrypted fields from the dictionary
+                encrypted_content = encrypted_data.get('encrypted_content')
+                nonce = encrypted_data.get('nonce')
+                algorithm = encrypted_data.get('algorithm')
+                
+                print(f"🔧 MessageController: Extracted fields - content: {bool(encrypted_content)}, nonce: {bool(nonce)}, algorithm: {algorithm}")
+                
+                # Validate we have all required fields
+                if not all([encrypted_content, nonce, algorithm]):
+                    print(f"❌ MessageController: Missing encrypted fields - content: {encrypted_content}, nonce: {nonce}, algorithm: {algorithm}")
+                    return False, "Missing required encrypted data fields"
+                
+                # Create validation structure
+                encrypted_msg = {
+                    'encrypted_content': encrypted_content,
+                    'nonce': nonce,
+                    'algorithm': algorithm
+                }
+                
+                print(f"🔧 MessageController: Validation structure: {encrypted_msg}")
+                
+                # Validate encrypted data format
+                is_valid, validation_msg = MessageEncryption.validate_encrypted_message(encrypted_msg)
+                print(f"🔧 MessageController: Validation result - valid: {is_valid}, message: {validation_msg}")
+                if not is_valid:
+                    return False, f"Invalid encrypted data: {validation_msg}"
+                
+                # Set encrypted content
+                message.set_encrypted_content(encrypted_msg)
+            else:
+                # Handle plain text content (backwards compatibility)
+                message.content = content.strip()
+                message.is_encrypted = False
             
             db.session.add(message)
             db.session.commit()
@@ -215,3 +276,63 @@ class MessageController:
                 'unread_count': 0,
                 'total_conversations': 0
             }
+    
+    @staticmethod
+    def serialize_message_for_client(message):
+        """
+        Serialize message for client-side display
+        Returns encrypted data for encrypted messages, plain text for non-encrypted
+        """
+        base_data = {
+            'id': message.id,
+            'sender_id': message.sender_id,
+            'recipient_id': message.recipient_id,
+            'timestamp': message.timestamp.strftime('%m/%d %H:%M'),
+            'is_read': message.is_read,
+            'is_encrypted': message.is_encrypted
+        }
+        
+        # Add content based on encryption status
+        if message.is_encrypted:
+            base_data.update({
+                'encrypted_content': message.encrypted_content,
+                'nonce': message.encryption_nonce,
+                'algorithm': message.encryption_algorithm,
+                'content': '[Encrypted Message]'  # Placeholder for server logs
+            })
+        else:
+            base_data['content'] = message.content
+        
+        return base_data
+    
+    @staticmethod
+    def get_conversation_key_info(user1_id, user2_id):
+        """
+        Get key information for a conversation between two users
+        This doesn't return the actual key (for security) but provides metadata
+        """
+        return ConversationKeyManager.create_key_exchange_data(user1_id, user2_id)
+    
+    @staticmethod
+    def ensure_conversation_key(user1_id, user2_id):
+        """
+        Ensure a conversation key exists between two users
+        """
+        return ConversationKeyManager.ensure_conversation_key(user1_id, user2_id)
+    
+    @staticmethod
+    def get_last_message_preview(message):
+        """
+        Get a preview of the last message for conversation list
+        Handles both encrypted and plain text messages
+        """
+        if not message:
+            return ''
+        
+        if message.is_encrypted:
+            return '[Encrypted Message]'
+        
+        if message.content:
+            return message.content[:50] + '...' if len(message.content) > 50 else message.content
+        
+        return ''
