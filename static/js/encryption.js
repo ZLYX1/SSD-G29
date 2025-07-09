@@ -117,7 +117,6 @@ class MessageEncryption {
             const decoder = new TextDecoder();
             return decoder.decode(decrypted);
         } catch (error) {
-            console.error('Decryption failed:', error);
             return '[Failed to decrypt message]';
         }
     }
@@ -159,7 +158,6 @@ class MessageEncryption {
             return key;
             
         } catch (error) {
-            console.error('🔑 ERROR: Failed to derive conversation key:', error);
             throw error;
         }
     }
@@ -189,8 +187,6 @@ class MessageEncryption {
                 return key;
             }
         } catch (error) {
-            console.error('❌ Error getting conversation key:', error);
-            
             // Fall back to generating a local-only key
             const key = await this.generateKey();
             this.keys.set(conversationId, key);
@@ -238,7 +234,6 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
         messageEncryption = new MessageEncryption();
     } catch (error) {
-        console.error('Failed to initialize message encryption:', error);
         // Fall back to plain text messaging
     }
 });

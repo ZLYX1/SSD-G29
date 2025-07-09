@@ -31,11 +31,9 @@ class SecureMessaging {
 
     checkEncryptionSupport() {
         if (!window.crypto || !window.crypto.subtle) {
-            console.warn('Web Crypto API not supported - falling back to plain text');
             this.encryptionEnabled = false;
             this.showEncryptionWarning();
         } else if (!window.MessageEncryption) {
-            console.warn('MessageEncryption class not available - falling back to plain text');
             this.encryptionEnabled = false;
         } else {
             // MessageEncryption class is available
@@ -94,7 +92,6 @@ class SecureMessaging {
         const recipientInput = form.querySelector('input[name="recipient_id"]');
         
         if (!messageInput || !recipientInput) {
-            console.error('❌ SEND MESSAGE: Required form elements not found');
             return;
         }
 
@@ -102,7 +99,6 @@ class SecureMessaging {
         const recipientId = parseInt(recipientInput.value);
         
         if (!content || !recipientId) {
-            console.warn("⚠️ SEND MESSAGE: Empty content or invalid recipient ID");
             return;
         }
 
@@ -133,11 +129,6 @@ class SecureMessaging {
                     const currentUserId = window.currentUserId || parseInt(document.getElementById('currentUserId')?.value);
                     const conversationId = `${Math.min(currentUserId, recipientId)}_${Math.max(currentUserId, recipientId)}`;
                     
-                    console.log("🔐 SEND MESSAGE: Conversation details");
-                    console.log("  - Current user ID:", currentUserId);
-                    console.log("  - Recipient ID:", recipientId);
-                    console.log("  - Conversation ID:", conversationId);
-                    
                     const conversationKey = await window.messageEncryption.getConversationKey(conversationId);
                     const encryptedData = await window.messageEncryption.encryptMessage(content, conversationKey);
                     
@@ -146,7 +137,6 @@ class SecureMessaging {
                         encrypted_data: encryptedData
                     };
                 } catch (encError) {
-                    console.warn('❌ SEND MESSAGE: Encryption failed, falling back to plain text:', encError);
                     // Keep the original messageData with plain content
                 }
             }
@@ -176,12 +166,10 @@ class SecureMessaging {
                 // Refresh conversation list to update last message
                 this.refreshConversationList();
             } else {
-                console.error("❌ SEND MESSAGE: Server returned error:", result.error);
                 alert('Failed to send message: ' + result.error);
             }
 
         } catch (error) {
-            console.error('❌ SEND MESSAGE: Network/parsing error:', error);
             alert('Failed to send message. Please try again.');
         } finally {
             // Release the submission lock
@@ -210,7 +198,7 @@ class SecureMessaging {
             this.markMessagesAsRead(userId);
             
         } catch (error) {
-            console.error('Error switching conversation:', error);
+            // Error switching conversation
         }
     }
 
@@ -233,7 +221,7 @@ class SecureMessaging {
                 this.scrollToBottom();
             }
         } catch (error) {
-            console.error('Error loading messages:', error);
+            // Error loading messages
         }
     }
 
@@ -260,7 +248,6 @@ class SecureMessaging {
                 }, conversationKey);
                 
             } catch (decError) {
-                console.error('🔓 DECRYPT: Decryption failed:', decError);
                 displayContent = '[Failed to decrypt message]';
             }
         }
@@ -309,7 +296,7 @@ class SecureMessaging {
                 }
             });
         } catch (error) {
-            console.error('Error marking messages as read:', error);
+            // Error marking messages as read
         }
     }
 
@@ -322,7 +309,7 @@ class SecureMessaging {
                 this.updateConversationList(data.conversations);
             }
         } catch (error) {
-            console.error('Error refreshing conversations:', error);
+            // Error refreshing conversations
         }
     }
 
@@ -416,7 +403,6 @@ class SecureMessaging {
                     
                     // Skip if we don't have the required data attributes
                     if (!messageData.encrypted_content || !messageData.nonce) {
-                        console.log('⚠️ Missing encryption data attributes, skipping...');
                         continue;
                     }
                     
@@ -441,10 +427,10 @@ class SecureMessaging {
                     messageContent.textContent = decryptedContent;
                     
                 } else {
-                    console.log('ℹ️ Message already decrypted or not encrypted');
+                    // Message already decrypted or not encrypted
                 }
             } catch (error) {
-                console.error('❌ Error decrypting existing message:', error);
+                // Error decrypting existing message
             }
         }
         
@@ -475,7 +461,6 @@ window.initializeSecureMessaging = function() {
     }
 
     if (!window.secureMessaging) {
-        console.log('🔧 Initializing SecureMessaging...');
         window.secureMessaging = new SecureMessaging();
         
         // Decrypt existing messages on page load
@@ -483,7 +468,7 @@ window.initializeSecureMessaging = function() {
             try {
                 await window.secureMessaging.decryptExistingMessages();
             } catch (error) {
-                console.error('❌ Error decrypting existing messages:', error);
+                // Error decrypting existing messages
             }
         }, 500);
         

@@ -167,7 +167,7 @@
 				<div class="conversation-item list-group-item list-group-item-action {% if loop.first %}active{% endif %}"
 					data-conversation-id="{{ conversation.other_user.id }}"
 					data-conversation='{{ conversation | tojson | safe }}'
-					onclick="loadConversation({{conversation.other_user.id}})">
+					onclick="loadConversation({{ conversation.other_user.id }})">
 
 
 					<div class="d-flex align-items-center">
@@ -241,11 +241,11 @@
 								<hr class="dropdown-divider">
 							</li>
 							<li><a class="dropdown-item text-danger" href="#"
-									onclick="reportUser({{ current_conversation.id }})">
+									onclick="reportUser({{ current_conversation.id if current_conversation else 'null' }})">
 									<i class="fas fa-flag"></i> Report User
 								</a></li>
 							<li><a class="dropdown-item text-danger" href="#"
-									onclick="blockUser({{ current_conversation.id }})">
+									onclick="blockUser({{ current_conversation.id if current_conversation else 'null' }})">
 									<i class="fas fa-ban"></i> Block User
 								</a></li>
 						</ul>
@@ -428,7 +428,6 @@
 
 	function loadConversation(userId) {
 		currentConversationId = userId;
-		console.log(currentConversationId)
 		// Update active conversation
 		document.querySelectorAll('.conversation-item').forEach(item => {
 			item.classList.remove('active');
@@ -448,7 +447,6 @@
 			window.secureMessaging.handleSendMessage(event);
 		} else {
 			// Fallback to original function if SecureMessaging is not available
-			console.log('Using fallback sendMessage function');
 			sendMessageFallback(event);
 		}
 	}
@@ -462,7 +460,6 @@
 		const myUserId = document.getElementById('currentUserId').value;
 
 		if (!content || !currentConversationId) {
-			console.error('Missing content or conversation ID');
 			return;
 		}
 
@@ -490,7 +487,6 @@
 				}
 			})
 			.catch(error => {
-				console.error('Error:', error);
 				alert('Failed to send message');
 			});
 	}
@@ -553,7 +549,6 @@
 				}
 			})
 			.catch(error => {
-				console.error('Error:', error);
 				alert('Failed to send message');
 			});
 	}
@@ -594,7 +589,6 @@
 				}
 			})
 			.catch(error => {
-				console.error('Error:', error);
 				alert('Failed to submit report');
 			});
 	}
@@ -620,7 +614,6 @@
 					}
 				})
 				.catch(error => {
-					console.error('Error:', error);
 					alert('Failed to block user');
 				});
 		}
@@ -638,8 +631,6 @@
 		setTimeout(() => {
 			if (window.initializeSecureMessaging) {
 				window.initializeSecureMessaging();
-			} else {
-				console.warn('❌ initializeSecureMessaging function not available');
 			}
 		}, 200);
 
