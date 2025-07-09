@@ -56,11 +56,46 @@
 					required>
 				<label for="email">Email address</label>
 			</div>
+			
+			<!-- NIST Password Guidance -->
+			<div class="card mb-3 border-info">
+				<div class="card-body py-2">
+					<h6 class="card-title mb-2">
+						<i class="fas fa-info-circle text-info"></i> 
+						Simple Password Requirements (NIST Guidelines)
+					</h6>
+					<div class="row">
+						<div class="col-md-8">
+							<ul class="list-unstyled mb-1 small">
+								<li><i class="fas fa-check text-success"></i> 8-64 characters (longer is better!)</li>
+								<li><i class="fas fa-check text-success"></i> Not a commonly used password</li>
+								<li><i class="fas fa-check text-success"></i> No excessive repetition</li>
+							</ul>
+						</div>
+						<div class="col-md-4">
+							<div class="text-muted small">
+								<strong>Examples:</strong><br>
+								<code class="text-success">coffee brewing time</code><br>
+								<code class="text-success">hiking mountains 2024</code>
+							</div>
+						</div>
+					</div>
+					<div class="mt-2">
+						<small class="text-muted">
+							<i class="fas fa-lightbulb"></i> 
+							<strong>New approach:</strong> We focus on length and memorability rather than complex symbols.
+							<a href="{{ url_for('auth.password_policy') }}" class="ms-2">Learn more →</a>
+						</small>
+					</div>
+				</div>
+			</div>
+			
 			<div class="form-floating mb-3">
 				<input type="password" class="form-control" id="password" name="password" placeholder="Password"
-					required>
+					required maxlength="64" minlength="8">
 				<label for="password">Password</label>
 			</div>
+			
 			<div class="form-floating mb-3">
 				<input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Confirm Password"
 					required>
@@ -118,6 +153,108 @@
 		</form>
 
 		<script>
+			// NIST-compliant password validation for registration
+			function validatePasswordStrength(password) {
+				if (!password) return { valid: false, message: '', strength: '' };
+				
+				const errors = [];
+				
+				// Check length (8-64 characters)
+				if (password.length < 8) {
+					errors.push("at least 8 characters");
+				} else if (password.length > 64) {
+					errors.push("no more than 64 characters");
+				}
+				
+				// Check for common passwords
+				const commonPasswords = [
+					'password', 'password123', '123456', '123456789', 'qwerty',
+					'abc123', 'password1', 'admin', 'letmein', 'welcome',
+					'monkey', 'dragon', 'football', 'passw0rd', 'Password1'
+				];
+				
+				if (commonPasswords.some(common => 
+					password.toLowerCase().includes(common.toLowerCase()))) {
+					errors.push("cannot be a commonly used password");
+				}
+				
+				// Check for excessive repetition
+				if (password.length > 0) {
+					const charCounts = {};
+					for (const char of password.toLowerCase()) {
+						charCounts[char] = (charCounts[char] || 0) + 1;
+					}
+					const maxCharRatio = Math.max(...Object.values(charCounts)) / password.length;
+					if (maxCharRatio > 0.5) {
+						errors.push("cannot have excessive character repetition");
+					}
+				}
+				
+				const valid = errors.length === 0;
+				let score = 0;
+				let strength = '';
+				
+				if (valid) {
+					// Score based on length
+					if (password.length >= 20) score = 5;
+					else if (password.length >= 15) score = 4;
+					else if (password.length >= 12) score = 3;
+					else if (password.length >= 10) score = 2;
+					else score = 1;
+					
+					// Bonus for character diversity
+					let diversityBonus = 0;
+					if (/[a-z]/.test(password)) diversityBonus++;
+					if (/[A-Z]/.test(password)) diversityBonus++;
+					if (/\d/.test(password)) diversityBonus++;
+					if (/[^a-zA-Z0-9]/.test(password)) diversityBonus++;
+					
+					score += Math.floor(diversityBonus / 2);
+					
+					if (score >= 5) strength = "Excellent";
+					else if (score >= 4) strength = "Strong";
+					else if (score >= 2) strength = "Good";
+					else strength = "Acceptable";
+				}
+				
+				return {
+					valid: valid,
+					message: valid ? `Password strength: ${strength}` : `Password must have ${errors.join(', ')}`,
+					strength: strength
+				};
+			}
+			
+			function updatePasswordFeedback() {
+				const password = document.getElementById('password').value;
+				const passwordField = document.getElementById('password');
+				const result = validatePasswordStrength(password);
+				
+				// Remove existing feedback
+				passwordField.classList.remove('is-valid', 'is-invalid');
+				let existingFeedback = passwordField.parentNode.querySelector('.password-feedback');
+				if (existingFeedback) {
+					existingFeedback.remove();
+				}
+				
+				if (password.length > 0) {
+					// Add new feedback
+					const feedbackDiv = document.createElement('div');
+					feedbackDiv.className = 'password-feedback small mt-1';
+					
+					if (result.valid) {
+						passwordField.classList.add('is-valid');
+						feedbackDiv.innerHTML = `<span class="text-success"><i class="fas fa-check"></i> ${result.message}</span>`;
+					} else {
+						passwordField.classList.add('is-invalid');
+						feedbackDiv.innerHTML = `<span class="text-danger"><i class="fas fa-times"></i> ${result.message}</span>`;
+					}
+					
+					passwordField.parentNode.appendChild(feedbackDiv);
+				}
+				
+				validatePasswordMatch();
+			}
+
 			// Password confirmation validation
 			function validatePasswordMatch() {
 				const password = document.getElementById('password').value;
@@ -142,7 +279,7 @@
 				const confirmPasswordField = document.getElementById('confirm_password');
 				
 				if (passwordField && confirmPasswordField) {
-					passwordField.addEventListener('input', validatePasswordMatch);
+					passwordField.addEventListener('input', updatePasswordFeedback);
 					confirmPasswordField.addEventListener('input', validatePasswordMatch);
 				}
 			});

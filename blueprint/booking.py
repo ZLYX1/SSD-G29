@@ -6,6 +6,8 @@ from blueprint.decorators import login_required
 from datetime import datetime, timedelta
 from flask_wtf.csrf import generate_csrf
 import logging
+from sqlalchemy.orm import joinedload, contains_eager
+from sqlalchemy.sql import func
 
 from controllers.security_controller import SecurityController
 
@@ -31,7 +33,7 @@ def booking():
 
     if role == 'seeker':
         # Exclude bookings where the escort is deleted or banned
-        bookings_data = Booking.query.join(User, Booking.escort_id == User.id).filter(
+        bookings_data = Booking.query.join(User, Booking.escort_id == User.id).options(joinedload(Booking.payments)).filter(
             Booking.seeker_id == user_id,
             User.deleted == False,
             User.active == True  # Also exclude banned users
