@@ -66,10 +66,9 @@ def browseSeeker():
     query = Profile.query.join(User).filter(User.role == 'seeker').limit(5)
     profiles = query.all()
     print(profiles)  # see if this returns anything
-
-
+    favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=session['user_id']).all()]
     # profiles = query.distinct().all()
-    return render_template('browse.html', profiles=profiles, user_role=user_role)
+    return render_template('browse.html', profiles=profiles, user_role=user_role, favourited_ids=favourite_ids)
 
 def get_valid_start_times(slot, duration_minutes, escort_id):
     valid_starts = []
@@ -317,7 +316,10 @@ def browseEscort():
             pass  # ignore invalid input
 
     profiles = query.distinct().all()
-    return render_template('browse.html', profiles=profiles,user_role=user_role)
+    favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=session['user_id']).all()]
+    
+    return render_template('browse.html', profiles=profiles,user_role=user_role, favourited_ids=favourite_ids)
+
 
     # query = Profile.query.join(User).filter(User.role == 'escort', User.active == True)
 

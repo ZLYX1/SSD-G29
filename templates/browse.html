@@ -94,7 +94,11 @@
 					<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 					<button
 						class="btn btn-sm {% if profile.user_id in favourited_ids %}btn-danger{% else %}btn-outline-danger{% endif %}">
-						{% if profile.user_id in favourited_ids %}♥ Unfavorite{% else %}♡ Favorite{% endif %}
+						{% if profile.user_id in favourited_ids %}
+						♥ Unfavorite
+						{% else %}
+						♡ Favorite
+						{% endif %}
 					</button>
 				</div>
 			</div>
