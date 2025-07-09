@@ -91,6 +91,7 @@
 				<!-- <button class="btn btn-outline-danger btn-sm">♡ Favorite</button> -->
 				<!-- Favorite Button -->
 				<div class="favorite-toggle" data-user-id="{{ profile.user_id }}">
+					<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 					<button
 						class="btn btn-sm {% if profile.user_id in favourited_ids %}btn-danger{% else %}btn-outline-danger{% endif %}">
 						{% if profile.user_id in favourited_ids %}♥ Unfavorite{% else %}♡ Favorite{% endif %}
@@ -116,7 +117,7 @@
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						// 'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+						'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
 					}
 				});
 
