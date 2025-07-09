@@ -61,6 +61,14 @@
 					required>
 				<label for="password">Password</label>
 			</div>
+			<div class="form-floating mb-3">
+				<input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Confirm Password"
+					required>
+				<label for="confirm_password">Confirm Password</label>
+				<div class="invalid-feedback" id="password-mismatch-error" style="display: none;">
+					Passwords do not match.
+				</div>
+			</div>
 
 			<!-- Phone Number for OTP Verification - COMMENTED OUT -->
 			<!-- 
@@ -110,6 +118,35 @@
 		</form>
 
 		<script>
+			// Password confirmation validation
+			function validatePasswordMatch() {
+				const password = document.getElementById('password').value;
+				const confirmPassword = document.getElementById('confirm_password').value;
+				const errorDiv = document.getElementById('password-mismatch-error');
+				const confirmField = document.getElementById('confirm_password');
+				
+				if (confirmPassword && password !== confirmPassword) {
+					confirmField.classList.add('is-invalid');
+					errorDiv.style.display = 'block';
+					return false;
+				} else {
+					confirmField.classList.remove('is-invalid');
+					errorDiv.style.display = 'none';
+					return true;
+				}
+			}
+
+			// Add event listeners for real-time validation
+			document.addEventListener('DOMContentLoaded', function() {
+				const passwordField = document.getElementById('password');
+				const confirmPasswordField = document.getElementById('confirm_password');
+				
+				if (passwordField && confirmPasswordField) {
+					passwordField.addEventListener('input', validatePasswordMatch);
+					confirmPasswordField.addEventListener('input', validatePasswordMatch);
+				}
+			});
+
 			grecaptcha.ready(function () {
 				console.log("reCAPTCHA is ready!");
 
@@ -122,6 +159,12 @@
 				document.getElementById('register-form').addEventListener('submit', function (event) {
 					event.preventDefault();
 					console.log("Register form submit intercepted");
+
+					// Validate password match before submitting
+					if (!validatePasswordMatch()) {
+						alert('Passwords do not match. Please correct this before submitting.');
+						return;
+					}
 
 					grecaptcha.execute('{{ sitekey }}', { action: 'register' }).then(function (token) {
 						console.log("reCAPTCHA token received:", token);
