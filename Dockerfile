@@ -41,12 +41,12 @@ COPY templates/ ./templates/
 COPY scripts/ ./scripts/
 COPY blueprint/ ./blueprint/
 
-# Make sure the entrypoint script and all shell scripts are executable
-RUN chmod +x ./entrypoint.sh && \
-    find ./scripts -name "*.sh" -exec chmod +x {} \;
+# Make sure the entrypoint script and all shell scripts are executable with minimal permissions
+RUN chmod 750 ./entrypoint.sh && \
+    find ./scripts -name "*.sh" -exec chmod 750 {} \;
 
-# Create directory for persistent environment variables
-RUN mkdir -p /app/persistent && chmod 755 /app/persistent
+# Create directory for persistent environment variables with restrictive permissions
+RUN mkdir -p /app/persistent && chmod 750 /app/persistent
 
 # Expose port used by Flask/Gunicorn
 EXPOSE 5000
