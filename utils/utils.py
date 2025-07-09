@@ -287,91 +287,124 @@ def send_sms_via_twilio(phone_number, message):
 
 def validate_password_strength(password):
     """
-    Validate password strength according to security requirements
+    Validate password strength based on NIST guidelines (SP 800-63B)
+    NIST recommendations focus on length and avoiding compromised passwords
+    rather than complex character requirements.
     
-    Requirements:
-    - At least 8 characters long
-    - Contains at least one uppercase letter
-    - Contains at least one lowercase letter  
-    - Contains at least one digit
-    - Contains at least one special character
-    - Not a common password
+    Key NIST principles:
+    - Length is more important than complexity
+    - 8-64 character range
+    - Avoid common/compromised passwords
+    - No forced composition rules (upper, lower, special chars)
     
     Returns:
-        dict: {'valid': bool, 'message': str, 'score': int}
+        dict: {'valid': bool, 'message': str, 'score': int, 'strength': str}
     """
     import string
     
     errors = []
     score = 0
     
-    # Check length
+    # NIST Requirement 1: Length between 8-64 characters
     if len(password) < 8:
         errors.append("at least 8 characters")
-    elif len(password) >= 12:
-        score += 2
+    elif len(password) > 64:
+        errors.append("no more than 64 characters")
     else:
-        score += 1
+        # Score based on length (NIST emphasizes length over complexity)
+        if len(password) >= 20:
+            score += 5  # Excellent length
+        elif len(password) >= 15:
+            score += 4  # Very good length
+        elif len(password) >= 12:
+            score += 3  # Good length
+        elif len(password) >= 10:
+            score += 2  # Acceptable length
+        else:
+            score += 1  # Minimum acceptable
     
-    # Check for uppercase
-    if not any(c.isupper() for c in password):
-        errors.append("at least one uppercase letter")
-    else:
-        score += 1
-    
-    # Check for lowercase
-    if not any(c.islower() for c in password):
-        errors.append("at least one lowercase letter")
-    else:
-        score += 1
-    
-    # Check for digits
-    if not any(c.isdigit() for c in password):
-        errors.append("at least one number")
-    else:
-        score += 1
-    
-    # Check for special characters
-    special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
-    if not any(c in special_chars for c in password):
-        errors.append("at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)")
-    else:
-        score += 1
-    
-    # Check for common passwords
+    # NIST Requirement 2: Check against common/compromised passwords
+    # Extended list of common passwords and patterns
     common_passwords = [
         'password', 'password123', '123456', '123456789', 'qwerty',
         'abc123', 'password1', 'admin', 'letmein', 'welcome',
-        'monkey', '1234567890', 'dragon', '123123', 'football'
+        'monkey', '1234567890', 'dragon', '123123', 'football',
+        'baseball', 'master', 'shadow', 'michael', 'jordan',
+        'superman', 'batman', 'trustno1', 'hello', 'freedom',
+        'whatever', 'ninja', 'mustang', 'access', 'maggie',
+        'starwars', 'tiger', 'internet', 'service', 'banana',
+        'orange', 'cheese', 'secret', 'passw0rd', 'password!',
+        'Password1', 'Password123', 'Password!', 'Passw0rd',
+        'qwertyuiop', 'asdfghjkl', 'zxcvbnm', '1q2w3e4r',
+        'iloveyou', '000000', '111111', '222222', '333333'
     ]
     
-    if password.lower() in common_passwords:
-        errors.append("cannot be a common password")
-        score = 0
+    # Check exact matches and close variants of common passwords
+    password_lower = password.lower()
+    for common in common_passwords:
+        # Only flag if it's an exact match or starts with common password
+        # But avoid false positives for longer unique passwords
+        if (password_lower == common.lower() or 
+            (password_lower.startswith(common.lower()) and len(password) <= len(common) + 3)):
+            errors.append("cannot be a commonly used password")
+            score = 0
+            break
     
-    # Check for sequential characters
-    sequential_patterns = ['123', 'abc', 'qwe', 'asd', 'zxc']
-    if any(pattern in password.lower() for pattern in sequential_patterns):
-        score -= 1
+    # Check for simple sequential patterns (NIST discourages predictable patterns)
+    sequential_patterns = [
+        '123456', '654321', 'abcdef', 'fedcba', 'qwerty', 'asdfgh',
+        'zxcvbn', '098765', '987654', 'mnbvcx', 'poiuyt', 'lkjhgf'
+    ]
+    for pattern in sequential_patterns:
+        if len(pattern) >= 6 and pattern in password.lower():
+            errors.append("cannot contain common sequential patterns")
+            score = max(0, score - 2)
+            break
     
-    # Check for repeated characters
-    if len(set(password)) < len(password) * 0.6:  # More than 40% repeated chars
-        score -= 1
+    # Check for excessive character repetition (adjusted for real-world use)
+    if len(password) > 0:
+        char_counts = {}
+        for char in password.lower():
+            char_counts[char] = char_counts.get(char, 0) + 1
+        
+        # If any character appears more than 70% of the time, it's too repetitive
+        # This allows for reasonable repetition while blocking obvious patterns
+        max_char_ratio = max(char_counts.values()) / len(password)
+        if max_char_ratio > 0.7:
+            errors.append("cannot have excessive character repetition")
+            score = max(0, score - 1)
+    
+    # Bonus points for character diversity (optional enhancement, not required)
+    character_types = 0
+    if any(c.islower() for c in password):
+        character_types += 1
+    if any(c.isupper() for c in password):
+        character_types += 1
+    if any(c.isdigit() for c in password):
+        character_types += 1
+    if any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/~`" for c in password):
+        character_types += 1
+    
+    # Add bonus for character diversity (but don't require it per NIST)
+    if character_types >= 3:
+        score += 1
+    if character_types >= 4:
+        score += 1
     
     valid = len(errors) == 0
     
     if valid:
         if score >= 6:
-            strength = "Very Strong"
+            strength = "Excellent"
         elif score >= 4:
             strength = "Strong"
-        elif score >= 3:
-            strength = "Moderate"
+        elif score >= 2:
+            strength = "Good"
         else:
-            strength = "Weak"
+            strength = "Acceptable"
         message = f"Password strength: {strength}"
     else:
-        message = "Password must contain " + ", ".join(errors)
+        message = "Password must have " + ", ".join(errors)
     
     return {
         'valid': valid,
