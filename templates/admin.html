@@ -64,6 +64,7 @@
 					<td>{{ user.pending_role }}</td>
 					<td>
 						<form method="post" class="d-inline">
+							<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 							<input type="hidden" name="action" value="approve_role_change">
 							<input type="hidden" name="user_id" value="{{ user.id }}">
 							<button type="submit" class="btn btn-success btn-sm"
@@ -72,6 +73,7 @@
 							</button>
 						</form>
 						<form method="post" class="d-inline">
+							<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 							<input type="hidden" name="action" value="reject_role_change">
 							<input type="hidden" name="user_id" value="{{ user.id }}">
 							<button type="submit" class="btn btn-danger btn-sm"
@@ -132,6 +134,7 @@
 							<span class="text-muted">No actions</span>
 						{% elif not user.active %}
 							<form method="post" class="d-inline">
+								<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 								<input type="hidden" name="action" value="toggle_ban">
 								<input type="hidden" name="user_id" value="{{ user.id }}">
 								<button type="submit" class="btn btn-success btn-sm"
@@ -139,12 +142,14 @@
 							</form>
 						{% else %}
 							<form method="post" class="d-inline">
+								<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 								<input type="hidden" name="action" value="delete_user">
 								<input type="hidden" name="user_id" value="{{ user.id }}">
 								<button type="submit" class="btn btn-danger btn-sm"
 									onclick="return confirm('Are you sure you want to delete this user? This will also cancel all their pending bookings.');">Delete</button>
 							</form>
 							<form method="post" class="d-inline">
+								<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 								<input type="hidden" name="action" value="toggle_ban">
 								<input type="hidden" name="user_id" value="{{ user.id }}">
 								<button type="submit" class="btn btn-warning btn-sm"

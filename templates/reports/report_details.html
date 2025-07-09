@@ -154,6 +154,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('report.update_report_status') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="report_id" value="{{ report.id }}">
                         
                         <div class="row">

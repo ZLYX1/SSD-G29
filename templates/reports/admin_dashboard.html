@@ -3,6 +3,7 @@
 {% block title %}Admin - Report Management{% endblock %}
 
 {% block content %}
+<input type="hidden" id="csrf_token" value="{{ csrf_token }}">
 <div class="container-fluid mt-4">
     <div class="row">
         <div class="col-12">
@@ -226,12 +227,13 @@
 
 <script>
 function updateReportStatus(reportId, newStatus) {
+    const csrfToken = document.getElementById('csrf_token').value;
     fetch('{{ url_for("report.update_report_status") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `report_id=${reportId}&status=${newStatus}`
+        body: `csrf_token=${csrfToken}&report_id=${reportId}&status=${newStatus}`
     })
     .then(response => response.json())
     .then(data => {
@@ -258,13 +260,14 @@ function saveNotes() {
     const reportId = document.getElementById('noteReportId').value;
     const notes = document.getElementById('adminNotes').value;
     const resolution = document.getElementById('resolution').value;
+    const csrfToken = document.getElementById('csrf_token').value;
     
     fetch('{{ url_for("report.update_report_status") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: `report_id=${reportId}&status=&admin_notes=${encodeURIComponent(notes)}&resolution=${encodeURIComponent(resolution)}`
+        body: `csrf_token=${csrfToken}&report_id=${reportId}&status=&admin_notes=${encodeURIComponent(notes)}&resolution=${encodeURIComponent(resolution)}`
     })
     .then(response => response.json())
     .then(data => {
