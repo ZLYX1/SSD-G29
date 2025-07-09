@@ -5,16 +5,6 @@ class AuthController:
     def __init__(self):
         self.users = [User("user@example.com", "securepassword")]
 
-    def validate_password_strength(self, password):
-        """NIST-compliant password strength validation (8-64 characters)"""
-        if not password:
-            return False, "Password is required"
-        if len(password) < 8:
-            return False, "Password must be at least 8 characters long"
-        if len(password) > 64:
-            return False, "Password must be no more than 64 characters long"
-        return True, "Password is valid"
-
     def authenticate(self, email, password):
         print("authenticate controller\n")
         for user in self.users:
