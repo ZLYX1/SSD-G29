@@ -43,7 +43,6 @@ def mark_token_used(token):
     if token in payment_tokens:
         payment_tokens[token]['used'] = True
 
-
 @payment_bp.route('/initiate/<int:booking_id>', methods=['GET'])
 @login_required
 def initiate_payment(booking_id):
@@ -94,7 +93,8 @@ def payment_page():
             user_id=user_id,
             amount=amount_due,
             status='Completed',
-            transaction_id=transaction_id
+            transaction_id=transaction_id,
+            booking_id = booking_id 
         )
         db.session.add(new_payment)
 

@@ -7,6 +7,7 @@ import secrets
 import os
 import time
 import requests
+import click
 from functools import wraps
 from faker import Faker
 import random
@@ -15,6 +16,8 @@ from datetime import datetime
 from controllers.auth_controller import AuthController
 from flask_migrate import Migrate
 from sqlalchemy import or_
+from sqlalchemy import func
+from sqlalchemy import text
 
 from flask.cli import with_appcontext
 
@@ -29,7 +32,6 @@ from blueprint.payment import payment_bp
 from blueprint.rating import rating_bp
 from blueprint.report import report_bp
 from blueprint.audit_log import audit_bp, log_event
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -326,6 +328,78 @@ app.register_blueprint(audit_bp)
 #         return "Error: Unknown role.", 403
 
 #     return render_template('dashboard.html', role=role, data=data)
+
+def get_user_spending_summary(user_id):
+    """Returns total spending and payment details for the given user."""
+    if not user_id:
+        return None
+
+    # Total amount spent
+    total_spent = db.session.query(func.sum(Payment.amount)).filter_by(user_id=user_id).scalar() or 0
+
+    # Total number of payments
+    total_transactions = db.session.query(func.count(Payment.id)).filter_by(user_id=user_id).scalar()
+
+    # Optional: Monthly breakdown (last 6 months)
+    monthly_breakdown = db.session.query(
+        func.date_trunc('month', Payment.created_at).label('month'),
+        func.sum(Payment.amount).label('total')
+    ).filter(
+        Payment.user_id == user_id
+    ).group_by(
+        func.date_trunc('month', Payment.created_at)
+    ).order_by(text('month desc')).limit(6).all()
+
+    # Format breakdown
+    breakdown = [
+        {"month": month.strftime("%Y-%m"), "total": float(total)}
+        for month, total in monthly_breakdown
+    ]
+
+    return {
+        "total_spent": round(float(total_spent), 2),
+        "transaction_count": total_transactions,
+        "monthly_breakdown": breakdown
+    }
+    
+def get_user_earning_summary(user_id):
+    """Returns total earnings for a given escort user."""
+    if not user_id:
+        return None
+
+    # Join Payment → Booking → escort
+    # from models import Payment, Booking
+
+    # Total earnings
+    total_earned = db.session.query(func.sum(Payment.amount))\
+        .join(Booking, Payment.booking_id == Booking.id)\
+        .filter(Booking.escort_id == user_id).scalar() or 0
+
+    # Count of bookings that resulted in payment
+    total_paid_bookings = db.session.query(func.count(Payment.id))\
+        .join(Booking, Payment.booking_id == Booking.id)\
+        .filter(Booking.escort_id == user_id).scalar()
+
+    # Optional: Earnings by month
+    monthly_earnings = db.session.query(
+        func.date_trunc('month', Payment.created_at).label('month'),
+        func.sum(Payment.amount).label('total')
+    ).join(Booking, Payment.booking_id == Booking.id)\
+     .filter(Booking.escort_id == user_id)\
+     .group_by(func.date_trunc('month', Payment.created_at))\
+     .order_by(text('month desc')).limit(6).all()
+
+    breakdown = [
+        {"month": month.strftime("%Y-%m"), "total": float(total)}
+        for month, total in monthly_earnings
+    ]
+
+    return {
+        "total_earned": round(float(total_earned), 2),
+        "paid_bookings": total_paid_bookings,
+        "monthly_breakdown": breakdown
+    }
+    
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -349,6 +423,9 @@ def dashboard():
             favourite_profiles = Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
         else:
             favourite_profiles = []
+        summary = get_user_spending_summary(user_id)
+        
+
         
     elif role == 'escort':
         data['booking_requests_count'] = db.session.query(Booking).join(
@@ -367,6 +444,8 @@ def dashboard():
             favourite_profiles = Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
         else:
             favourite_profiles = []
+        summary = get_user_earning_summary(user_id)
+        
     elif role == 'admin':
         data['total_users'] = User.query.count()
         data['total_reports'] = Report.query.filter_by(
@@ -381,7 +460,7 @@ def dashboard():
             User.pending_role == 'seeker'
         ).count()
 
-    return render_template('dashboard.html', role=role, data=data, favourite_profiles=favourite_profiles)
+    return render_template('dashboard.html', role=role, data=data, summary=summary,  favourite_profiles=favourite_profiles)
 
 
 # # 8. ADMIN PANEL
@@ -454,6 +533,25 @@ def admin():
 
     return render_template('admin.html', users=users, reports=reports, role_requests=role_requests)
 
+
+@click.command("reset-db")
+@with_appcontext
+def reset_database():
+    """Drops and recreates all database tables."""
+    confirm = input("⚠️ This will DROP ALL TABLES. Are you sure? (y/n): ")
+    if confirm.lower() == 'y':
+        print("📛 Dropping all tables...")
+        db.drop_all()
+        print("✅ Tables dropped.")
+
+        print("📦 Recreating all tables...")
+        db.create_all()
+        print("✅ Tables recreated.")
+    else:
+        print("❌ Cancelled.")
+
+app.cli.add_command(reset_database)
+        
 # --- Add a command to seed the database ---
 @app.cli.command("seed")
 @with_appcontext
@@ -571,9 +669,12 @@ def seed_database():
 
     # 4. Create Payments
     print("-> Creating payments...")
+    bookings = Booking.query.all()  # Fetch all bookings
     for _ in range(50):
+        booking = random.choice(bookings) if bookings else None
         payment = Payment(
-            user_id=random.choice(seekers).id,
+            user_id=booking.seeker_id if booking else random.choice(seekers).id,
+            booking_id=booking.id if booking else None,
             amount=round(random.uniform(50.0, 500.0), 2),
             transaction_id=str(uuid.uuid4()),
             created_at=faker.date_time_between(start_date='-1y', end_date='now')

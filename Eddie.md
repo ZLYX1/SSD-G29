@@ -89,3 +89,15 @@ openssl rand -hex 32
 
 pip install watchdog
 flask run --reload --debugger --with-threads
+
+
+### Reseting db:
+
+drop:
+flask reset-db
+
+seed:
+flask seed
+
+run:
+flask run --reload --debugger --with-threads

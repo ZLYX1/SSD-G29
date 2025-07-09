@@ -278,6 +278,9 @@ class Payment(db.Model):
     status = db.Column(db.String(20), default='Completed', nullable=False)
     transaction_id = db.Column(db.String(100), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False)
+
+    booking = db.relationship('Booking', backref='payments')
 
 class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
