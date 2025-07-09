@@ -70,12 +70,7 @@ else:
 from blueprint.models import db, User, Profile, Booking, Payment, Report, Rating, TimeSlot, Message
 from blueprint.models import Favourite, AuditLog, PasswordHistory
 
-
-
 app = Flask(__name__)
-
-# Use environment variable for secret key (set during configuration)
-# This will be set properly when the SECRET_KEY config is applied below
 
 # Cache control function to prevent browser caching of sensitive pages
 def add_no_cache_headers(response):
@@ -157,7 +152,6 @@ def str2bool(val, default=False):
         return default
     return val.lower() in ("1", "true", "yes", "y", "on")
 
-
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -186,10 +180,6 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to ses
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Session timeout
 app.config['SESSION_COOKIE_NAME'] = 'safe_companions_session'  # Custom session name
 
-
-# Configure CSRF Protection
-# csrf = CSRFProtect(app)  # This initializes CSRF protection
-
 csrf.init_app(app)
 
 # Add CSRF token and environment variables to template context
@@ -201,51 +191,9 @@ def inject_csrf_token():
         sitekey=os.environ.get('SITEKEY')  # No default - validated at startup
     )
 
-
 # Initialize extensions
 db.init_app(app)
 migrate = Migrate(app, db)
-
-# --- DUMMY DATA (Replaces a database for this example) ---
-# Use environment variable for test password (default for development)
-TEST_PASSWORD = os.getenv('TEST_PASSWORD', 'password123')
-
-USERS = {
-    1: {
-        'username': 'seeker@example.com',
-        'password': TEST_PASSWORD,
-        'role': 'seeker',
-        'active': True
-    },
-    2: {
-        'username': 'escort@example.com',
-        'password': TEST_PASSWORD,
-        'role': 'escort',
-        'active': True
-    },
-    3: {
-        'username': 'admin@example.com',
-        'password': TEST_PASSWORD,
-        'role': 'admin',
-        'active': True
-    },
-    # 4: {'username': 'locked@example.com', 'password': TEST_PASSWORD, 'role': 'seeker', 'active': False},
-}
-
-
-# # A simple way to get a user by username
-def find_user_by_username(username):
-    for user_id, user_data in USERS.items():
-        if user_data['username'] == username:
-            return user_id, user_data
-    return None, None
-
-
-# PROFILES = {
-#     1: {'name': 'Alex the Seeker', 'bio': 'Looking for a good time.', 'photo': 'default.jpg'},
-#     2: {'name': 'Bella the Escort', 'bio': 'Experienced and professional. Available on weekends.', 'photo': 'bella.jpg', 'availability': 'Available', 'rating': 4.8, 'age': 25},
-#     3: {'name': 'Admin User', 'bio': 'System Administrator', 'photo': 'default.jpg'},
-# }
 
 BOOKINGS = {
     1: {
@@ -338,86 +286,6 @@ app.register_blueprint(payment_bp)
 app.register_blueprint(rating_bp)
 app.register_blueprint(report_bp)
 app.register_blueprint(audit_bp)
-# @login_required
-# def browse():
-#     escort_profiles = Profile.query.join(User).filter(User.role == 'escort').all()
-#     return render_template('browse.html', profiles=escort_profiles)
-
-# 4. BOOKING SYSTEM
-# @app.route('/booking', methods=['GET', 'POST'])
-# @login_required
-# def booking():
-#     user_id = session['user_id']
-#     role = session['role']
-#     user_bookings = {}
-
-#     if role == 'seeker':
-#         user_bookings = {bid: b for bid, b in BOOKINGS.items() if b['seeker_id'] == user_id}
-#     elif role == 'escort':
-#         user_bookings = {bid: b for bid, b in BOOKINGS.items() if b['escort_id'] == user_id}
-
-#     if request.method == 'POST':
-#         # Simulate creating a new booking
-#         if request.form.get('action') == 'create_booking':
-#             flash("Booking request sent!", "success")
-#         # Simulate managing a booking
-#         elif request.form.get('action') == 'accept_booking':
-#             booking_id = int(request.form.get('booking_id'))
-#             if booking_id in BOOKINGS and BOOKINGS[booking_id]['escort_id'] == user_id:
-#                 BOOKINGS[booking_id]['status'] = 'Confirmed'
-#                 flash(f"Booking #{booking_id} confirmed!", "success")
-#         return redirect(url_for('booking'))
-#     return render_template('booking.html', bookings=user_bookings, role=role)
-# @app.route('/booking', methods=['GET', 'POST'])
-# @login_required
-# def booking():
-#     user_id = session['user_id']
-#     role = session['role']
-#     bookings_data = []
-
-#     if role == 'seeker':
-#         bookings_data = Booking.query.filter_by(seeker_id=user_id).order_by(Booking.booking_date.desc()).all()
-#     elif role == 'escort':
-#         bookings_data = Booking.query.filter_by(escort_id=user_id).order_by(Booking.booking_date.desc()).all()
-
-#     return render_template('booking.html', bookings=bookings_data, role=role)
-
-# 5. PAYMENT SIMULATION
-# @app.route('/payment', methods=['GET', 'POST'])
-# @login_required
-# def payment():
-#     if request.method == 'POST':
-#         # Simulate payment validation
-#         card_number = request.form.get('card_number')
-#         if card_number and len(card_number) == 16:
-#              flash("Payment successful! Transaction recorded.", "success")
-#         else:
-#              flash("Payment failed. Invalid card number.", "danger")
-#         return redirect(url_for('1'))
-
-#     user_payments = {pid: p for pid, p in PAYMENTS.items() if p['user_id'] == session['user_id']}
-#     return render_template('payment.html', history=user_payments)
-
-
-# 7. DASHBOARD (Role-Based)
-# @app.route('/dashboard')
-# @login_required
-# def dashboard():
-#     role = session.get('role')
-#     user_id = session.get('user_id')
-
-#     # Fetch data specific to the user's role
-#     if role == 'seeker':
-#         data = {'upcoming_bookings': {bid: b for bid, b in BOOKINGS.items() if b['seeker_id'] == user_id}}
-#     elif role == 'escort':
-#         data = {'booking_requests': {bid: b for bid, b in BOOKINGS.items() if b['escort_id'] == user_id and b['status'] == 'Pending'}}
-#     elif role == 'admin':
-#         data = {'system_stats': {'total_users': len(USERS), 'total_reports': len(REPORTS)}}
-#     else:
-#         # Should not happen if logic is correct
-#         return "Error: Unknown role.", 403
-
-#     return render_template('dashboard.html', role=role, data=data)
 
 def get_user_spending_summary(user_id):
     """Returns total spending and payment details for the given user."""
@@ -561,24 +429,6 @@ def dashboard():
     return render_template('dashboard.html', role=role, data=data, summary=summary, favourite_profiles=favourite_profiles)
 
 
-# # 8. ADMIN PANEL
-# @app.route('/admin', methods=['GET', 'POST'])
-# @role_required('admin')
-# def admin():
-#     if request.method == 'POST':
-#         action = request.form.get('action')
-#         user_id_to_modify = int(request.form.get('user_id'))
-#         if action == 'delete_user':
-#             if user_id_to_modify in USERS:
-#                 del USERS[user_id_to_modify]
-#                 if user_id_to_modify in PROFILES:
-#                     del PROFILES[user_id_to_modify]
-#                 flash(f"User #{user_id_to_modify} has been deleted.", "success")
-#         return redirect(url_for('admin'))
-
-#     return render_template('admin.html', users=USERS, reports=REPORTS)
-
-
 @app.route('/admin', methods=['GET', 'POST'])
 @role_required('admin')
 def admin():
@@ -649,165 +499,6 @@ def reset_database():
         print("❌ Cancelled.")
 
 app.cli.add_command(reset_database)
-        
-# --- Add a command to seed the database ---
-@app.cli.command("seed")
-@with_appcontext
-def seed_database():
-    """Seeds the database with realistic mock data."""
-    print("Seeding database...")
-    faker = Faker()
-
-    # 1. Clean up existing data (proper order to handle foreign keys)
-    print("-> Deleting existing data...")
-    db.session.query(Rating).delete()
-    db.session.query(Message).delete()
-    db.session.query(Report).delete()
-    db.session.query(Payment).delete()
-    db.session.query(Booking).delete()
-    db.session.query(TimeSlot).delete()
-    
-    # Added these model as new models have been added
-    db.session.query(Favourite).delete()
-    db.session.query(AuditLog).delete()
-    db.session.query(PasswordHistory).delete()
-
-    db.session.query(Profile).delete()
-    db.session.query(User).delete()
-    db.session.commit()
-
-    # 2. Create Users and Profiles
-    print("-> Creating users and profiles...")
-    seekers = []
-    escorts = []
-
-    for _ in range(20):
-        user = User(email=faker.unique.email(), role='seeker', active=True,
-                    gender=random.choice(['Male', 'Female', 'Non-binary']))
-        user.set_password(TEST_PASSWORD)
-        profile = Profile(user=user, name=faker.name(), bio=faker.paragraph(nb_sentences=3))
-        db.session.add(user)
-        seekers.append(user)
-
-    for _ in range(10):
-        user = User(email=faker.unique.email(), role='escort', active=True,
-                    gender=random.choice(['Male', 'Female', 'Non-binary']))
-        user.set_password(TEST_PASSWORD)
-        profile = Profile(user=user,
-                          name=faker.name(),
-                          bio=faker.paragraph(nb_sentences=5),
-                          rating=round(random.uniform(3.5, 5.0), 1),
-                          age=random.randint(19, 35))
-        db.session.add(user)
-        escorts.append(user)
-
-    admin_user = User(email='admin@example.com', role='admin', active=True, gender="male", phone_verified=True, email_verified=True)
-    admin_user.set_password(TEST_PASSWORD)
-    admin_profile = Profile(user=admin_user, name='Admin User')
-
-    seeker_user = User(email='seeker@example.com', role='seeker', active=True, gender="male", phone_verified=True, email_verified=True)
-    seeker_user.set_password(TEST_PASSWORD)
-    seeker_profile = Profile(user=seeker_user, name='Alex the Seeker')
-
-    escort_user = User(email='escort@example.com', role='escort', active=True, gender="male", phone_verified=True, email_verified=True)
-    escort_user.set_password(TEST_PASSWORD)
-    escort_profile = Profile(user=escort_user,
-                             name='Bella the Escort',
-                             bio='Experienced and professional.',
-                             rating=4.8,
-                             age=25)
-
-    db.session.add_all([admin_user, seeker_user, escort_user])
-    db.session.commit()
-
-    print(f"   - Created {len(seekers)} seekers, {len(escorts)} escorts, and 3 test users.")
-
-    # 2.5. Create TimeSlots for escorts
-    print("-> Creating time slots for escorts...")
-    all_escorts = escorts + [escort_user]
-    for escort in all_escorts:
-        # Create 3-5 random availability slots for each escort
-        for _ in range(random.randint(3, 5)):
-            start_dt = datetime.utcnow() + timedelta(
-                days=random.randint(1, 14), 
-                hours=random.randint(9, 18)
-            )
-            duration = random.choice([60, 120, 180])  # 1-3 hours
-            end_dt = start_dt + timedelta(minutes=duration)
-            
-            time_slot = TimeSlot(
-                user_id=escort.id,
-                start_time=start_dt,
-                end_time=end_dt
-            )
-            db.session.add(time_slot)
-    
-    db.session.commit()
-    print(f"   - Created availability slots for {len(all_escorts)} escorts.")
-
-    # 3. Create Bookings with start_time and end_time
-    print("-> Creating bookings...")
-    booking_statuses = ['Pending', 'Confirmed', 'Rejected', 'Completed']
-    for _ in range(30):
-        seeker = random.choice(seekers)
-        escort = random.choice(escorts)
-        start_dt = datetime.utcnow() + timedelta(days=random.randint(1, 10), hours=random.randint(0, 23))
-        duration = random.choice([30, 60, 90])
-        end_dt = start_dt + timedelta(minutes=duration)
-
-        booking = Booking(
-            seeker_id=seeker.id,
-            escort_id=escort.id,
-            start_time=start_dt,
-            end_time=end_dt,
-            status=random.choice(booking_statuses)
-        )
-        db.session.add(booking)
-    print("   - Created 30 bookings.")
-
-    # 4. Create Payments
-    print("-> Creating payments...")
-    bookings = Booking.query.all()  # Fetch all bookings
-    for _ in range(50):
-        booking = random.choice(bookings) if bookings else None
-        payment = Payment(
-            user_id=booking.seeker_id if booking else random.choice(seekers).id,
-            booking_id=booking.id if booking else None,
-            amount=round(random.uniform(50.0, 500.0), 2),
-            transaction_id=str(uuid.uuid4()),
-            created_at=faker.date_time_between(start_date='-1y', end_date='now')
-        )
-        db.session.add(payment)
-    print("   - Created 50 payments.")
-
-    # 5. Create Reports
-    print("-> Creating reports...")
-    all_users = seekers + escorts
-    for _ in range(5):
-        reporter = random.choice(all_users)
-        reported = random.choice(all_users)
-        while reporter.id == reported.id:
-            reported = random.choice(all_users)
-
-        report = Report(
-            reporter_id=reporter.id,
-            reported_id=reported.id,
-            report_type=random.choice(['inappropriate_behavior', 'harassment', 'fraud', 'other']),
-            title=faker.sentence(nb_words=6),
-            description=faker.paragraph(nb_sentences=3),
-            severity=random.choice(['Low', 'Medium', 'High']),
-            status=random.choice(['Pending Review', 'Under Investigation', 'Resolved', 'Dismissed'])
-        )
-        db.session.add(report)
-    print("   - Created 5 reports.")
-
-    db.session.commit()
-
-    print("\n✅ Database seeding complete!")
-    print(f"Test login accounts (password: '{TEST_PASSWORD}'):")
-    print("  - Admin:   admin@example.com")
-    print("  - Seeker:  seeker@example.com")
-    print("  - Escort:  escort@example.com")
 
 # Validate required environment variables
 required_vars = [
@@ -846,32 +537,10 @@ pg_connector = PostgresConnector(config)
 # Authentication controller
 auth_controller = AuthController()
 
-# check if required [from main]
-# def initialize_database():
-#     try:
-#         from data_sources.user_repository import UserRepository
-#         conn = db.get_connection()
-#         user_repo = UserRepository(conn)
-#         db.return_connection(conn)
-#     except Exception:
-#         # Fail silently - let the application handle DB errors during requests
-#         pass
-
-# check if required [from main]
-# # Initialize database when app starts
-# with app.app_context():
-#     initialize_database()
-
 def get_db_conn():
     if "db_conn" not in g:
         g.db_conn = pg_connector.get_connection()
     return g.db_conn
-
-# check if required [from main]
-# def get_auth_controller():
-#     if "auth_controller" not in g:
-#         g.auth_controller = AuthController(get_db_conn())
-#     return g.auth_controller
 
 @app.teardown_appcontext
 def close_db_conn(exception):
@@ -952,9 +621,6 @@ def session_config():
         'session_lifetime_minutes': app.permanent_session_lifetime.total_seconds() // 60
     }
 
-
-
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -973,7 +639,6 @@ def register():
             flash("Email already registered", "danger")
 
     return render_template("register.html")
-
 
 if __name__ == "__main__":
     app.run(debug=True)
