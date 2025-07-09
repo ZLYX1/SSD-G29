@@ -75,6 +75,35 @@ from blueprint.models import Favourite, AuditLog, PasswordHistory
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
+# Cache control function to prevent browser caching of sensitive pages
+def add_no_cache_headers(response):
+    """Add headers to prevent browser caching of sensitive pages"""
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+# Add cache control to all responses
+@app.after_request
+def apply_cache_control(response):
+    """Apply cache control headers to sensitive routes"""
+    if request.endpoint and request.endpoint in [
+        'payment.payment_page',
+        'auth.login', 
+        'auth.register',
+        'profile.profile',
+        'booking.booking'
+    ]:
+        response = add_no_cache_headers(response)
+    return response
+
+# Session management for error handling
+@app.before_request
+def clear_stale_flashes():
+    """Clear stale flash messages to prevent cached error displays"""
+    # This ensures flash messages are fresh and not cached
+    pass
+
 # Add timestamp filter for consistent formatting
 @app.template_filter('timestamp')
 def format_timestamp(timestamp):

@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Payment{% endblock %}
 
+{% block head %}
+<!-- Prevent browser caching of payment page -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+{% endblock %}
+
 {% block content %}
 <h2>Make a Payment</h2>
 <div class="card mb-4">
@@ -33,6 +40,25 @@
     </form>
   </div>
 </div>
+
+<script>
+// Force page refresh to prevent caching issues
+window.addEventListener('load', function() {
+    // Clear any cached form data
+    if (window.performance && window.performance.navigation.type === 2) {
+        // Page was loaded from cache, force refresh
+        window.location.reload(true);
+    }
+});
+
+// Prevent back button caching
+window.addEventListener('beforeunload', function() {
+    // Clear any cached data
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, null, window.location.href);
+    }
+});
+</script>
 
 <hr>
 
