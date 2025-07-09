@@ -22,7 +22,7 @@
                     </div>
 
                     <form method="POST" action="{{ url_for('report.report_user', user_id=profile.user_id) }}">
-                        {{ csrf_token() }}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="reported_user_id" value="{{ reported_user.id }}">
 
                         <div class="mb-3">

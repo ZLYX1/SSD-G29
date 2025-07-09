@@ -437,6 +437,10 @@ def dashboard():
     role = session.get('role')
     user_id = session.get('user_id')
     data = {}
+    
+    # Initialize default values for all variables
+    summary = None
+    favourite_profiles = []
 
     if role == 'seeker':
         data['upcoming_bookings_count'] = db.session.query(Booking).join(
@@ -490,8 +494,12 @@ def dashboard():
             User.role == 'escort',
             User.pending_role == 'seeker'
         ).count()
+        
+        # Admin doesn't need summary or favourite_profiles, but initialize them to avoid errors
+        summary = None
+        favourite_profiles = []
 
-    return render_template('dashboard.html', role=role, data=data, summary=summary,  favourite_profiles=favourite_profiles)
+    return render_template('dashboard.html', role=role, data=data, summary=summary, favourite_profiles=favourite_profiles)
 
 
 # # 8. ADMIN PANEL
