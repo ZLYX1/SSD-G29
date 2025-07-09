@@ -64,7 +64,6 @@ def serialize_message(msg):
 
 
 @messaging_bp.route('/')
-@messaging_bp.route('/messaging')
 @login_required
 def messaging():
     """Main messaging page - shows conversations list"""
