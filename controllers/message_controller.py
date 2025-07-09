@@ -109,10 +109,6 @@ class MessageController:
                                 isinstance(encrypted_data, dict) and 
                                 bool(encrypted_data.get('encrypted_content')))
             
-            print(f"🔧 MessageController: Input validation:")
-            print(f"  - content: {repr(content)} -> has_content: {has_content}")
-            print(f"  - encrypted_data: {repr(encrypted_data)} -> has_encrypted_data: {has_encrypted_data}")
-            
             if not has_content and not has_encrypted_data:
                 return False, "No message content provided"
             
@@ -123,22 +119,18 @@ class MessageController:
             message = Message(
                 sender_id=sender_id,
                 recipient_id=recipient_id,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now()  # Use local time instead of UTC
             )
             
             # Handle encrypted content
             if encrypted_data:
-                print(f"🔧 MessageController: Processing encrypted data: {encrypted_data}")
                 # Extract encrypted fields from the dictionary
                 encrypted_content = encrypted_data.get('encrypted_content')
                 nonce = encrypted_data.get('nonce')
                 algorithm = encrypted_data.get('algorithm')
                 
-                print(f"🔧 MessageController: Extracted fields - content: {bool(encrypted_content)}, nonce: {bool(nonce)}, algorithm: {algorithm}")
-                
                 # Validate we have all required fields
                 if not all([encrypted_content, nonce, algorithm]):
-                    print(f"❌ MessageController: Missing encrypted fields - content: {encrypted_content}, nonce: {nonce}, algorithm: {algorithm}")
                     return False, "Missing required encrypted data fields"
                 
                 # Create validation structure
@@ -148,11 +140,8 @@ class MessageController:
                     'algorithm': algorithm
                 }
                 
-                print(f"🔧 MessageController: Validation structure: {encrypted_msg}")
-                
                 # Validate encrypted data format
                 is_valid, validation_msg = MessageEncryption.validate_encrypted_message(encrypted_msg)
-                print(f"🔧 MessageController: Validation result - valid: {is_valid}, message: {validation_msg}")
                 if not is_valid:
                     return False, f"Invalid encrypted data: {validation_msg}"
                 
@@ -287,7 +276,7 @@ class MessageController:
             'id': message.id,
             'sender_id': message.sender_id,
             'recipient_id': message.recipient_id,
-            'timestamp': message.timestamp.strftime('%m/%d %H:%M'),
+            'timestamp': message.timestamp.isoformat(),  # ISO format for consistent parsing
             'is_read': message.is_read,
             'is_encrypted': message.is_encrypted
         }

@@ -147,12 +147,9 @@ def view_conversation(user_id):
 def send_message():
     """Send a message via AJAX - supports both plain text and encrypted content"""
     try:
-        print(f"🚀 MESSAGING SEND ENDPOINT HIT - NEW CODE v3.0")
         data = request.get_json()
-        print(f"Received data: {data}")
         
         if not data:
-            print("❌ NO DATA - returning error")
             return jsonify({'success': False, 'error': 'No JSON data received'})
         
         sender_id = session['user_id']
@@ -160,54 +157,35 @@ def send_message():
         content = data.get('content')
         encrypted_data = data.get('encrypted_data')
         
-        print(f"sender_id={sender_id}, recipient_id={recipient_id}")
-        print(f"content='{content}', encrypted_data={encrypted_data}")
-        
         if not recipient_id:
-            print("❌ NO RECIPIENT_ID - returning error")
             return jsonify({'success': False, 'error': 'Recipient ID required'})
         
         # NEW LOGIC: Accept EITHER content OR encrypted_data
         has_content = content and content.strip()
         has_encrypted_data = encrypted_data and isinstance(encrypted_data, dict) and bool(encrypted_data.get('encrypted_content'))
         
-        print(f"has_content: {has_content}, has_encrypted_data: {has_encrypted_data}")
-        
         if not has_content and not has_encrypted_data:
-            print("❌ VALIDATION FAILED - Missing required fields")
             return jsonify({'success': False, 'error': 'Missing required fields: need either content or encrypted_data'})
-        else:
-            print("✅ VALIDATION PASSED - Found required fields")
         
         # Send message with appropriate content type
         if encrypted_data:
-            print("📨 Sending encrypted message")
             success, result = MessageController.send_message(
                 sender_id, recipient_id, encrypted_data=encrypted_data
             )
         else:
-            print("📨 Sending plain text message")
             success, result = MessageController.send_message(
                 sender_id, recipient_id, content=content
             )
         
-        print(f"send_message result: success={success}, result={result}")
-        
         if success:
-            print("✅ SUCCESS CASE - preparing message response")
             # Use new serialization method that handles encryption
             message_data = MessageController.serialize_message_for_client(result)
-            print(f"✅ Message data serialized: {message_data}")
             response_data = {'success': True, 'message': message_data}
             return jsonify(response_data)
         else:
-            print(f"❌ FAILURE CASE - error response: {result}")
             return jsonify({'success': False, 'error': result})
     
     except Exception as e:
-        print(f"Error in send_message: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
 
 

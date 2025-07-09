@@ -178,7 +178,7 @@
 							<div class="d-flex justify-content-between align-items-center">
 								<strong>{{ conversation.other_user.profile.name if conversation.other_user.profile.name
 									else conversation.other_user.email }}</strong>
-								<small class="text-muted">{{ conversation.last_message.timestamp
+								<small class="text-muted">{{ conversation.last_message.timestamp | timestamp
 									if conversation.last_message else '' }}</small>
 							</div>
 							{% if conversation.last_message %}
@@ -265,7 +265,7 @@
 					 {% endif %}>
 					<div class="message-content">{{ message.content }}</div>
 					<div class="message-info">
-						{{ message.timestamp }}
+						{{ message.timestamp | timestamp }}
 						{% if message.is_encrypted %}
 						<i class="fas fa-lock text-success ms-1" title="Encrypted"></i>
 						{% else %}
@@ -399,6 +399,31 @@
 	window.currentUserId = {{ user_id }};
 	window.currentConversationId = {{ current_conversation.id if current_conversation else 'null' }};
 	
+	// Add global timestamp formatting function
+	function formatTimestamp(timestamp) {
+		const date = new Date(timestamp);
+		const now = new Date();
+		const diffMs = now - date;
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+		// Same day - show time only
+		if (diffDays === 0) {
+			return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		}
+		// Yesterday
+		else if (diffDays === 1) {
+			return 'Yesterday ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		}
+		// Less than 7 days - show day and time
+		else if (diffDays < 7) {
+			return date.toLocaleDateString([], { weekday: 'short' }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		}
+		// Older messages - show month/day and time
+		else {
+			return date.toLocaleDateString([], { month: '2-digit', day: '2-digit' }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+		}
+	}
+
 	let currentConversationId = {{ current_conversation.id if current_conversation else 'null' }};
 
 	function loadConversation(userId) {
@@ -482,7 +507,7 @@
 		messageDiv.innerHTML = `
 			<div class="message-content">${message.content}</div>
 			<div class="message-info">
-				${new Date(message.timestamp).toLocaleString()}
+				${formatTimestamp(message.timestamp)}
 				${encryptionIcon}
 				<i class="fas fa-check ms-1"></i>
 			</div>

@@ -245,14 +245,11 @@ def resend_otp(user):
     try:
         # Generate new OTP
         new_otp = generate_otp()
-        print(f"🔧 DEBUG: Resending OTP - Generated new OTP: {new_otp} for user: {user.email}")
         
         # Send new OTP
         if send_otp_sms(user, new_otp):
-            print(f"🔧 DEBUG: Resend OTP successful for {user.email}")
             return True, "New OTP code sent to your phone."
         else:
-            print(f"🔧 DEBUG: Resend OTP failed for {user.email}")
             return False, "Failed to send OTP. Please try again later."
     except Exception as e:
         print(f"Error resending OTP: {e}")

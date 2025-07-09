@@ -326,7 +326,7 @@ class Message(db.Model):
     encryption_algorithm = db.Column(db.String(20), default='AES-GCM-128', nullable=True)  # Encryption method used
     is_encrypted = db.Column(db.Boolean, default=False, nullable=False)  # Flag to indicate if message is encrypted
     
-    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.now)  # Use local time instead of UTC
     is_read = db.Column(db.Boolean, default=False)
     
     # Optional: soft delete / system flag

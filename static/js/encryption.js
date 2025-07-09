@@ -17,7 +17,6 @@ class MessageEncryption {
         if (!window.crypto || !window.crypto.subtle) {
             throw new Error('Web Crypto API not supported in this browser');
         }
-        console.log('MessageEncryption initialized successfully');
     }
 
     /**
@@ -128,29 +127,22 @@ class MessageEncryption {
      * This creates the same key for both users in a conversation
      */
     async deriveConversationKey(userId1, userId2) {
-        console.log('🔑 STEP 1: Starting conversation key derivation for users:', userId1, userId2);
-        
         // Ensure consistent ordering for deterministic results
         const sortedIds = [userId1, userId2].sort((a, b) => a - b);
-        console.log('🔑 STEP 2: Sorted user IDs:', sortedIds);
         
         // Create a seed string from the sorted user IDs
         const seedString = `conversation-${sortedIds[0]}-${sortedIds[1]}`;
-        console.log('🔑 STEP 3: Generated seed string:', seedString);
         
         try {
             // Encode the seed string
             const encoder = new TextEncoder();
             const seedData = encoder.encode(seedString);
-            console.log('🔑 STEP 4: Encoded seed data length:', seedData.length);
             
             // Create a hash of the seed
             const hashBuffer = await window.crypto.subtle.digest('SHA-256', seedData);
-            console.log('🔑 STEP 5: Created hash, length:', hashBuffer.byteLength);
             
             // Use first 16 bytes (128 bits) for AES-128 key
             const keyData = hashBuffer.slice(0, 16);
-            console.log('🔑 STEP 6: Truncated to 16 bytes for AES-128');
             
             // Import as CryptoKey
             const key = await window.crypto.subtle.importKey(
@@ -164,7 +156,6 @@ class MessageEncryption {
                 ['encrypt', 'decrypt']
             );
             
-            console.log('🔑 STEP 7: Successfully imported CryptoKey');
             return key;
             
         } catch (error) {
@@ -177,49 +168,32 @@ class MessageEncryption {
      * Get or create a conversation key
      */
     async getConversationKey(conversationId) {
-        console.log('🚀 STARTING getConversationKey for:', conversationId);
-        
         if (this.keys.has(conversationId)) {
-            console.log('✅ Found cached key for conversation:', conversationId);
             return this.keys.get(conversationId);
         }
 
-        console.log('🔍 No cached key found, generating new key...');
-
         try {
             // Parse conversation ID to get user IDs
-            console.log('📝 STEP A: Parsing conversation ID:', conversationId);
             const userIds = conversationId.toString().split('_').map(id => parseInt(id));
-            console.log('📝 STEP B: Parsed user IDs:', userIds);
             
             if (userIds.length === 2 && userIds.every(id => !isNaN(id))) {
-                console.log('✅ Valid user IDs found, using deterministic key derivation');
-                
                 // Use our own deterministic key derivation
                 const key = await this.deriveConversationKey(userIds[0], userIds[1]);
                 this.keys.set(conversationId, key);
                 
-                console.log('🎉 Successfully generated and cached deterministic conversation key');
                 return key;
             } else {
                 // Fallback to generating a simple key
-                console.warn('⚠️ Could not parse conversation ID, using fallback key generation');
-                console.log('📝 userIds.length:', userIds.length);
-                console.log('📝 userIds validity:', userIds.map(id => ({ id, isNaN: isNaN(id) })));
-                
                 const key = await this.generateKey();
                 this.keys.set(conversationId, key);
-                console.log('🔄 Generated fallback key and cached it');
                 return key;
             }
         } catch (error) {
             console.error('❌ Error getting conversation key:', error);
-            console.log('🔄 Falling back to generating a local-only key');
             
             // Fall back to generating a local-only key
             const key = await this.generateKey();
             this.keys.set(conversationId, key);
-            console.log('💾 Generated and cached fallback key');
             return key;
         }
     }
@@ -263,7 +237,6 @@ let messageEncryption = null;
 document.addEventListener('DOMContentLoaded', function() {
     try {
         messageEncryption = new MessageEncryption();
-        console.log('Message encryption system ready');
     } catch (error) {
         console.error('Failed to initialize message encryption:', error);
         // Fall back to plain text messaging
