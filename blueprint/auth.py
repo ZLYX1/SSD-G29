@@ -1,4 +1,4 @@
-import os, requests
+import os, requests, logging
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from blueprint.models import User, Profile
 from extensions import db
@@ -10,7 +10,10 @@ from flask_wtf.csrf import generate_csrf  # Add this import
 import boto3
 from botocore.exceptions import ClientError
 from flask import current_app
-# from app.email_utils import send_email_ses
+
+# Configure security logging
+security_logger = logging.getLogger('security')
+security_logger.setLevel(logging.INFO)
 
 
 # from blueprint.models import User, Profile
@@ -97,6 +100,7 @@ def auth():
                 
                 # Check if account is locked
                 if user.is_account_locked():
+                    security_logger.warning(f"Login attempt on locked account {user.email} from IP {request.remote_addr}")
                     flash("Account is temporarily locked due to too many failed login attempts. Please try again later.", "danger")
                     return redirect(url_for('auth.auth', mode='login'))
                 
@@ -144,6 +148,7 @@ def auth():
                     session['role'] = user.role
                     session['username'] = user.email
                     log_event(user.id, 'login success', f"User {user.email} logged in successfully.")
+                    security_logger.info(f"Successful login for user {user.email} from IP {request.remote_addr}")
                     
                     return redirect(url_for('dashboard'))
                 else:
@@ -152,7 +157,10 @@ def auth():
                     db.session.commit()
                     flash(lockout_message, "danger")
                     log_event(user.id, 'login failed', f"User {user.email} failed to log in: {lockout_message}")
+                    security_logger.warning(f"Failed login attempt for user {user.email} from IP {request.remote_addr}: {lockout_message}")
             else:
+                # Invalid user email
+                security_logger.warning(f"Login attempt with invalid email {email} from IP {request.remote_addr}")
                 flash("Invalid credentials.", "danger")
 
         elif form_type == 'register':
@@ -235,12 +243,14 @@ def auth():
             
             if email_sent:
                 print(f"✅ DEBUG: Email verification sent successfully to {new_user.email}")
+                security_logger.info(f"New user registration: {new_user.email} from IP {request.remote_addr}")
                 success_message = f"Registration successful! Please check your email ({new_user.email}) for a verification link."
                 print(f"🔧 DEBUG: Flashing success message: {success_message}")
                 flash(success_message, "success")
                 return redirect(url_for('auth.auth', mode='login'))
             else:
                 print(f"❌ DEBUG: Failed to send email verification to {new_user.email}")
+                security_logger.error(f"Failed to send verification email for new user {new_user.email} from IP {request.remote_addr}")
                 warning_message = "Registration successful, but there was an issue sending the verification email. Please contact support."
                 print(f"🔧 DEBUG: Flashing warning message: {warning_message}")
                 flash(warning_message, "warning")

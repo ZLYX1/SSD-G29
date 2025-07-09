@@ -1,11 +1,16 @@
 # models.py
 from flask_sqlalchemy import SQLAlchemy
 import datetime
+import logging
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError, HashingError
 
 from extensions import db  # ✅ Correct place to import from
 # db = SQLAlchemy()
+
+# Configure logging for security events
+security_logger = logging.getLogger('security')
+security_logger.setLevel(logging.INFO)
 
 
 
@@ -151,8 +156,9 @@ class User(db.Model):
             for entry in old_entries:
                 db.session.delete(entry)
         except Exception as e:
-            # If there's an error with password history, don't fail the password update
-            print(f"Warning: Could not add password to history: {e}")
+            # Log password history errors for security monitoring
+            security_logger.warning(f"Failed to add password to history for user {self.id}: {str(e)}")
+            # Don't fail the password update, but ensure the error is logged for audit
     
     def is_password_in_history(self, password, limit=5):
         """Check if password exists in user's password history"""
@@ -162,7 +168,9 @@ class User(db.Model):
             
         try:
             history_entries = self.password_history.order_by(PasswordHistory.created_at.desc()).limit(limit).all()
-        except:
+        except Exception as e:
+            # Log password history query errors for security monitoring
+            security_logger.warning(f"Failed to query password history for user {self.id}: {str(e)}")
             # If there's an issue with the relationship query, skip history check
             return False
         
