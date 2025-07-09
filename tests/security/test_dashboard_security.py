@@ -142,12 +142,7 @@ def test_dashboard_access_seeker(seeker_session):
 def test_dashboard_access_escort(escort_session):
     response = escort_session.get('/dashboard', follow_redirects=True)
     assert b"Welcome, Escort!" in response.data
-    
-'''
-def test_dashboard_access_admin(admin_session):
-    response = admin_session.get('/dashboard', follow_redirects=True)
-    assert b"Welcome, Admin!" in response.data
-'''
+
 
 # === Admin Page RBAC Tests ===
 

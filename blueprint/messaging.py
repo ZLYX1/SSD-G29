@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session, jsonify
+from flask_wtf.csrf import generate_csrf
 from blueprint.models import Message, User, Profile
 from extensions import db
 from blueprint.decorators import login_required
@@ -73,7 +74,8 @@ def messaging():
                            conversations=conversations_serialized,
                            available_users=available_users,
                            current_conversation=other_user,
-                           messages=[])
+                           messages=[],
+                           csrf_token=generate_csrf())
 
 # @messaging_bp.route('/conversation/<int:user_id>')
 # @login_required
@@ -103,35 +105,25 @@ def messaging():
 @login_required
 def view_conversation(user_id):
     current_user_id = session['user_id']
-    
+
     other_user = User.query.get_or_404(user_id)
     conversations = MessageController.get_user_conversations(current_user_id)
     messages = MessageController.get_conversation_messages(current_user_id, user_id)
     available_users = MessageController.get_available_users(current_user_id)
-    
-    # Serialize conversations
+
+    # ✅ Fix: Serialize conversations
     conversations_serialized = [serialize_conversation(c) for c in conversations]
-    
-    # Serialize current conversation as a minimal dict representing the other user
-    current_conversation_serialized = {
-        'id': other_user.id,
-        'profile': {
-            'name': other_user.profile.name if other_user.profile else None,
-            'photo': other_user.profile.photo if other_user.profile else None,
-        },
-        'email': other_user.email,
-        'role': other_user.role  # if you need this
-    }
-    
-    # Serialize messages list
+    current_conversation_serialized = other_user
     messages_serialized = [serialize_message(m) for m in messages]
-    
+
     return render_template('messaging.html',
-                         user_id=session['user_id'],
-                           conversations=conversations_serialized,
-                           available_users=available_users,
-                           current_conversation=current_conversation_serialized,
-                           messages=messages_serialized)
+        user_id=session['user_id'],
+        conversations=conversations_serialized,
+        available_users=available_users,
+        current_conversation=current_conversation_serialized,
+        messages=messages_serialized,
+        csrf_token=generate_csrf()
+    )
 
 
     
@@ -174,7 +166,7 @@ def send_message():
         else:
             return jsonify({'success': False, 'error': result})
     
-    except Exception as e:
+    except Excecurrent_conversation_serializedption as e:
         print(f"Error in send_message: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 

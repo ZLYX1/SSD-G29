@@ -1,23 +1,18 @@
-'''
 import sys
 import os
+import pytest
+from datetime import datetime, timezone
+from werkzeug.security import generate_password_hash
+from bs4 import BeautifulSoup
+
+# Ensure app is found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
-import pytest
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
-from werkzeug.security import generate_password_hash
 from app import app as flask_app
-from blueprint.models import User
+from blueprint.models import User, Message
 from extensions import db
 
 # === Fixtures ===
-
-@pytest.fixture
-def client():
-    flask_app.config["TESTING"] = True
-    with flask_app.test_client() as client:
-        yield client
 
 @pytest.fixture
 def seeker_session():
@@ -30,71 +25,74 @@ def seeker_session():
                 role="seeker",
                 gender="Other",
                 active=True,
-                activate=True,
-                deleted=False,
-                created_at=datetime.utcnow(),
+                email_verified=True,
+                phone_verified=True,
+                created_at=datetime.now(timezone.utc),
                 password_hash=generate_password_hash("ValidPass123"),
-                password_created_at=datetime.utcnow()
+                password_created_at=datetime.now(timezone.utc)
             )
             db.session.add(user)
             db.session.commit()
 
-        fake_ua = "test-agent"
-        fake_ip = "127.0.0.1"
-        client.environ_base["HTTP_USER_AGENT"] = fake_ua
-        client.environ_base["REMOTE_ADDR"] = fake_ip
+        # Set expected headers for session security
+        client.environ_base["HTTP_USER_AGENT"] = "test-agent"
+        client.environ_base["REMOTE_ADDR"] = "127.0.0.1"
 
         with client.session_transaction() as sess:
             sess["user_id"] = user.id
             sess["role"] = "seeker"
-            sess["bound_ua"] = fake_ua
-            sess["bound_ip"] = fake_ip
-
-        yield client
+            sess["bound_ua"] = "test-agent"
+            sess["bound_ip"] = "127.0.0.1"
+        
+        yield client, user
 
 @pytest.fixture
-def escort_session():
-    flask_app.config["TESTING"] = True
-    with flask_app.test_client() as client, flask_app.app_context():
+def escort_user():
+    with flask_app.app_context():
         user = User.query.filter_by(email="testescort@example.com").first()
         if not user:
             user = User(
                 email="testescort@example.com",
                 role="escort",
-                gender="Non-binary",
+                gender="Male",
                 active=True,
-                activate=True,
-                deleted=False,
-                created_at=datetime.utcnow(),
-                password_hash=generate_password_hash("ValidPass123"),
-                password_created_at=datetime.utcnow()
+                email_verified=True,
+                phone_verified=True,
+                created_at=datetime.now(timezone.utc),
+                password_hash=generate_password_hash("Test1234!"),
+                password_created_at=datetime.now(timezone.utc)
             )
             db.session.add(user)
             db.session.commit()
+        return user
 
-        fake_ua = "test-agent"
-        fake_ip = "127.0.0.1"
-        client.environ_base["HTTP_USER_AGENT"] = fake_ua
-        client.environ_base["REMOTE_ADDR"] = fake_ip
+# === Messaging Tests ===
 
-        with client.session_transaction() as sess:
-            sess["user_id"] = user.id
-            sess["role"] = "escort"
-            sess["bound_ua"] = fake_ua
-            sess["bound_ip"] = fake_ip
+def test_send_message_without_csrf(seeker_session, escort_user):
+    client, _ = seeker_session
+    response = client.post("/messaging/send", json={
+        "recipient_id": escort_user.id,
+        "content": "Hello world!"
+    }, follow_redirects=False)
 
-        yield client
+    assert response.status_code in [400, 403]
+    assert b"CSRF" in response.data or b"token" in response.data
 
-def test_report_missing_required_fields(seeker_session):
-    response = seeker_session.post("/messaging/report", json={
-        # 'reported_id': missing
-        'reason': '',  # Empty
-        'details': 'Some details'
-    })
+def test_cannot_send_message_to_self(seeker_session, escort_user):
+    client, user = seeker_session
+    response = client.get(f"/messaging/conversation/{escort_user.id}")
 
-    assert response.status_code in [400, 422]
-    json_data = response.get_json()
-    assert json_data is not None, f"Expected JSON but got: {response.data}"
-    assert not json_data["success"]
-    assert "missing" in json_data["error"].lower()
-  '''
+    assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}:\n{response.data.decode()}"
+
+    soup = BeautifulSoup(response.data, "html.parser")
+    csrf_input = soup.find("input", {"name": "csrf_token"})
+    assert csrf_input is not None, f"CSRF token input not found. HTML content:\n{response.data.decode()}"
+    csrf_token = csrf_input["value"]
+
+    response = client.post("/messaging/send", json={
+        "recipient_id": user.id,
+        "content": "This should not be allowed"
+    }, headers={"X-CSRFToken": csrf_token})
+
+    assert response.status_code == 200
+    assert b"Cannot send message to yourself" in response.data
