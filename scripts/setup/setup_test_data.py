@@ -320,9 +320,11 @@ def create_bookings(users):
     seekers = [user for user in users.values() if user.role == 'seeker']
     escorts = [user for user in users.values() if user.role == 'escort']
     
+    # STRATEGY: Weight booking statuses to get more confirmed bookings for testing
     booking_statuses = ['Pending', 'Confirmed', 'Rejected']
+    booking_weights = [25, 60, 15]  # 25% pending, 60% confirmed, 15% rejected
     
-    for i in range(20):  # Create 20 bookings
+    for i in range(25):  # Create 25 bookings (increased from 20)
         seeker = random.choice(seekers)
         escort = random.choice(escorts)
         
@@ -343,47 +345,97 @@ def create_bookings(users):
         if existing_booking:
             continue
         
+        # Use weighted random choice to get more confirmed bookings
+        booking_status = random.choices(booking_statuses, weights=booking_weights)[0]
+        
         booking = Booking(
             seeker_id=seeker.id,
             escort_id=escort.id,
             start_time=slot.start_time,
             end_time=slot.end_time,
-            status=random.choice(booking_statuses)
+            status=booking_status
         )
         db.session.add(booking)
     
     db.session.commit()
     booking_count = Booking.query.count()
+    
+    # Print summary for testing guidance
+    confirmed_count = Booking.query.filter_by(status='Confirmed').count()
+    pending_count = Booking.query.filter_by(status='Pending').count()
+    rejected_count = Booking.query.filter_by(status='Rejected').count()
+    
     print(f"   ✅ Created {booking_count} bookings")
+    print(f"   📊 Confirmed: {confirmed_count}, Pending: {pending_count}, Rejected: {rejected_count}")
 
 def create_payments(users):
-    """Create test payment records"""
+    """Create test payment records - strategically distributed to showcase Pay Now and Rate User features"""
     print("4. Creating test payments...")
     
     # Get all bookings that could have payments
-    bookings = Booking.query.filter(Booking.status.in_(['Confirmed', 'Pending'])).all()
+    confirmed_bookings = Booking.query.filter_by(status='Confirmed').all()
+    pending_bookings = Booking.query.filter_by(status='Pending').all()
     
-    if not bookings:
+    if not confirmed_bookings and not pending_bookings:
         print("   ⚠️  No bookings available for payment creation")
         return
     
-    # Create payments for some bookings (70% chance per booking)
     payment_count = 0
-    for booking in bookings:
-        if random.random() < 0.7:  # 70% chance of payment
-            # Check if payment already exists for this booking
-            existing_payment = Payment.query.filter_by(booking_id=booking.id).first()
-            if existing_payment:
-                continue
-            
+    
+    # STRATEGY 1: Leave 30% of confirmed bookings WITHOUT payments (for "Pay Now" button testing)
+    print("   📋 Processing confirmed bookings for strategic payment distribution...")
+    for booking in confirmed_bookings:
+        # Check if payment already exists for this booking
+        existing_payment = Payment.query.filter_by(booking_id=booking.id).first()
+        if existing_payment:
+            continue
+        
+        # Only create payment for 70% of confirmed bookings (30% will show "Pay Now")
+        if random.random() < 0.7:
             # Generate unique transaction ID
             transaction_id = f"TXN_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{booking.id:04d}_{random.randint(1000, 9999)}"
+            
+            # For confirmed bookings, bias towards completed payments (so "Rate User" shows)
+            payment_status = random.choices(
+                ['Completed', 'Pending', 'Failed'],
+                weights=[70, 20, 10]  # 70% completed, 20% pending, 10% failed
+            )[0]
             
             payment = Payment(
                 user_id=booking.seeker_id,  # Payment made by seeker
                 booking_id=booking.id,      # Associate with booking
                 amount=round(random.uniform(50.0, 500.0), 2),
-                status=random.choice(['Completed', 'Pending', 'Failed']),
+                status=payment_status,
+                transaction_id=transaction_id,
+                created_at=datetime.utcnow() - timedelta(days=random.randint(0, 30))
+            )
+            db.session.add(payment)
+            payment_count += 1
+    
+    # STRATEGY 2: Create some payments for pending bookings (50% chance)
+    print("   📋 Processing pending bookings for payment distribution...")
+    for booking in pending_bookings:
+        # Check if payment already exists for this booking
+        existing_payment = Payment.query.filter_by(booking_id=booking.id).first()
+        if existing_payment:
+            continue
+        
+        # 50% chance for pending bookings (realistic scenario)
+        if random.random() < 0.5:
+            # Generate unique transaction ID
+            transaction_id = f"TXN_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{booking.id:04d}_{random.randint(1000, 9999)}"
+            
+            # For pending bookings, bias towards pending/failed payments
+            payment_status = random.choices(
+                ['Completed', 'Pending', 'Failed'],
+                weights=[40, 40, 20]  # 40% completed, 40% pending, 20% failed
+            )[0]
+            
+            payment = Payment(
+                user_id=booking.seeker_id,  # Payment made by seeker
+                booking_id=booking.id,      # Associate with booking
+                amount=round(random.uniform(50.0, 500.0), 2),
+                status=payment_status,
                 transaction_id=transaction_id,
                 created_at=datetime.utcnow() - timedelta(days=random.randint(0, 30))
             )
@@ -391,7 +443,14 @@ def create_payments(users):
             payment_count += 1
     
     db.session.commit()
+    
+    # Print summary for testing guidance
+    confirmed_no_payment = len([b for b in confirmed_bookings if not Payment.query.filter_by(booking_id=b.id).first()])
+    confirmed_with_payment = len([b for b in confirmed_bookings if Payment.query.filter_by(booking_id=b.id).first()])
+    
     print(f"   ✅ Created {payment_count} payments")
+    print(f"   📊 Confirmed bookings WITHOUT payments: {confirmed_no_payment} (will show 'Pay Now')")
+    print(f"   📊 Confirmed bookings WITH payments: {confirmed_with_payment} (potential 'Rate User')")
 
 def create_messages(users):
     """Create test messages between users"""
@@ -420,19 +479,30 @@ def create_messages(users):
     print(f"   ✅ Created {message_count} messages")
 
 def create_ratings(users):
-    """Create test ratings based on confirmed bookings"""
+    """Create test ratings strategically - leave some completed payments without ratings for 'Rate User' button testing"""
     print("6. Creating test ratings...")
     
+    # Get confirmed bookings that have completed payments
     confirmed_bookings = Booking.query.filter_by(status='Confirmed').all()
+    rateable_bookings = []
     
     for booking in confirmed_bookings:
+        # Only consider bookings with completed payments
+        completed_payment = Payment.query.filter_by(booking_id=booking.id, status='Completed').first()
+        if completed_payment:
+            rateable_bookings.append(booking)
+    
+    print(f"   📋 Found {len(rateable_bookings)} bookings with completed payments")
+    
+    rating_count = 0
+    for booking in rateable_bookings:
         # Skip if rating already exists
         existing_rating = Rating.query.filter_by(booking_id=booking.id).first()
         if existing_rating:
             continue
         
-        # Create rating (50% chance)
-        if random.random() < 0.5:
+        # STRATEGY: Only create rating for 60% of rateable bookings (40% will show "Rate User" button)
+        if random.random() < 0.6:
             rating = Rating(
                 booking_id=booking.id,
                 reviewer_id=booking.seeker_id,
@@ -443,15 +513,24 @@ def create_ratings(users):
                     "Professional and courteous service.",
                     "Excellent companion, will book again.",
                     "Very pleasant evening, thank you!",
-                    "Good service, met expectations."
+                    "Good service, met expectations.",
+                    "Wonderful time, very professional.",
+                    "Exceeded expectations, will return.",
+                    "Friendly and accommodating, perfect!",
+                    "Great conversation and company."
                 ]),
                 created_at=datetime.utcnow() - timedelta(days=random.randint(0, 30))
             )
             db.session.add(rating)
+            rating_count += 1
     
     db.session.commit()
-    rating_count = Rating.query.count()
+    
+    # Print summary for testing guidance
+    no_rating_count = len(rateable_bookings) - rating_count
     print(f"   ✅ Created {rating_count} ratings")
+    print(f"   📊 Completed payments WITHOUT ratings: {no_rating_count} (will show 'Rate User')")
+    print(f"   📊 Completed payments WITH ratings: {rating_count} (will show 'Rated')")
 
 def create_reports(users):
     """Create test reports"""

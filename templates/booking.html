@@ -97,7 +97,7 @@
 			{% if not booking.payments %}
 			<a href="{{ url_for('payment.initiate_payment', booking_id=booking.id) }}"
 				class="btn btn-sm btn-primary me-2">Pay Now</a>
-			{% elif booking.payments and booking.status == 'Completed' %}
+			{% elif booking.payments %}
 			<a class="btn btn-sm btn-secondary me-2 disabled" tabindex="-1" aria-disabled="true">Paid</a>
 			{% else %}
 			<a class="btn btn-sm btn-secondary me-2 disabled" tabindex="-1" aria-disabled="true">Pay Now
