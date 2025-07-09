@@ -12,9 +12,9 @@ from extensions import db  # ✅ Correct place to import from
 def generate_argon2_hash(password):
     try:
         ph = PasswordHasher(
-            memory_cost=19456,      # 19.5 MB memory usage
-            time_cost=2,            # 2 iterations
-            parallelism=1,          # Single thread
+            memory_cost=65536,      # 64 MB memory usage (increased from 19.5 MB)
+            time_cost=3,            # 3 iterations (increased from 2)
+            parallelism=2,          # 2 threads (increased from 1)
             hash_len=32,            # 32-byte hash output
             salt_len=16,            # 16-byte salt
         )
@@ -25,9 +25,9 @@ def generate_argon2_hash(password):
 def verify_argon2_hash(password_hash, password):
     try:
         ph = PasswordHasher(
-            memory_cost=19456,
-            time_cost=2,
-            parallelism=1,
+            memory_cost=65536,      # Match generation parameters
+            time_cost=3,            # Match generation parameters
+            parallelism=2,          # Match generation parameters
             hash_len=32,
             salt_len=16,
         )
@@ -81,6 +81,10 @@ class User(db.Model):
     email_verified = db.Column(db.Boolean, default=False, nullable=False)
     email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
     email_verification_token_expires = db.Column(db.DateTime, nullable=True)
+    
+    # Password reset fields
+    password_reset_token = db.Column(db.String(100), unique=True, nullable=True)
+    password_reset_token_expires = db.Column(db.DateTime, nullable=True)
     
     # Phone verification fields (OTP System)
     phone_number = db.Column(db.String(20), nullable=True)  # Phone number for OTP

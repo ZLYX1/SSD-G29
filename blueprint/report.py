@@ -151,19 +151,26 @@ def update_report_status():
         )
 
         if result and result.get('success'):
-            return jsonify({'success': True, 'message': result.get('message', 'Status updated')})
+            # Check if this is an AJAX request or form submission
+            if request.is_json or request.headers.get('Content-Type') == 'application/json':
+                return jsonify({'success': True, 'message': result.get('message', 'Status updated')})
+            else:
+                # Form submission - flash message and redirect
+                flash(result.get('message', 'Report status updated successfully'), 'success')
+                return redirect(url_for('report.view_report_details', report_id=report_id))
         else:
-            return jsonify({'success': False, 'message': result.get('message', 'Failed to update status')}), 400
+            if request.is_json or request.headers.get('Content-Type') == 'application/json':
+                return jsonify({'success': False, 'message': result.get('message', 'Failed to update status')}), 400
+            else:
+                flash(result.get('message', 'Failed to update report status'), 'error')
+                return redirect(url_for('report.view_report_details', report_id=report_id))
         
     except Exception as e:
         error_msg = f'Error updating report: {str(e)}'
-        if request.is_json:
+        if request.is_json or request.headers.get('Content-Type') == 'application/json':
             return jsonify({'success': False, 'message': error_msg})
         flash(error_msg, 'error')
         return redirect(request.referrer or url_for('report.admin_dashboard'))
-        
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'Error updating report: {str(e)}'})
 
 @report_bp.route('/admin/report/<int:report_id>')
 @admin_required

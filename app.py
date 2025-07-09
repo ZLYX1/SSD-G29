@@ -73,7 +73,9 @@ from blueprint.models import Favourite, AuditLog, PasswordHistory
 
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+
+# Use environment variable for secret key (set during configuration)
+# This will be set properly when the SECRET_KEY config is applied below
 
 # Cache control function to prevent browser caching of sensitive pages
 def add_no_cache_headers(response):
@@ -97,12 +99,27 @@ def apply_cache_control(response):
         response = add_no_cache_headers(response)
     return response
 
-# Session management for error handling
+# Session management and security
 @app.before_request
-def clear_stale_flashes():
-    """Clear stale flash messages to prevent cached error displays"""
+def check_session_timeout():
+    """Check for session timeout and security"""
+    # Clear stale flash messages to prevent cached error displays
     # This ensures flash messages are fresh and not cached
-    pass
+    
+    # Check if user is logged in and session is still valid
+    if 'user_id' in session:
+        # Check if session has expired (based on last activity)
+        if session.get('last_activity'):
+            last_activity = datetime.fromisoformat(session['last_activity'])
+            if datetime.now() - last_activity > timedelta(hours=2):
+                # Session has expired
+                session.clear()
+                flash("Your session has expired. Please log in again.", "warning")
+                return redirect(url_for('auth.auth', mode='login'))
+        
+        # Update last activity time
+        session['last_activity'] = datetime.now().isoformat()
+        session.permanent = True
 
 # Add timestamp filter for consistent formatting
 @app.template_filter('timestamp')
@@ -144,17 +161,30 @@ def str2bool(val, default=False):
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configure CSRF for local development - TEMPORARILY DISABLED FOR TESTING
+# CSRF Configuration
 app.config['WTF_CSRF_ENABLED'] = True
-# Security configurations
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('CSRF_SECRET_KEY')
 
-# Disable these security measures for local development
-app.config['WTF_CSRF_SSL_STRICT'] = False  # Disable HTTPS requirement
-app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP cookies
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # More lenient than 'Strict'
-app.config['SESSION_COOKIE_HTTPONLY'] = False # Prevent JavaScript access to session cookies (set True for production)
+# Secure Session Configuration
+# Check if we're in production (HTTPS) or development (HTTP)
+is_production = os.getenv('FLASK_ENV') == 'production' or os.getenv('ENVIRONMENT') == 'production'
+
+if is_production:
+    # Production security settings (HTTPS required)
+    app.config['WTF_CSRF_SSL_STRICT'] = True  # Require HTTPS for CSRF
+    app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS only cookies
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Strict'  # Strict CSRF protection
+else:
+    # Development security settings (HTTP allowed but still secure)
+    app.config['WTF_CSRF_SSL_STRICT'] = False  # Allow HTTP for development
+    app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP cookies in development
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Less strict for development
+
+# Common security settings for both environments
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access to session cookies
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Session timeout
+app.config['SESSION_COOKIE_NAME'] = 'safe_companions_session'  # Custom session name
 
 
 # Configure CSRF Protection

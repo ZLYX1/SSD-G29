@@ -9,6 +9,7 @@ ensuring that the server cannot read message content.
 import os
 import base64
 import json
+import hashlib
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -32,23 +33,31 @@ class MessageEncryption:
     @staticmethod
     def derive_conversation_key(user1_id, user2_id, salt=None):
         """
-        Derive a deterministic conversation key from user IDs
-        This ensures both users can generate the same key for a conversation
+        Derive a cryptographically secure conversation key from user IDs
+        Uses application secret to prevent key prediction attacks
         """
+        # Get application secret key for additional entropy
+        app_secret = os.environ.get('SECRET_KEY')
+        if not app_secret:
+            raise ValueError("SECRET_KEY environment variable is required for key derivation")
+        
         if salt is None:
-            # Create a deterministic salt from user IDs
-            salt_string = f"conversation_{min(user1_id, user2_id)}_{max(user1_id, user2_id)}"
-            salt = salt_string.encode('utf-8')[:16].ljust(16, b'0')  # 16 bytes
+            # Create a more secure salt using application secret + user IDs
+            salt_input = f"{app_secret}_conversation_{min(user1_id, user2_id)}_{max(user1_id, user2_id)}"
+            # Hash the salt input to create a proper salt
+            salt_hash = hashlib.sha256(salt_input.encode('utf-8')).digest()
+            salt = salt_hash[:16]  # Take first 16 bytes for salt
         
-        # Create password from user IDs
-        password = f"users_{min(user1_id, user2_id)}_{max(user1_id, user2_id)}".encode('utf-8')
+        # Create password from user IDs + application secret
+        password_input = f"{app_secret}_users_{min(user1_id, user2_id)}_{max(user1_id, user2_id)}"
+        password = hashlib.sha256(password_input.encode('utf-8')).digest()
         
-        # Derive key using PBKDF2
+        # Derive key using PBKDF2 with increased iterations
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
-            length=16,  # 128 bits
+            length=32,  # 256 bits for stronger encryption
             salt=salt,
-            iterations=100000,
+            iterations=200000,  # Increased from 100000 for better security
             backend=default_backend()
         )
         

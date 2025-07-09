@@ -4,7 +4,7 @@ from blueprint.models import User, Profile
 from extensions import db
 from blueprint.decorators import login_required
 from blueprint.audit_log import log_event
-from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength  # Import OTP and password functions
+from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength, send_reset_email, verify_reset_token, consume_reset_token  # Import reset functions
 from flask_wtf.csrf import generate_csrf  # Add this import
 
 import boto3
@@ -18,13 +18,18 @@ from flask import current_app
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 def verify_recaptcha(token):
-    """Verify reCAPTCHA token. Returns True in development if no secret key is set."""
+    """Verify reCAPTCHA token. Requires secret key to be configured."""
     recaptcha_secret = os.environ.get('RECAPTCHA_SECRET_KEY')
     
-    # For development: if no secret key is set, skip verification
-    if not recaptcha_secret:
-        print("⚠️  WARNING: RECAPTCHA_SECRET_KEY not set - skipping reCAPTCHA verification (development mode)")
+    # Check if we're in CI/CD mode (testing environment)
+    if os.environ.get('CI_MODE') == 'true':
+        print("ℹ️  CI/CD mode: skipping reCAPTCHA verification for automated testing")
         return True
+    
+    # For all other environments: reCAPTCHA is mandatory
+    if not recaptcha_secret:
+        print("🚨 ERROR: RECAPTCHA_SECRET_KEY is required but not configured")
+        return False
     
     url = "https://www.google.com/recaptcha/api/siteverify"
     payload = {
@@ -48,9 +53,31 @@ def auth():
     print("auth auth\n");
 
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form.get('email', '').strip()
         form_type = request.form.get('form_type')
         password = request.form.get('password', '').strip()
+
+        # Input validation
+        if not email or not form_type:
+            flash("Email and form type are required.", "danger")
+            return redirect(url_for('auth.auth', mode=mode))
+        
+        # Email validation
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            flash("Please enter a valid email address.", "danger")
+            return redirect(url_for('auth.auth', mode=mode))
+        
+        # Length validation
+        if len(email) > 254:  # RFC 5321 limit
+            flash("Email address is too long.", "danger")
+            return redirect(url_for('auth.auth', mode=mode))
+        
+        # Password validation for login
+        if form_type == 'login' and not password:
+            flash("Password is required.", "danger")
+            return redirect(url_for('auth.auth', mode='login'))
 
         # reCAPTCHA only for register (based on your JS)
         if form_type == 'register':
@@ -220,8 +247,28 @@ def auth():
                 return redirect(url_for('auth.auth', mode='register'))
 
         elif form_type == 'reset':
-            flash("Password reset link sent to your email.", "info")
-            return redirect(url_for('auth.auth', mode='reset'))
+            # Handle password reset request
+            print(f"🔐 DEBUG: Password reset request for email: {email}")
+            
+            # Find user by email
+            user = User.query.filter_by(email=email).first()
+            
+            if user and not user.deleted:
+                print(f"✅ DEBUG: Found user for reset: {user.email}")
+                
+                # Send password reset email
+                if send_reset_email(user):
+                    print(f"✅ DEBUG: Password reset email sent to {user.email}")
+                    flash(f"Password reset instructions have been sent to {email}. Please check your inbox.", "success")
+                else:
+                    print(f"❌ DEBUG: Failed to send password reset email to {user.email}")
+                    flash("There was an error sending the password reset email. Please try again.", "danger")
+            else:
+                print(f"❌ DEBUG: User not found or deleted for email: {email}")
+                # For security, don't reveal if email exists or not
+                flash(f"If an account exists with email {email}, password reset instructions have been sent.", "info")
+            
+            return redirect(url_for('auth.auth', mode='login'))
 
     csrf_token = generate_csrf()  # Generate CSRF token for the form
     # Note: sitekey is now provided by global context processor in app.py
@@ -420,6 +467,67 @@ def password_policy():
 #     return render_template("register.html")
 
 
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Handle password reset with token verification"""
+    print(f"🔐 DEBUG: Password reset access with token: {token}")
+    
+    # Verify the reset token
+    user, message = verify_reset_token(token)
+    
+    if not user:
+        print(f"❌ DEBUG: Invalid or expired token: {message}")
+        flash(message, "danger")
+        return redirect(url_for('auth.auth', mode='login'))
+    
+    print(f"✅ DEBUG: Valid token for user: {user.email}")
+    
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        # Validate inputs
+        if not all([new_password, confirm_password]):
+            flash("Both password fields are required.", "danger")
+            return render_template('auth.html', mode='reset', token=token)
+        
+        if new_password != confirm_password:
+            flash("Passwords do not match.", "danger")
+            return render_template('auth.html', mode='reset', token=token)
+        
+        # Validate password strength
+        validation_result = validate_password_strength(new_password)
+        if not validation_result['valid']:
+            flash(f"Password requirements not met: {validation_result['message']}", "danger")
+            return render_template('auth.html', mode='reset', token=token)
+        
+        # Set new password
+        success, password_message = user.set_password(new_password, check_history=True, password_expiry_days=90)
+        
+        if success:
+            # Consume the reset token (invalidate it)
+            consume_reset_token(user)
+            
+            # Reset password change required flag if it was set
+            user.password_change_required = False
+            db.session.commit()
+            
+            flash("Password reset successful! You can now log in with your new password.", "success")
+            log_event(user.id, 'password_reset', f"User {user.email} successfully reset their password via email token.")
+            
+            return redirect(url_for('auth.auth', mode='login'))
+        else:
+            flash(f"Password reset failed: {password_message}", "danger")
+            return render_template('auth.html', mode='reset', token=token)
+    
+    # GET request - show reset form
+    return render_template('auth.html', mode='reset', token=token)
+
+
+@auth_bp.route('/forgot-password')
+def forgot_password():
+    """Redirect to password reset form"""
+    return redirect(url_for('auth.auth', mode='reset'))
 
 
 # AWS SES

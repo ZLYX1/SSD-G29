@@ -5,6 +5,7 @@ from extensions import db
 from blueprint.decorators import login_required
 from controllers.message_controller import MessageController
 import json
+import os
 
 messaging_bp = Blueprint('messaging', __name__, url_prefix='/messaging')
 
@@ -166,6 +167,11 @@ def send_message():
         
         if not has_content and not has_encrypted_data:
             return jsonify({'success': False, 'error': 'Missing required fields: need either content or encrypted_data'})
+        
+        # Security check: In production, require encryption unless explicitly disabled
+        if not encrypted_data and os.environ.get('FLASK_ENV') == 'production':
+            if not os.environ.get('ALLOW_PLAINTEXT_MESSAGES') == 'true':
+                return jsonify({'success': False, 'error': 'Encrypted messages are required in production'})
         
         # Send message with appropriate content type
         if encrypted_data:

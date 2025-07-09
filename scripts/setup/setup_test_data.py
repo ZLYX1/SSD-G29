@@ -360,25 +360,37 @@ def create_payments(users):
     """Create test payment records"""
     print("4. Creating test payments...")
     
-    users_list = list(users.values())
+    # Get all bookings that could have payments
+    bookings = Booking.query.filter(Booking.status.in_(['Confirmed', 'Pending'])).all()
     
-    for i in range(30):  # Create 30 payments
-        user = random.choice(users_list)
-        
-        # Generate unique transaction ID
-        transaction_id = f"TXN_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{i:04d}_{random.randint(1000, 9999)}"
-        
-        payment = Payment(
-            user_id=user.id,
-            amount=round(random.uniform(50.0, 500.0), 2),
-            status=random.choice(['Completed', 'Pending', 'Failed']),
-            transaction_id=transaction_id,
-            created_at=datetime.utcnow() - timedelta(days=random.randint(0, 30))
-        )
-        db.session.add(payment)
+    if not bookings:
+        print("   ⚠️  No bookings available for payment creation")
+        return
+    
+    # Create payments for some bookings (70% chance per booking)
+    payment_count = 0
+    for booking in bookings:
+        if random.random() < 0.7:  # 70% chance of payment
+            # Check if payment already exists for this booking
+            existing_payment = Payment.query.filter_by(booking_id=booking.id).first()
+            if existing_payment:
+                continue
+            
+            # Generate unique transaction ID
+            transaction_id = f"TXN_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{booking.id:04d}_{random.randint(1000, 9999)}"
+            
+            payment = Payment(
+                user_id=booking.seeker_id,  # Payment made by seeker
+                booking_id=booking.id,      # Associate with booking
+                amount=round(random.uniform(50.0, 500.0), 2),
+                status=random.choice(['Completed', 'Pending', 'Failed']),
+                transaction_id=transaction_id,
+                created_at=datetime.utcnow() - timedelta(days=random.randint(0, 30))
+            )
+            db.session.add(payment)
+            payment_count += 1
     
     db.session.commit()
-    payment_count = Payment.query.count()
     print(f"   ✅ Created {payment_count} payments")
 
 def create_messages(users):

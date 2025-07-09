@@ -9,7 +9,22 @@
 {% endblock %}
 
 {% block content %}
-<h2>Make a Payment</h2>
+<h2>Payment Simulation</h2>
+
+<!-- Test Card Information -->
+<div class="alert alert-info" role="alert">
+  <h5><i class="fas fa-info-circle"></i> Payment Simulation Mode</h5>
+  <p class="mb-2">This is a <strong>simulation only</strong> - no real payment processing occurs.</p>
+  <p class="mb-2"><strong>Test Card Numbers:</strong></p>
+  <ul class="mb-2">
+    <li><strong>4111111111111111</strong> - Visa (Success)</li>
+    <li><strong>5555555555554444</strong> - Mastercard (Success)</li>
+    <li><strong>378282246310005</strong> - American Express (Success)</li>
+    <li><strong>4000000000000002</strong> - Declined Test Card</li>
+  </ul>
+  <p class="mb-0"><small>Use any future expiry date (MM/YY) and any 3-4 digit CVV for testing.</small></p>
+</div>
+
 <div class="card mb-4">
   <div class="card-body">
     <h5 class="card-title">Confirm Your Booking</h5>
@@ -22,21 +37,34 @@
       <input type="hidden" name="token" value="{{ token }}">
 
       <div class="mb-3">
-        <label for="card_number" class="form-label">Card Number (simulation only)</label>
-        <input type="text" class="form-control" id="card_number" name="card_number" pattern="\d{16}" maxlength="16" placeholder="1234567812345678" required>
+        <label for="card_number" class="form-label">Test Card Number <span class="text-muted">(simulation only)</span></label>
+        <input type="text" class="form-control" id="card_number" name="card_number" 
+               placeholder="4111111111111111" 
+               pattern="[0-9]{15,16}" 
+               maxlength="16" 
+               required>
+        <div class="form-text">Use one of the test card numbers above</div>
       </div>
       <div class="row">
         <div class="col-md-6 mb-3">
           <label for="expiry" class="form-label">Expiry Date (MM/YY)</label>
-          <input type="text" class="form-control" id="expiry" name="expiry" pattern="\d{2}/\d{2}" placeholder="12/25" required>
+          <input type="text" class="form-control" id="expiry" name="expiry" 
+                 pattern="[0-9]{2}/[0-9]{2}" 
+                 placeholder="12/25" 
+                 maxlength="5" 
+                 required>
         </div>
         <div class="col-md-6 mb-3">
           <label for="cvv" class="form-label">CVV</label>
-          <input type="text" class="form-control" id="cvv" name="cvv" pattern="\d{3,4}" maxlength="4" placeholder="123" required>
+          <input type="text" class="form-control" id="cvv" name="cvv" 
+                 pattern="[0-9]{3,4}" 
+                 maxlength="4" 
+                 placeholder="123" 
+                 required>
         </div>
       </div>
 
-      <button type="submit" class="btn btn-primary">Pay ${{ "%.2f"|format(amount_due) }}</button>
+      <button type="submit" class="btn btn-primary">Simulate Payment - ${{ "%.2f"|format(amount_due) }}</button>
     </form>
   </div>
 </div>
