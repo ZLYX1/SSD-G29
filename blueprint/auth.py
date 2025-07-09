@@ -131,6 +131,14 @@ def auth():
         elif form_type == 'register':
             print("🔧 DEBUG: Registration form submitted")
 
+            # Get confirm password field
+            confirm_password = request.form.get('confirm_password', '').strip()
+            
+            # Validate password confirmation
+            if password != confirm_password:
+                flash("Passwords do not match. Please try again.", "danger")
+                return redirect(url_for('auth.auth', mode='register'))
+
             recaptcha_token = request.form.get('g-recaptcha-response')
             print(f"🔧 DEBUG: reCAPTCHA token received: {bool(recaptcha_token)}")
             
