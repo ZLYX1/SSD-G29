@@ -320,8 +320,16 @@ class Message(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     
-    content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    # Original content field - will be deprecated but kept for migration
+    content = db.Column(db.Text, nullable=True)  # Made nullable for migration
+    
+    # New encrypted content fields
+    encrypted_content = db.Column(db.Text, nullable=True)  # Base64 encoded encrypted message
+    encryption_nonce = db.Column(db.String(32), nullable=True)  # Base64 encoded nonce for AES-GCM
+    encryption_algorithm = db.Column(db.String(20), default='AES-GCM-128', nullable=True)  # Encryption method used
+    is_encrypted = db.Column(db.Boolean, default=False, nullable=False)  # Flag to indicate if message is encrypted
+    
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.now)  # Use local time instead of UTC
     is_read = db.Column(db.Boolean, default=False)
     
     # Optional: soft delete / system flag
@@ -332,8 +340,40 @@ class Message(db.Model):
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
     recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
     
+    @property
+    def content_for_display(self):
+        """
+        Property to get content - returns encrypted data if message is encrypted
+        Client-side will need to decrypt this
+        """
+        if self.is_encrypted:
+            return {
+                'encrypted_content': self.encrypted_content,
+                'nonce': self.encryption_nonce,
+                'algorithm': self.encryption_algorithm,
+                'is_encrypted': True
+            }
+        else:
+            return {
+                'content': self.content,
+                'is_encrypted': False
+            }
+    
+    def set_encrypted_content(self, encrypted_data):
+        """
+        Set encrypted message content
+        
+        Args:
+            encrypted_data (dict): Contains encrypted_content, nonce, algorithm
+        """
+        self.encrypted_content = encrypted_data.get('encrypted_content')
+        self.encryption_nonce = encrypted_data.get('nonce')
+        self.encryption_algorithm = encrypted_data.get('algorithm', 'AES-GCM-128')
+        self.is_encrypted = True
+        self.content = None  # Clear plain text content
+    
     def __repr__(self):
-        return f'<Message from {self.sender_id} to {self.recipient_id}>'
+        return f'<Message from {self.sender_id} to {self.recipient_id} (encrypted: {self.is_encrypted})>'
 
 class Rating(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -408,3 +448,42 @@ class Favourite(db.Model):
 
     def __repr__(self):
         return f"<Favourite user={self.user_id} → favourited={self.favourite_user_id}>"
+    
+class ConversationKey(db.Model):
+    """
+    Model for storing encryption keys for conversations between users
+    Enables end-to-end encryption for messaging
+    """
+    __tablename__ = 'conversation_key'
+
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # User IDs for the conversation (always ordered with user1_id < user2_id)
+    user1_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user2_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Encrypted key data (base64 encoded)
+    key_data = db.Column(db.Text, nullable=False)
+    
+    # Encryption algorithm used
+    algorithm = db.Column(db.String(50), nullable=False, default='AES-GCM')
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    
+    # Active flag for key rotation
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+
+    # Relationships
+    user1 = db.relationship('User', foreign_keys=[user1_id], backref='conversation_keys_as_user1')
+    user2 = db.relationship('User', foreign_keys=[user2_id], backref='conversation_keys_as_user2')
+
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint('user1_id', 'user2_id', name='unique_conversation_key'),
+        db.CheckConstraint('user1_id < user2_id', name='check_user_order'),
+    )
+
+    def __repr__(self):
+        return f"<ConversationKey {self.id} users:{self.user1_id}↔{self.user2_id} algorithm:{self.algorithm}>"

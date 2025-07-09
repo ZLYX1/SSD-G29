@@ -40,13 +40,27 @@ def serialize_conversation(conv):
         'unread_count': conv['unread_count'],
     }
 def serialize_message(msg):
-    return {
+    """Serialize message for template display - handles both encrypted and plain text"""
+    base_data = {
         'id': msg.id,
-        'content': msg.content,
-        'timestamp': msg.timestamp.strftime('%m/%d %H:%M'),  # already formatted string
         'sender_id': msg.sender_id,
         'recipient_id': msg.recipient_id,
+        'timestamp': msg.timestamp.strftime('%m/%d %H:%M'),
+        'is_encrypted': msg.is_encrypted
     }
+    
+    if msg.is_encrypted:
+        # For encrypted messages, include encrypted data for client-side decryption
+        base_data.update({
+            'encrypted_content': msg.encrypted_content,
+            'nonce': msg.encryption_nonce,
+            'algorithm': msg.encryption_algorithm,
+            'content': '[Encrypted Message - Decrypting...]'  # Placeholder while decrypting
+        })
+    else:
+        base_data['content'] = msg.content
+    
+    return base_data
 
 
 @messaging_bp.route('/')
@@ -131,43 +145,86 @@ def view_conversation(user_id):
 @messaging_bp.route('/send', methods=['POST'])
 @login_required
 def send_message():
-    print("send message in .py")
-    """Send a message via AJAX"""
+    """Send a message via AJAX - supports both plain text and encrypted content"""
     try:
-        # Add debug logging
-        print(f"Request content type: {request.content_type}")
-        print(f"Request data: {request.data}")
-        print(f"Request JSON: {request.get_json()}")
-        
         data = request.get_json()
+        
         if not data:
             return jsonify({'success': False, 'error': 'No JSON data received'})
-            
+        
         sender_id = session['user_id']
         recipient_id = data.get('recipient_id')
         content = data.get('content')
+        encrypted_data = data.get('encrypted_data')
         
-        print(f"Sender ID: {sender_id}, Recipient ID: {recipient_id}, Content: {content}")
+        if not recipient_id:
+            return jsonify({'success': False, 'error': 'Recipient ID required'})
         
-        if not recipient_id or not content:
-            return jsonify({'success': False, 'error': 'Missing required fields'})
+        # NEW LOGIC: Accept EITHER content OR encrypted_data
+        has_content = content and content.strip()
+        has_encrypted_data = encrypted_data and isinstance(encrypted_data, dict) and bool(encrypted_data.get('encrypted_content'))
         
-        success, result = MessageController.send_message(sender_id, recipient_id, content)
+        if not has_content and not has_encrypted_data:
+            return jsonify({'success': False, 'error': 'Missing required fields: need either content or encrypted_data'})
+        
+        # Send message with appropriate content type
+        if encrypted_data:
+            success, result = MessageController.send_message(
+                sender_id, recipient_id, encrypted_data=encrypted_data
+            )
+        else:
+            success, result = MessageController.send_message(
+                sender_id, recipient_id, content=content
+            )
         
         if success:
-            message_data = {
-                'id': result.id,
-                'content': result.content,
-                'timestamp': result.timestamp.isoformat(),
-                'sender_id': result.sender_id,
-                'recipient_id': result.recipient_id
-            }
-            return jsonify({'success': True, 'message': message_data})
+            # Use new serialization method that handles encryption
+            message_data = MessageController.serialize_message_for_client(result)
+            response_data = {'success': True, 'message': message_data}
+            return jsonify(response_data)
         else:
             return jsonify({'success': False, 'error': result})
     
-    except Excecurrent_conversation_serializedption as e:
-        print(f"Error in send_message: {str(e)}")
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@messaging_bp.route('/test-send', methods=['POST'])
+def test_send_message():
+    """Test endpoint to verify encrypted_data handling without authentication"""
+    try:
+        print(f"🧪 TEST ENDPOINT HIT - NEW CODE v3.0 TEST")
+        data = request.get_json()
+        print(f"Test received data: {data}")
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data received'})
+        
+        recipient_id = data.get('recipient_id')
+        content = data.get('content')
+        encrypted_data = data.get('encrypted_data')
+        
+        print(f"Test: recipient_id={recipient_id}")
+        print(f"Test: content='{content}', encrypted_data={encrypted_data}")
+        
+        if not recipient_id:
+            return jsonify({'success': False, 'error': 'Recipient ID required'})
+        
+        # NEW LOGIC: Accept EITHER content OR encrypted_data
+        has_content = content and content.strip()
+        has_encrypted_data = encrypted_data and isinstance(encrypted_data, dict) and bool(encrypted_data.get('encrypted_content'))
+        
+        print(f"Test: has_content: {has_content}, has_encrypted_data: {has_encrypted_data}")
+        
+        if not has_content and not has_encrypted_data:
+            print("Test: ❌ VALIDATION FAILED - Missing required fields")
+            return jsonify({'success': False, 'error': 'Missing required fields: need either content or encrypted_data'})
+        else:
+            print("Test: ✅ VALIDATION PASSED - Found required fields")
+            return jsonify({'success': True, 'message': 'Test validation passed - would send message'})
+    
+    except Exception as e:
+        print(f"Error in test_send_message: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
 
@@ -235,41 +292,54 @@ def api_conversations():
     """API endpoint to get conversations (for AJAX refresh)"""
     user_id = session['user_id']
     conversations = MessageController.get_user_conversations(user_id)
-    
+
     conversations_data = []
     for conv in conversations:
+        other = conv['other_user']
+        last = conv['last_message']
+
+        # Build a safe preview
+        if last:
+            if last.is_encrypted:
+                preview = '[Encrypted Message - Decrypting...]'
+            else:
+                raw = last.content or ''
+                preview = (raw[:50] + '...') if len(raw) > 50 else raw
+            ts = last.timestamp.isoformat()
+            sender = last.sender_id
+        else:
+            preview, ts, sender = '', '', None
+
         conversations_data.append({
-            'other_user_id': conv['other_user'].id,
-            'other_user_name': conv['other_user'].profile.name if conv['other_user'].profile and conv['other_user'].profile.name else conv['other_user'].email,
-            'other_user_photo': conv['other_user'].profile.photo if conv['other_user'].profile and conv['other_user'].profile.photo else 'default.jpg',
+            'other_user_id': other.id,
+            'other_user_name': other.profile.name
+                if other.profile and other.profile.name
+                else other.email,
+            'other_user_photo': other.profile.photo
+                if other.profile and other.profile.photo
+                else 'default.jpg',
             'last_message': {
-                'content': conv['last_message'].content[:50] + '...' if conv['last_message'] and len(conv['last_message'].content) > 50 else conv['last_message'].content if conv['last_message'] else '',
-                'timestamp': conv['last_message'].timestamp.isoformat() if conv['last_message'] else '',
-                'sender_id': conv['last_message'].sender_id if conv['last_message'] else None
-            } if conv['last_message'] else None,
+                'content': preview,
+                'timestamp': ts,
+                'sender_id': sender
+            },
             'unread_count': conv['unread_count']
         })
-    
+
     return jsonify({'conversations': conversations_data})
 
 
 @messaging_bp.route('/api/messages/<int:user_id>')
 @login_required
 def api_messages(user_id):
-    """API endpoint to get messages with a specific user"""
+    """API endpoint to get messages with a specific user - handles encrypted content"""
     current_user_id = session['user_id']
     messages = MessageController.get_conversation_messages(current_user_id, user_id)
     
     messages_data = []
     for message in messages:
-        messages_data.append({
-            'id': message.id,
-            'content': message.content,
-            'timestamp': message.timestamp.isoformat(),
-            'sender_id': message.sender_id,
-            'recipient_id': message.recipient_id,
-            'is_read': message.is_read
-        })
+        message_data = MessageController.serialize_message_for_client(message)
+        messages_data.append(message_data)
     
     return jsonify({'messages': messages_data})
 
@@ -281,3 +351,64 @@ def messaging_stats():
     user_id = session['user_id']
     stats = MessageController.get_message_statistics(user_id)
     return jsonify(stats)
+
+
+@messaging_bp.route('/debug-test')
+def debug_test():
+    """Simple test route to verify blueprint is working"""
+    return jsonify({'status': 'OK', 'message': 'Messaging blueprint is working'})
+
+
+@messaging_bp.route('/conversation-key-info/<int:user_id>')
+@login_required
+def get_conversation_key_info(user_id):
+    """Get key exchange information for a conversation"""
+    try:
+        current_user_id = session['user_id']
+        
+        # Verify the other user exists
+        other_user = User.query.get(user_id)
+        if not other_user:
+            return jsonify({'success': False, 'error': 'User not found'})
+        
+        # Get key information (metadata only, not the actual key)
+        key_info = MessageController.get_conversation_key_info(current_user_id, user_id)
+        
+        return jsonify({
+            'success': True,
+            'key_info': key_info,
+            'current_user_id': current_user_id,
+            'other_user_id': user_id
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@messaging_bp.route('/generate-conversation-key/<int:user_id>', methods=['POST'])
+@login_required
+def generate_conversation_key(user_id):
+    """Generate or get existing conversation encryption key"""
+    try:
+        current_user_id = session['user_id']
+        
+        # Verify the other user exists
+        other_user = User.query.get(user_id)
+        if not other_user:
+            return jsonify({'success': False, 'error': 'User not found'})
+        
+        # Generate or get existing key
+        success, result = MessageController.ensure_conversation_key(current_user_id, user_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'key_id': result['key_id'],
+                'algorithm': result['algorithm'],
+                'created_at': result['created_at'].isoformat() if result['created_at'] else None
+            })
+        else:
+            return jsonify({'success': False, 'error': result})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})

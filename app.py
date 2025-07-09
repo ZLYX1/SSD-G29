@@ -75,6 +75,37 @@ from blueprint.models import Favourite, AuditLog, PasswordHistory
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
+# Add timestamp filter for consistent formatting
+@app.template_filter('timestamp')
+def format_timestamp(timestamp):
+    """Format timestamp consistently across all templates"""
+    if timestamp is None:
+        return ''
+    
+    # Convert to datetime if it's a string
+    if isinstance(timestamp, str):
+        try:
+            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        except ValueError:
+            return timestamp
+    
+    now = datetime.now()
+    diff = now - timestamp
+    diff_days = diff.days
+    
+    # Same day - show time only
+    if diff_days == 0:
+        return timestamp.strftime('%H:%M')
+    # Yesterday
+    elif diff_days == 1:
+        return f'Yesterday {timestamp.strftime("%H:%M")}'
+    # Less than 7 days - show day and time
+    elif diff_days < 7:
+        return timestamp.strftime('%a %H:%M')
+    # Older messages - show month/day and time
+    else:
+        return timestamp.strftime('%m/%d %H:%M')
+
 def str2bool(val, default=False):
     if val is None:
         return default
