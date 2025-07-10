@@ -17,6 +17,7 @@ from extensions import db
 # === Fixtures ===
 
 @pytest.fixture
+@pytest.fixture
 def seeker_session():
     flask_app.config["TESTING"] = True
     with flask_app.test_client() as client, flask_app.app_context():
