@@ -57,7 +57,6 @@ def verify_recaptcha(token):
 def auth():
     mode = request.args.get('mode', 'login')
     token = request.args.get('token')
-    print("auth auth\n");
 
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
