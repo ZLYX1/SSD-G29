@@ -498,7 +498,7 @@ def admin():
                 flash(f"Role change approved for {user_to_modify.email}.", "success")
                 log_event(session.get('user_id'),  # the admin who performed the action
                         'admin approved role change',
-                        f"Accepted user {user_to_modify.email} (id={user_to_modify.id})")
+                        f"Deleted user {user_to_modify.email} (id={user_to_modify.id})")
             elif action == 'reject_role_change':
                 user_to_modify.pending_role = None
                 db.session.commit()
