@@ -6,6 +6,7 @@ from blueprint.decorators import login_required
 from blueprint.audit_log import log_event
 from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength, send_reset_email, verify_reset_token, consume_reset_token  # Import reset functions
 from flask_wtf.csrf import generate_csrf  # Add this import
+from utils.owasp_auth_security import OWASPAuthSecurity, progressive_delay_required  # OWASP Security
 
 import boto3
 from botocore.exceptions import ClientError
@@ -50,7 +51,9 @@ def verify_recaptcha(token):
 
 # @auth_bp.route('/', methods=['GET', 'POST'])
 @auth_bp.route('/', methods=['GET', 'POST'])
-@limiter.limit("30 per minute")  # Rate limit: 30 attempts per minute for auth endpoint (more reasonable for dev)
+@limiter.limit("5 per minute")   # OWASP Compliant: 5 attempts per minute per IP
+@limiter.limit("20 per hour")    # OWASP Compliant: Additional hourly limit
+@progressive_delay_required      # OWASP Progressive delays per user
 def auth():
     mode = request.args.get('mode', 'login')
     token = request.args.get('token')
@@ -99,28 +102,23 @@ def auth():
                     flash("This account is no longer available.", "danger")
                     return redirect(url_for('auth.auth', mode='login'))
                 
-                # Check if account is locked
-                if user.is_account_locked():
-                    security_logger.warning(f"Login attempt on locked account {user.email} from IP {request.remote_addr}")
-                    flash("Account is temporarily locked due to too many failed login attempts. Please try again later.", "danger")
-                    return redirect(url_for('auth.auth', mode='login'))
-                
-                if not user.activate:
-                    flash("This account has been deactivated by the user.", "danger")
+                # OWASP Security Check: Account status and lockout
+                can_login, status_message = OWASPAuthSecurity.check_account_status(user)
+                if not can_login:
+                    security_logger.warning(f"Login blocked for {user.email} from IP {request.remote_addr}: {status_message}")
+                    flash(status_message, "danger")
                     return redirect(url_for('auth.auth', mode='login'))
                 
                 # Check password
                 if user.check_password(password):
-                    # Reset failed login attempts on successful login
-                    user.reset_failed_logins()
+                    # OWASP Security: Handle successful login
+                    OWASPAuthSecurity.handle_successful_login(user, request.remote_addr)
                     
                     if not user.active:
-                        db.session.commit()  # Save reset of failed logins
                         return redirect(url_for('auth.auth', mode='locked'))
                     
                     # Check if password has expired
                     if user.is_password_expired() or user.password_change_required:
-                        db.session.commit()  # Save reset of failed logins
                         flash("Your password has expired. Please change your password to continue.", "warning")
                         return redirect(url_for('auth.change_password', user_id=user.id, force=True))
                     
@@ -129,22 +127,12 @@ def auth():
                     if days_left is not None and days_left <= 7:
                         flash(f"Your password will expire in {days_left} days. Consider changing it soon.", "info")
                     
-                    # Check if phone is verified (OTP System) - COMMENTED OUT FOR EMAIL-ONLY
-                    '''
-                    if not user.phone_verified:
-                        db.session.commit()  # Save reset of failed logins
-                        flash("Please verify your phone number first. Complete the phone verification process.", "warning")
-                        return redirect(url_for('auth.verify_phone', user_id=user.id))
-                    '''
-                    
                     # Check if email is verified
                     if not user.email_verified:
-                        db.session.commit()  # Save reset of failed logins
                         flash("Please verify your email address before logging in. Check your inbox for the verification link.", "warning")
                         return redirect(url_for('auth.auth', mode='login'))
                     
                     # Successful login
-                    db.session.commit()  # Save reset of failed logins
                     session['user_id'] = user.id
                     session['role'] = user.role
                     session['username'] = user.email
@@ -153,12 +141,20 @@ def auth():
                     
                     return redirect(url_for('dashboard'))
                 else:
-                    # Failed login - increment counter and potentially lock account
-                    lockout_message = user.increment_failed_login()
-                    db.session.commit()
-                    flash(lockout_message, "danger")
-                    log_event(user.id, 'login failed', f"User {user.email} failed to log in: {lockout_message}")
-                    security_logger.warning(f"Failed login attempt for user {user.email} from IP {request.remote_addr}: {lockout_message}")
+                    # OWASP Security: Handle failed login with progressive delays and lockout
+                    is_locked, message, delay_seconds = OWASPAuthSecurity.handle_failed_login(
+                        user, 
+                        request.remote_addr, 
+                        request.headers.get('User-Agent', 'Unknown')
+                    )
+                    
+                    flash(message, "danger")
+                    
+                    # Log failed login attempt with additional security context
+                    log_event(user.id, 'login_failed_owasp', 
+                             f"Failed login for {user.email}: {message} (IP: {request.remote_addr})")
+                    
+                    return redirect(url_for('auth.auth', mode='login'))
             else:
                 # Invalid user email
                 security_logger.warning(f"Login attempt with invalid email {email} from IP {request.remote_addr}")
@@ -286,7 +282,7 @@ def auth():
     return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token)
 
 @auth_bp.route('/verify-email/<token>')
-@limiter.limit("10 per minute")  # Rate limit: 10 email verification attempts per minute
+@limiter.limit("3 per minute")  # OWASP Compliant: 3 email verification attempts per minute
 def verify_email(token):
     """Handle email verification and activate user account"""
     user, message = verify_email_token(token)
@@ -306,7 +302,7 @@ def verify_email(token):
 
 
 @auth_bp.route('/resend-verification', methods=['POST'])
-@limiter.limit("6 per minute")  # Rate limit: 6 resend attempts per minute
+@limiter.limit("2 per 10 minutes")  # OWASP Compliant: 2 resend attempts per 10 minutes
 def resend_verification():
     """Resend email verification for a user"""
     email = request.form.get('email')
@@ -329,7 +325,7 @@ def resend_verification():
 
 
 @auth_bp.route('/verify-phone/<int:user_id>', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")  # Rate limit: 5 phone verification attempts per minute
+@limiter.limit("3 per minute")  # OWASP Compliant: 3 phone verification attempts per minute
 def verify_phone(user_id):
     """Handle phone verification with OTP"""
     user = User.query.get_or_404(user_id)
@@ -363,7 +359,7 @@ def verify_phone(user_id):
 
 
 @auth_bp.route('/resend-otp/<int:user_id>', methods=['POST'])
-@limiter.limit("3 per minute")  # Rate limit: 3 OTP resend attempts per minute
+@limiter.limit("2 per 15 minutes")  # OWASP Compliant: 2 OTP resend attempts per 15 minutes
 def resend_otp_code(user_id):
     """Resend OTP code to user's phone"""
     print(f"🔧 DEBUG: Resend OTP request for user_id: {user_id}")
@@ -483,7 +479,7 @@ def password_policy():
 
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
-@limiter.limit("10 per minute")  # Rate limit: 10 password reset attempts per minute  
+@limiter.limit("3 per hour")  # OWASP Compliant: 3 password reset attempts per hour  
 def reset_password(token):
     """Handle password reset with token verification"""
     print(f"🔐 DEBUG: Password reset access with token: {token}")

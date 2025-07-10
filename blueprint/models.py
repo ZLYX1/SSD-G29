@@ -105,6 +105,13 @@ class User(db.Model):
     failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)  # Track failed logins
     account_locked_until = db.Column(db.DateTime, nullable=True)  # Account lockout timestamp
     
+    # OWASP-Compliant Account Lockout & Progressive Delays
+    last_failed_attempt = db.Column(db.DateTime, nullable=True)  # Track timing for progressive delays
+    progressive_delay_until = db.Column(db.DateTime, nullable=True)  # Progressive delay timestamp
+    lockout_reason = db.Column(db.String(100), nullable=True)  # Reason for lockout (brute force, suspicious activity)
+    last_successful_login = db.Column(db.DateTime, nullable=True)  # Track successful logins
+    suspicious_activity_flags = db.Column(db.Integer, default=0, nullable=False)  # Count suspicious patterns
+    
     # Relationships
     profile = db.relationship('Profile', backref='user', uselist=False, cascade="all, delete-orphan")
     password_history = db.relationship('PasswordHistory', backref='user', lazy='dynamic', cascade="all, delete-orphan")
