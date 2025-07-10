@@ -518,39 +518,68 @@
 		}
 	}
 
-	function startNewConversation(event) {
+	async function startNewConversation(event) {
 		event.preventDefault();
 
-		const recipientId = document.getElementById('recipientSelect').value;
+		const recipientId = parseInt(document.getElementById('recipientSelect').value);
 		const message = document.getElementById('initialMessage').value.trim();
 
 		if (!recipientId || !message) return;
 
-		fetch('/messaging/send', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-CSRFToken': window.csrf_token
-			},
-			body: JSON.stringify({
+		try {
+			let messageData = {
 				recipient_id: recipientId,
 				content: message
-			})
-		})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
-					// Close modal and redirect to conversation
-					const modal = bootstrap.Modal.getInstance(document.getElementById('newMessageModal'));
-					modal.hide();
-					window.location.href = `/messaging/conversation/${recipientId}`;
-				} else {
-					alert('Failed to send message: ' + data.error);
+			};
+
+			// Try to encrypt if encryption is enabled (same logic as regular messages)
+			if (window.secureMessaging && window.secureMessaging.encryptionEnabled && window.MessageEncryption) {
+				try {
+					// Create encryption instance if needed
+					if (!window.messageEncryption) {
+						window.messageEncryption = new window.MessageEncryption();
+					}
+					
+					// Generate conversation ID from user IDs (deterministic)
+					const currentUserId = window.currentUserId || parseInt(document.getElementById('currentUserId')?.value);
+					const conversationId = `${Math.min(currentUserId, recipientId)}_${Math.max(currentUserId, recipientId)}`;
+					
+					const conversationKey = await window.messageEncryption.getConversationKey(conversationId);
+					const encryptedData = await window.messageEncryption.encryptMessage(message, conversationKey);
+					
+					messageData = {
+						recipient_id: recipientId,
+						encrypted_data: encryptedData
+					};
+				} catch (encError) {
+					console.warn('Encryption failed for new conversation, falling back to plain text:', encError);
+					// Keep the original messageData with plain content
 				}
-			})
-			.catch(error => {
-				alert('Failed to send message');
+			}
+
+			const response = await fetch('/messaging/send', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': window.csrf_token
+				},
+				body: JSON.stringify(messageData)
 			});
+
+			const data = await response.json();
+
+			if (data.success) {
+				// Close modal and redirect to conversation
+				const modal = bootstrap.Modal.getInstance(document.getElementById('newMessageModal'));
+				modal.hide();
+				window.location.href = `/messaging/conversation/${recipientId}`;
+			} else {
+				alert('Failed to send message: ' + data.error);
+			}
+		} catch (error) {
+			console.error('Error in startNewConversation:', error);
+			alert('Failed to send message');
+		}
 	}
 
 	function reportUser(userId) {

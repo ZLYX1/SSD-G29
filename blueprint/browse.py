@@ -253,7 +253,6 @@ def can_book(escort_id, new_start, new_end):
 @browse_bp.route('/browse', methods=['GET'])
 @login_required
 def browseEscort():
-    print("/browse\n")
     user_role = 'seeker'
     query = Profile.query.join(User).filter(
         User.role == 'escort', 

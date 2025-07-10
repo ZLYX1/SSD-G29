@@ -7,7 +7,9 @@ from blueprint.models import User, Profile, TimeSlot, Booking, Payment, Rating
 from datetime import datetime, timedelta
 import re
 from flask_wtf.csrf import generate_csrf
+from app import limiter  # <-- change this if limiter is defined elsewhere
 
+#Setting up and settings
 @pytest.fixture(autouse=True)
 def bypass_recaptcha():
     with patch('blueprint.auth.verify_recaptcha', return_value=True):
@@ -23,11 +25,16 @@ def app():
     yield flask_app
     with flask_app.app_context():
         db.session.remove()
-        db.session.execute(text('TRUNCATE TABLE "favourite" CASCADE'))
         db.session.execute(text('TRUNCATE TABLE "user" CASCADE'))
         db.session.commit()
-        # optionally drop tables: db.drop_all()
 
+@pytest.fixture(autouse=True)
+def disable_limiter():
+    """Globally disables rate limiting in all tests."""
+    limiter.enabled = False
+    yield
+    limiter.enabled = True  # Optional: re-enable if needed after each test
+    
 @pytest.fixture(autouse=True)
 def disable_csrf(monkeypatch):
     monkeypatch.setattr('flask_wtf.csrf.validate_csrf', lambda *args, **kwargs: True)
@@ -36,14 +43,16 @@ def disable_csrf(monkeypatch):
 def client(app):
     return app.test_client()
 
-
 @pytest.fixture(autouse=True)
 def disable_custom_csrf(monkeypatch):
     monkeypatch.setattr('controllers.security_controller.validate_csrf', lambda *args, **kwargs: None)
-    
-    
+
+# others
+def logout_user(client):
+    return client.get('/logout', follow_redirects=True)
+
 # auth
-'''def test_profile_get_and_update(client, app):
+def test_profile_get_and_update(client, app):
     # Register user
     resp = client.post('/auth/?mode=register', data={
         'form_type': 'register',
@@ -64,13 +73,11 @@ def disable_custom_csrf(monkeypatch):
         user = User.query.filter_by(email='test@example.com').first()
         assert user is not None, "User should exist after registration"
 
-        # Activate user for next steps if needed
+        # Activate user for next steps
         user.active = True
         user.email_verified = True
         db.session.commit()
-'''
 
-'''
 def register_user(client):
     return client.post('/auth/?mode=register', data={
         'email': 'test@example.com',
@@ -84,7 +91,6 @@ def register_user(client):
         'form_type': 'register',
         'g-recaptcha-response': 'dummy-token'
     }, follow_redirects=True)
-    '''
     
 def login_user(client, email='test@example.com', password='password123'):
     return client.post('/auth/?mode=login', data={
@@ -92,11 +98,10 @@ def login_user(client, email='test@example.com', password='password123'):
         'password': password,
         'form_type': 'login'
     }, follow_redirects=True)
-    
 #end of auth
     
-# profile
-'''def test_profile_photo_save(client, app):
+######### profile ##########################
+def test_profile_photo_save(client, app):
     register_user(client)
     
     with app.app_context():
@@ -146,8 +151,7 @@ def test_request_role_change(client, initial_role, expected_pending_role, flash_
         flashes = sess.get('_flashes', [])
     messages = [msg for cat, msg in flashes]
     assert any(flash_message_part in msg for msg in messages)
-'''    
-'''
+
 def register_and_activate_user(client, email='test@example.com', role='seeker'):
     # Register user
     client.post('/auth/?mode=register', data={
@@ -168,8 +172,8 @@ def register_and_activate_user(client, email='test@example.com', role='seeker'):
         user.active = True
         user.email_verified = True
         db.session.commit()
-'''
-'''def test_request_role_change_invalid_role(client):
+
+def test_request_role_change_invalid_role(client):
     email = 'invalid@example.com'
     register_and_activate_user(client, email=email, role='admin')  # invalid role
     login_user(client, email=email)
@@ -236,32 +240,7 @@ def test_get_profile_photo(client, app):
 # end of profile
 
 
-
-'''
-
-
-def register_and_activate_user(client, email, role):
-    client.post('/auth/?mode=register', data={
-        'email': email,
-        'password': 'password123',
-        'confirm_password': 'password123',
-        'age': '30',
-        'gender': 'female' if role == 'escort' else 'male',
-        'role': role,
-        'preference': 'any',
-        'age_verify': 'on',
-        'form_type': 'register',
-        'g-recaptcha-response': 'dummy-token'
-    }, follow_redirects=True)
-
-    with flask_app.app_context():
-        user = User.query.filter_by(email=email).first()
-        user.active = True
-        user.email_verified = True
-        db.session.commit()
-
-'''
-# Browse.html
+# Browse
 def test_browse_escorts_basic(client, app):
     # Register users
     register_and_activate_user(client, 'escort1@example.com', 'escort')
@@ -282,7 +261,6 @@ def test_browse_escorts_basic(client, app):
     assert resp.status_code == 200
     assert b'escort1' in resp.data
 
-# Browse.html
 def test_browse_seekers_basic(client, app):
     # Register users
     register_and_activate_user(client, 'seeker1@example.com', 'seeker')
@@ -302,32 +280,7 @@ def test_browse_seekers_basic(client, app):
     resp = client.get('/browse/browseSeeker')
     assert resp.status_code == 200
     assert b'seeker1' in resp.data
-    
-# Browse.html
-def test_browse_escorts_with_availability(client, app):
-    register_and_activate_user(client, 'escort2@example.com', 'escort')
-    register_and_activate_user(client, 'seeker2@example.com', 'seeker')
-    login_user(client, 'seeker2@example.com')
 
-    future_start = (datetime.utcnow() + timedelta(days=1)).replace(second=0, microsecond=0)
-    future_end = future_start + timedelta(hours=1)
-
-    with app.app_context():
-        escort = User.query.filter_by(email='escort2@example.com').first()
-        escort.active = True
-        escort.deleted = False
-        escort_profile = Profile.query.filter_by(user_id=escort.id).first()
-        escort_profile.name = 'escort2'
-        db.session.add(TimeSlot(user_id=escort.id, start_time=future_start, end_time=future_end))
-        db.session.commit()
-
-    url = f"/browse/browse?avail_date={future_start.date()}&avail_time={future_start.strftime('%H:%M')}"
-    resp = client.get(url)
-    print(resp.data.decode())  # debug
-    assert resp.status_code == 200
-    assert b'escort2' in resp.data, "escort2 should appear with availability filter"
-    
-# Browse.html
 def test_browse_escorts_with_availability(client, app):
     register_and_activate_user(client, 'escort2@example.com', 'escort')
     register_and_activate_user(client, 'seeker2@example.com', 'seeker')
@@ -357,7 +310,6 @@ def test_browse_escorts_with_availability(client, app):
     assert resp.status_code == 200
     assert b'escort2' in resp.data, "escort2 should appear with availability filter"
 
-# Browse.html
 def test_browse_escorts_basic_and_filtered(client, app):
     register_and_activate_user(client, 'escort1@example.com', 'escort')
     register_and_activate_user(client, 'escort2@example.com', 'escort')
@@ -381,7 +333,6 @@ def test_browse_escorts_basic_and_filtered(client, app):
     assert resp.status_code == 200
     assert b'escort1' in resp.data or b'escort2' in resp.data
 
-# Browse.html
 def test_browse_seekers_basic_and_filtered(client, app):
     register_and_activate_user(client, 'seeker1@example.com', 'seeker')
     register_and_activate_user(client, 'seeker2@example.com', 'seeker')
@@ -404,10 +355,7 @@ def test_browse_seekers_basic_and_filtered(client, app):
     resp = client.get('/browse/browseSeeker')
     assert resp.status_code == 200
     assert b'seeker1' in resp.data or b'seeker2' in resp.data
-'''
 
-'''
-# Browse.html
 def test_browse_excludes_booked_escorts(client, app):
     register_and_activate_user(client, 'escort3@example.com', 'escort')
     register_and_activate_user(client, 'seeker3@example.com', 'seeker')
@@ -422,10 +370,7 @@ def test_browse_excludes_booked_escorts(client, app):
 
     resp = client.get(f"/browse/browse?avail_date={now.date()}&avail_time={now.strftime('%H:%M')}")
     assert b'escort3@example.com' not in resp.data
-'''
-    
-'''
-# Browse.html
+
 def test_favourite_toggle_and_render(client, app):
     # Register escort and seeker
     register_and_activate_user(client, 'escort4@example.com', 'escort')
@@ -454,9 +399,6 @@ def test_favourite_toggle_and_render(client, app):
     # Adjust this to your actual template condition
     assert '♥ Unfavorite' in page or 'btn-danger' in page
 
-'''
-
-'''
 # booking.html allow escort to create their availability time slot
 def test_create_availability_slot(client, app):
     # Register and activate escort user
@@ -490,12 +432,9 @@ def test_create_availability_slot(client, app):
         user = User.query.filter_by(email='escort_test@example.com').first()
         slot = TimeSlot.query.filter_by(user_id=user.id, start_time=start_time, end_time=end_time).first()
         assert slot is not None
-'''
 
 
-
-
-'''def test_make_booking_for_available_slot(client, app):
+def test_make_booking_for_available_slot(client, app):
     # Register and activate escort and seeker
     register_and_activate_user(client, 'escort_test@example.com', 'escort')
     register_and_activate_user(client, 'seeker_test@example.com', 'seeker')
@@ -565,10 +504,9 @@ def test_create_availability_slot(client, app):
         ).first()
         assert booking is not None
 
-'''
 
 
-## TESTING
+## TESTING flow
 def test_make_payment_flow(client, app):
     # 1. Register and activate escort and seeker users (implement your helper)
     register_and_activate_user(client, 'escort_test@example.com', 'escort')
@@ -576,44 +514,36 @@ def test_make_payment_flow(client, app):
 
     # 2. Escort logs in and creates a time slot
     login_user(client, 'escort_test@example.com')
-
     start_time = (datetime.utcnow() + timedelta(days=1)).replace(minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=1)
-
     response = client.get('/booking/')
-    
-
     response = client.post('/booking/slots/create', data={
         'start_time': start_time.strftime('%Y-%m-%dT%H:%M'),
         'end_time': end_time.strftime('%Y-%m-%dT%H:%M'),
         # 'csrf_token': csrf_token,
     }, follow_redirects=True)
-    print(response.status_code)
-    print(response.data.decode())
     assert response.status_code == 200
-    assert b'Availability slot created' in response.data
+    assert b'Availability slot created.' in response.data
 
+	# Check with backend
     with app.app_context():
         escort = User.query.filter_by(email='escort_test@example.com').first()
         slot = TimeSlot.query.filter_by(user_id=escort.id).first()
         assert slot is not None
         slot_id = slot.id
+    logout_user(client)
 
     # 3. Seeker logs in and books the slot (creates a booking with status 'Pending')
     login_user(client, 'seeker_test@example.com')
-    
     response = client.get('/booking/')
-    # csrf_token = re.search(b'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
-
     response = client.post(f'/booking/book/{escort.id}', data={
         'slot_id': slot_id,
         'start_time': start_time.strftime('%Y-%m-%d %H:%M'),
         'duration': 60,  # or 15 depending on your booking duration logic
-        # 'csrf_token': csrf_token,
     }, follow_redirects=True)
     assert response.status_code == 200
     assert b'Booking request sent successfully' in response.data
-
+    logout_user(client)
     with app.app_context():
         seeker = User.query.filter_by(email='seeker_test@example.com').first()
         booking = Booking.query.filter_by(seeker_id=seeker.id, escort_id=escort.id).first()
@@ -621,10 +551,6 @@ def test_make_payment_flow(client, app):
         assert booking.status == 'Pending'
         booking_id = booking.id
        
- 
-	
- 	###################
-    
  	# Escort logs in and accepts the booking
     login_user(client, 'escort_test@example.com')
     response = client.get('/booking/')
@@ -638,11 +564,8 @@ def test_make_payment_flow(client, app):
     with app.app_context():
         booking = Booking.query.get(booking_id)
         assert booking.status == 'Confirmed'
-
-
     assert response.status_code == 200
     assert b'accepted' in response.data
-
 
     # 4. Seeker initiates payment (GET /payment/initiate/<booking_id>) - should redirect with token
     login_user(client, 'seeker_test@example.com')
@@ -660,15 +583,17 @@ def test_make_payment_flow(client, app):
 
     # 6. POST payment with valid card details
     # Extract CSRF token from form for POST
+    csrf_token = re.search(b'name="csrf_token" value="([^"]+)"', response.data)
+    assert csrf_token, "CSRF token not found in payment form"
+    csrf_token = csrf_token.group(1).decode()
 
     response = client.post('/payment/pay', data={
         'token': token,
-        # 'csrf_token': csrf_token,
-        'card_number': '4242424242424242',
+        'csrf_token': csrf_token,
+        'card_number': '4111111111111111',
         'expiry': '12/30',
         'cvv': '123',
     }, follow_redirects=True)
-
     assert response.status_code == 200
     assert b'Payment successful' in response.data
 
@@ -680,12 +605,9 @@ def test_make_payment_flow(client, app):
         booking = Booking.query.get(booking_id)
         assert booking.status == 'Confirmed'
 	
-	# seeker post rating
- 
-	# seeker see
+	# seeker post rating. Need to login first
     login_user(client, 'seeker_test@example.com')
     response = client.get('/rating/rateable-bookings')
-    
     assert response.status_code == 200
     assert b'Rate Your Completed Bookings' in response.data or b'No Bookings to Rate' in response.data
     
@@ -704,11 +626,3 @@ def test_make_payment_flow(client, app):
         assert rating is not None
         assert rating.feedback == "Excellent experience!"
 
-
-
-## not done below
-# stopped        
-
-# # --- Rating Tests ---
-
-# def test_submit_rating_and_view(client):
