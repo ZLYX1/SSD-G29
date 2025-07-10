@@ -20,8 +20,11 @@
 <ul>
 	{% for profile in favourite_profiles %}
 	<li style="margin-bottom: 15px;">
-		<img src="{{ url_for('static', filename='profile_photos/' + profile.photo) }}" alt="Photo of {{ profile.name }}"
-			width="50" height="50" />
+		<!-- <img src="{{ url_for('static', filename='profile_photos/' + profile.photo) }}" alt="Photo of {{ profile.name }}"
+			width="50" height="50" /> -->
+
+		<img src="{{ profile.photo if profile.photo else 'https://sitssd.s3.ap-southeast-1.amazonaws.com/profile_photos/default.jpg' }}"
+			alt="Photo of {{ profile.name }}" width="50" height="50" />
 
 		<strong>{{ profile.name }}</strong><br />
 		<em>{{ profile.bio or 'No bio provided.' }}</em><br />
@@ -62,7 +65,9 @@
 <ul>
 	{% for profile in favourite_profiles %}
 	<li style="margin-bottom: 15px;">
-		<img src="{{ url_for('static', filename='profile_photos/' + profile.photo) }}" width="50" height="50" /> <br>
+		<!-- <img src="{{ url_for('static', filename='profile_photos/' + profile.photo) }}" width="50" height="50" /> <br> -->
+		<img src="{{ profile.photo if profile.photo else 'https://sitssd.s3.ap-southeast-1.amazonaws.com/profile_photos/default.jpg' }}"
+			alt="Photo of {{ profile.name }}" width="50" height="50" />
 
 		<strong>{{ profile.name }}</strong><br />
 		<em>{{ profile.bio or 'No bio provided.' }}</em><br />

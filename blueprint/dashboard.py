@@ -35,7 +35,7 @@ def dashboard():
     favourite_profiles = []
 
     if role == 'seeker':
-        DashboardController.get_upcoming_bookings_count(user_id)
+        data['upcoming_bookings_count'] =DashboardController.get_upcoming_bookings_count(user_id)
         # data['upcoming_bookings_count'] = db.session.query(Booking).join(
         #     User, Booking.escort_id == User.id
         # ).filter(
