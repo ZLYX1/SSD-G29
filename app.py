@@ -31,6 +31,8 @@ from blueprint.payment import payment_bp
 from blueprint.rating import rating_bp
 from blueprint.report import report_bp
 from blueprint.audit_log import audit_bp, log_event
+from blueprint.dashboard import dashboard_bp
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -320,148 +322,7 @@ app.register_blueprint(payment_bp)
 app.register_blueprint(rating_bp)
 app.register_blueprint(report_bp)
 app.register_blueprint(audit_bp)
-
-def get_user_spending_summary(user_id):
-    """Returns total spending and payment details for the given user."""
-    if not user_id:
-        return None
-
-    # Total amount spent
-    total_spent = db.session.query(func.sum(Payment.amount)).filter_by(user_id=user_id).scalar() or 0
-
-    # Total number of payments
-    total_transactions = db.session.query(func.count(Payment.id)).filter_by(user_id=user_id).scalar()
-
-    # Optional: Monthly breakdown (last 6 months)
-    monthly_breakdown = db.session.query(
-        func.date_trunc('month', Payment.created_at).label('month'),
-        func.sum(Payment.amount).label('total')
-    ).filter(
-        Payment.user_id == user_id
-    ).group_by(
-        func.date_trunc('month', Payment.created_at)
-    ).order_by(text('month desc')).limit(6).all()
-
-    # Format breakdown
-    breakdown = [
-        {"month": month.strftime("%Y-%m"), "total": float(total)}
-        for month, total in monthly_breakdown
-    ]
-
-    return {
-        "total_spent": round(float(total_spent), 2),
-        "transaction_count": total_transactions,
-        "monthly_breakdown": breakdown
-    }
-    
-def get_user_earning_summary(user_id):
-    """Returns total earnings for a given escort user."""
-    if not user_id:
-        return None
-
-    # Join Payment → Booking → escort
-    # from models import Payment, Booking
-
-    # Total earnings
-    total_earned = db.session.query(func.sum(Payment.amount))\
-        .join(Booking, Payment.booking_id == Booking.id)\
-        .filter(Booking.escort_id == user_id).scalar() or 0
-
-    # Count of bookings that resulted in payment
-    total_paid_bookings = db.session.query(func.count(Payment.id))\
-        .join(Booking, Payment.booking_id == Booking.id)\
-        .filter(Booking.escort_id == user_id).scalar()
-
-    # Optional: Earnings by month
-    monthly_earnings = db.session.query(
-        func.date_trunc('month', Payment.created_at).label('month'),
-        func.sum(Payment.amount).label('total')
-    ).join(Booking, Payment.booking_id == Booking.id)\
-     .filter(Booking.escort_id == user_id)\
-     .group_by(func.date_trunc('month', Payment.created_at))\
-     .order_by(text('month desc')).limit(6).all()
-
-    breakdown = [
-        {"month": month.strftime("%Y-%m"), "total": float(total)}
-        for month, total in monthly_earnings
-    ]
-
-    return {
-        "total_earned": round(float(total_earned), 2),
-        "paid_bookings": total_paid_bookings,
-        "monthly_breakdown": breakdown
-    }
-    
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    role = session.get('role')
-    user_id = session.get('user_id')
-    data = {}
-    
-    # Initialize default values for all variables
-    summary = None
-    favourite_profiles = []
-
-    if role == 'seeker':
-        data['upcoming_bookings_count'] = db.session.query(Booking).join(
-            User, Booking.escort_id == User.id
-        ).filter(
-            Booking.seeker_id == user_id,
-            Booking.status == 'Confirmed',
-            User.deleted == False,
-            User.active == True,
-            User.activate == True
-        ).count()
-        # Fetch favourite escorts for this seeker
-        favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=user_id).all()]
-        if favourite_ids:
-            favourite_profiles = Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
-        else:
-            favourite_profiles = []
-        summary = get_user_spending_summary(user_id)
-        
-
-        
-    elif role == 'escort':
-        data['booking_requests_count'] = db.session.query(Booking).join(
-            User, Booking.seeker_id == User.id
-        ).filter(
-            Booking.escort_id == user_id,
-            Booking.status == 'Pending',
-            User.deleted == False,
-            User.active == True,
-            User.activate == True
-        ).count()
-        
-        # Fetch favourite seeker
-        favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=user_id).all()]
-        if favourite_ids:
-            favourite_profiles = Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
-        else:
-            favourite_profiles = []
-        summary = get_user_earning_summary(user_id)
-        
-    elif role == 'admin':
-        data['total_users'] = User.query.count()
-        data['total_reports'] = Report.query.filter_by(
-            status='Pending Review').count()
-        data['seeker_to_escort_requests'] = User.query.filter(
-            User.role == 'seeker',
-            User.pending_role == 'escort'
-        ).count()
-
-        data['escort_to_seeker_requests'] = User.query.filter(
-            User.role == 'escort',
-            User.pending_role == 'seeker'
-        ).count()
-        
-        # Admin doesn't need summary or favourite_profiles, but initialize them to avoid errors
-        summary = None
-        favourite_profiles = []
-
-    return render_template('dashboard.html', role=role, data=data, summary=summary, favourite_profiles=favourite_profiles)
-
+app.register_blueprint(dashboard_bp)
 
 @app.route('/admin', methods=['GET', 'POST'])
 @role_required('admin')
@@ -756,7 +617,7 @@ def index():
         version = "Unavailable"
 
     if 'user_id' in session:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dashboard.dashboard'))
     return redirect(url_for('auth.auth'))
     # return render_template("index.html", version=version)
 

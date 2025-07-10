@@ -54,20 +54,10 @@ def browseSeeker():
     if min_rating is not None:
         query = query.filter(Profile.rating >= min_rating)
 
-    print("browseSeeker:")
-    print(avail_date)
-    print(avail_time)
-    print("min_age:", min_age)
-    print("max_age:", max_age)
-    print("gender:", gender)
-    print("min_rating:", min_rating)
-    print("avail_date:", avail_date)
-    print("avail_time:", avail_time)
     query = Profile.query.join(User).filter(User.role == 'seeker').limit(5)
     profiles = query.all()
     print(profiles)  # see if this returns anything
     favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=session['user_id']).all()]
-    # profiles = query.distinct().all()
     return render_template('browse.html', profiles=profiles, user_role=user_role, favourited_ids=favourite_ids)
 
 def get_valid_start_times(slot, duration_minutes, escort_id):

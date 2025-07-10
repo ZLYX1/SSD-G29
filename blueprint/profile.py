@@ -118,6 +118,11 @@ def generate_presigned_url():
         
         if not file_name or not file_type:
             return jsonify({'error': 'Missing file name or type'}), 400
+        
+        # ✅ Enforce allowed types
+        ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+        if file_type not in ALLOWED_MIME_TYPES:
+            return jsonify({'error': 'Invalid file type'}), 400
 
         # Generate a unique filename to avoid collisions
         import uuid

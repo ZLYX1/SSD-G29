@@ -112,7 +112,7 @@ def booking_ratings(booking_id):
     user_id = session['user_id']
     if user_id not in [booking.seeker_id, booking.escort_id]:
         flash("You are not authorized to view this booking.", "danger")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dashboard.dashboard'))
     
     ratings = RatingController.get_booking_ratings(booking_id)
     

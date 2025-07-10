@@ -138,7 +138,7 @@ def auth():
                     log_event(user.id, 'login success', f"User {user.email} logged in successfully.")
                     security_logger.info(f"Successful login for user {user.email} from IP {request.remote_addr}")
                     
-                    return redirect(url_for('dashboard'))
+                    return redirect(url_for('dashboard.dashboard'))
                 else:
                     # OWASP Security: Handle failed login with progressive delays and lockout
                     is_locked, message, delay_seconds = OWASPAuthSecurity.handle_failed_login(
@@ -428,7 +428,7 @@ def change_password(user_id):
                 flash("Please log in with your new password.", "info")
                 return redirect(url_for('auth.auth', mode='login'))
             else:
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('dashboard.dashboard'))
         else:
             flash(message, "danger")
             log_event(user.id, 'password_change_failed', f"User {user.email} failed to change their password: {message}")
