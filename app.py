@@ -20,7 +20,7 @@ from sqlalchemy import text
 
 from flask.cli import with_appcontext
 
-from extensions import csrf
+from extensions import csrf, limiter
 
 from blueprint.auth import auth_bp
 from blueprint.profile import profile_bp
@@ -199,6 +199,9 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Session timeout
 app.config['SESSION_COOKIE_NAME'] = 'safe_companions_session'  # Custom session name
 
 csrf.init_app(app)
+
+# Initialize rate limiter
+limiter.init_app(app)
 
 # Add CSRF token and environment variables to template context
 @app.context_processor
@@ -482,7 +485,7 @@ def admin():
                 flash(f"Role change approved for {user_to_modify.email}.", "success")
                 log_event(session.get('user_id'),  # the admin who performed the action
                         'admin approved role change',
-                        f"Deleted user {user_to_modify.email} (id={user_to_modify.id})")
+                        f"Accepted user {user_to_modify.email} (id={user_to_modify.id})")
             elif action == 'reject_role_change':
                 user_to_modify.pending_role = None
                 db.session.commit()
