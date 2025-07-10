@@ -265,7 +265,7 @@ def create_test_users():
             age=user_data['age'],
             preference=user_data.get('preference'),
             availability='Available',
-            photo='default.jpg',
+            photo='https://sitssd.s3.ap-southeast-1.amazonaws.com/profile_photos/default.jpg',
             rating=0.0
         )
         db.session.add(profile)

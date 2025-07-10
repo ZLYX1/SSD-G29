@@ -322,7 +322,7 @@ def api_conversations():
                 else other.email,
             'other_user_photo': other.profile.photo
                 if other.profile and other.profile.photo
-                else 'default.jpg',
+                else 'https://sitssd.s3.ap-southeast-1.amazonaws.com/profile_photos/default.jpg',
             'last_message': {
                 'content': preview,
                 'timestamp': ts,
