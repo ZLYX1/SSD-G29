@@ -8,6 +8,10 @@
 <h3>Set Your Availability</h3>
 <form method="post" action="{{ url_for('booking.create_slot') }}">
 	<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+	{% if escort_user %}
+	<input type="hidden" name="escort_id" value="{{ escort_user.id }}">
+	{% endif %}
+
 	<div class="mb-3">
 		<label for="start_time" class="form-label">Start Time</label>
 		<input type="datetime-local" class="form-control" id="start_time" name="start_time" required>
