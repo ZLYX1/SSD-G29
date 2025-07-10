@@ -101,3 +101,8 @@ flask seed
 
 run:
 flask run --reload --debugger --with-threads
+
+
+### Test script
+
+pytest -s tests/EddieTestScripts/testscript.py
