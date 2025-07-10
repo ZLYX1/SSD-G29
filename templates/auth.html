@@ -282,36 +282,44 @@
 					passwordField.addEventListener('input', updatePasswordFeedback);
 					confirmPasswordField.addEventListener('input', validatePasswordMatch);
 				}
+				
+				// Initialize reCAPTCHA - grecaptcha is now guaranteed to be available
+				setupRecaptcha();
 			});
 
-			grecaptcha.ready(function () {
-				console.log("reCAPTCHA is ready!");
+			function setupRecaptcha() {
+				grecaptcha.ready(function () {
+					console.log("reCAPTCHA is ready!");
 
-				const form = document.getElementById('register-form');
-				if (!form) {
-					console.error("Form not found!");
-					return;
-				}
-
-				document.getElementById('register-form').addEventListener('submit', function (event) {
-					event.preventDefault();
-					console.log("Register form submit intercepted");
-
-					// Validate password match before submitting
-					if (!validatePasswordMatch()) {
-						alert('Passwords do not match. Please correct this before submitting.');
+					const form = document.getElementById('register-form');
+					if (!form) {
+						console.error("Form not found!");
 						return;
 					}
 
-					grecaptcha.execute('{{ sitekey }}', { action: 'register' }).then(function (token) {
-						console.log("reCAPTCHA token received:", token);
-						document.getElementById('g-recaptcha-response').value = token;
+					form.addEventListener('submit', function (event) {
+						event.preventDefault();
+						console.log("Register form submit intercepted");
 
-						// Submit the form normally to preserve flash messages
-						event.target.submit();
+						// Validate password match before submitting
+						if (!validatePasswordMatch()) {
+							alert('Passwords do not match. Please correct this before submitting.');
+							return;
+						}
+
+						grecaptcha.execute('{{ sitekey|e }}', { action: 'register' }).then(function (token) {
+							console.log("reCAPTCHA token received:", token);
+							document.getElementById('g-recaptcha-response').value = token;
+
+							// Submit the form normally to preserve flash messages
+							event.target.submit();
+						}).catch(function(error) {
+							console.error("reCAPTCHA error:", error);
+							alert('reCAPTCHA verification failed. Please try again.');
+						});
 					});
 				});
-			});
+			}
 		</script>
 		{% elif mode == 'reset' and not token %}
 		<h2 class="text-center mb-4">Reset Password</h2>
