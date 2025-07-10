@@ -227,27 +227,31 @@
 
 <script>
 function updateReportStatus(reportId, newStatus) {
-    const csrfToken = document.getElementById('csrf_token').value;
-    fetch('{{ url_for("report.update_report_status") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `csrf_token=${csrfToken}&report_id=${reportId}&status=${newStatus}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message or reload page
-            location.reload();
-        } else {
-            alert('Error updating status: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating status');
-    });
+  const csrfToken = document.getElementById('csrf_token').value;
+  fetch('{{ url_for("report.update_report_status") }}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `csrf_token=${csrfToken}&report_id=${reportId}&status=${newStatus}`
+  })
+  .then(response => {
+    if (!response.ok) {
+      // HTTP-level failure
+      return response.text().then(text => Promise.reject(new Error(text || response.statusText)));
+    }
+    // Try to parse JSON, but if that fails, assume success
+    return response.json().catch(() => ({ success: true }));
+  })
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Error updating status: ' + (data.message || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    console.error('Update failed:', error);
+    alert('Error updating status');
+  });
 }
 
 function openNotesModal(reportId, currentNotes) {

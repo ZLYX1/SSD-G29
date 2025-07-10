@@ -533,6 +533,167 @@ def reset_database():
         print("❌ Cancelled.")
 
 app.cli.add_command(reset_database)
+        
+# --- Add a command to seed the database ---
+@app.cli.command("seed")
+@with_appcontext
+def seed_database():
+    """Seeds the database with realistic mock data."""
+    print("Seeding database...")
+    faker = Faker()
+    TEST_PASSWORD = "Password123"  # Default password for test accounts
+
+    # 1. Clean up existing data (proper order to handle foreign keys)
+    print("-> Deleting existing data...")
+    db.session.query(Rating).delete()
+    db.session.query(Message).delete()
+    db.session.query(Report).delete()
+    db.session.query(Payment).delete()
+    db.session.query(Booking).delete()
+    db.session.query(TimeSlot).delete()
+    
+    # Added these model as new models have been added
+    db.session.query(Favourite).delete()
+    db.session.query(AuditLog).delete()
+    db.session.query(PasswordHistory).delete()
+
+    db.session.query(Profile).delete()
+    db.session.query(User).delete()
+    db.session.commit()
+
+    # 2. Create Users and Profiles
+    print("-> Creating users and profiles...")
+    seekers = []
+    escorts = []
+
+    for _ in range(20):
+        user = User(email=faker.unique.email(), role='seeker', active=True,
+                    gender=random.choice(['Male', 'Female', 'Non-binary']))
+        user.set_password(TEST_PASSWORD)
+        profile = Profile(user=user, name=faker.name(), bio=faker.paragraph(nb_sentences=3))
+        db.session.add(user)
+        seekers.append(user)
+
+    for _ in range(10):
+        user = User(email=faker.unique.email(), role='escort', active=True,
+                    gender=random.choice(['Male', 'Female', 'Non-binary']))
+        user.set_password(TEST_PASSWORD)
+        profile = Profile(user=user,
+                          name=faker.name(),
+                          bio=faker.paragraph(nb_sentences=5),
+                          rating=round(random.uniform(3.5, 5.0), 1),
+                          age=random.randint(19, 35))
+        db.session.add(user)
+        escorts.append(user)
+
+    admin_user = User(email='admin@example.com', role='admin', active=True, gender="male", phone_verified=True, email_verified=True)
+    admin_user.set_password(TEST_PASSWORD)
+    admin_profile = Profile(user=admin_user, name='Admin User')
+
+    seeker_user = User(email='seeker@example.com', role='seeker', active=True, gender="male", phone_verified=True, email_verified=True)
+    seeker_user.set_password(TEST_PASSWORD)
+    seeker_profile = Profile(user=seeker_user, name='Alex the Seeker')
+
+    escort_user = User(email='escort@example.com', role='escort', active=True, gender="male", phone_verified=True, email_verified=True)
+    escort_user.set_password(TEST_PASSWORD)
+    escort_profile = Profile(user=escort_user,
+                             name='Bella the Escort',
+                             bio='Experienced and professional.',
+                             rating=4.8,
+                             age=25)
+
+    db.session.add_all([admin_user, seeker_user, escort_user])
+    db.session.commit()
+
+    print(f"   - Created {len(seekers)} seekers, {len(escorts)} escorts, and 3 test users.")
+
+
+# 2.5. Create TimeSlots for escorts
+    print("-> Creating time slots for escorts...")
+    all_escorts = escorts + [escort_user]
+    for escort in all_escorts:
+        # Create 3-5 random availability slots for each escort
+        for _ in range(random.randint(3, 5)):
+            start_dt = datetime.utcnow() + timedelta(
+                days=random.randint(1, 14), 
+                hours=random.randint(9, 18)
+            )
+            duration = random.choice([60, 120, 180])  # 1-3 hours
+            end_dt = start_dt + timedelta(minutes=duration)
+            
+            time_slot = TimeSlot(
+                user_id=escort.id,
+                start_time=start_dt,
+                end_time=end_dt
+            )
+            db.session.add(time_slot)
+    
+    db.session.commit()
+    print(f"   - Created availability slots for {len(all_escorts)} escorts.")
+
+    # 3. Create Bookings with start_time and end_time
+    print("-> Creating bookings...")
+    booking_statuses = ['Pending', 'Confirmed', 'Rejected', 'Completed']
+    for _ in range(30):
+        seeker = random.choice(seekers)
+        escort = random.choice(escorts)
+        start_dt = datetime.utcnow() + timedelta(days=random.randint(1, 10), hours=random.randint(0, 23))
+        duration = random.choice([30, 60, 90])
+        end_dt = start_dt + timedelta(minutes=duration)
+
+        booking = Booking(
+            seeker_id=seeker.id,
+            escort_id=escort.id,
+            start_time=start_dt,
+            end_time=end_dt,
+            status=random.choice(booking_statuses)
+        )
+        db.session.add(booking)
+    print("   - Created 30 bookings.")
+
+    # 4. Create Payments
+    print("-> Creating payments...")
+    bookings = Booking.query.all()  # Fetch all bookings
+    for _ in range(50):
+        booking = random.choice(bookings) if bookings else None
+        payment = Payment(
+            user_id=booking.seeker_id if booking else random.choice(seekers).id,
+            booking_id=booking.id if booking else None,
+            amount=round(random.uniform(50.0, 500.0), 2),
+            transaction_id=str(uuid.uuid4()),
+            created_at=faker.date_time_between(start_date='-1y', end_date='now')
+        )
+        db.session.add(payment)
+    print("   - Created 50 payments.")
+
+    # 5. Create Reports
+    print("-> Creating reports...")
+    all_users = seekers + escorts
+    for _ in range(5):
+        reporter = random.choice(all_users)
+        reported = random.choice(all_users)
+        while reporter.id == reported.id:
+            reported = random.choice(all_users)
+
+        report = Report(
+            reporter_id=reporter.id,
+            reported_id=reported.id,
+            report_type=random.choice(['inappropriate_behavior', 'harassment', 'fraud', 'other']),
+            title=faker.sentence(nb_words=6),
+            description=faker.paragraph(nb_sentences=3),
+            severity=random.choice(['Low', 'Medium', 'High']),
+            status=random.choice(['Pending Review', 'Under Investigation', 'Resolved', 'Dismissed'])
+        )
+        db.session.add(report)
+    print("   - Created 5 reports.")
+
+    db.session.commit()
+
+    print("\n✅ Database seeding complete!")
+    print(f"Test login accounts (password: '{TEST_PASSWORD}'):")
+    print("  - Admin:   admin@example.com")
+    print("  - Seeker:  seeker@example.com")
+    print("  - Escort:  escort@example.com")
 
 # Validate required environment variables
 required_vars = [
