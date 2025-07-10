@@ -1,4 +1,4 @@
-name: OWASP Dependency Check
+name: OWASP + Safety Dependency Check
 
 on: [ push, pull_request ]
 
@@ -8,6 +8,19 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements-prod.txt
+
+      - name: Install Safety and scan for Python vulnerabilities
+        run: |
+          pip install safety
+          safety check -r requirements-prod.txt
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -25,9 +38,9 @@ jobs:
           format: "HTML"
           out: 'dependency-check-report'
 
-      - name: Upload Report
+      - name: Upload OWASP Report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Dependency-Check-Report
           path: dependency-check-report
-
