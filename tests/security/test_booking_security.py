@@ -67,7 +67,7 @@ def escort_user():
             )
             db.session.add(user)
             db.session.commit()
-        return user
+        return user.id
 
 @pytest.fixture
 def escort_session():
