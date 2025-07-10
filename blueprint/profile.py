@@ -140,7 +140,7 @@ def generate_presigned_url():
             ExpiresIn=300
         )
         
-        print(f"DEBUG: Presigned data: {presigned_data}")  # 👈 Log output
+        # DEBUG: Presigned data logging removed for security
         # return jsonify(presigned_data)
         return jsonify({
             'url': presigned_data['url'],
@@ -152,7 +152,6 @@ def generate_presigned_url():
         print(f"ERROR: {str(e)}")  # 👈 Log errors
         return jsonify({'error': str(e)}), 500
     
-@csrf.exempt
 @profile_bp.route('/save-photo', methods=['POST'])
 @login_required
 def save_photo():

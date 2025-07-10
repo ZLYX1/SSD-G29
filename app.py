@@ -93,6 +93,25 @@ def apply_cache_control(response):
         response = add_no_cache_headers(response)
     return response
 
+# Add security headers to all responses
+@app.after_request
+def apply_security_headers(response):
+    """Apply security headers to all responses"""
+    # Only add security headers if not already present (nginx might add them)
+    if 'X-Content-Type-Options' not in response.headers:
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+    
+    if 'X-Frame-Options' not in response.headers:
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    
+    if 'X-XSS-Protection' not in response.headers:
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+    
+    if 'Referrer-Policy' not in response.headers:
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    
+    return response
+
 # Session management and security
 @app.before_request
 def check_session_timeout():
