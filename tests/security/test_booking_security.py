@@ -112,7 +112,7 @@ def create_test_slot(escort_id):
 
 def test_booking_without_csrf(seeker_session, escort_user):
     client, _ = seeker_session
-    slot_id = create_test_slot(escort_user.id)
+    slot_id = create_test_slot(escort_user)
 
     response = client.post(f"/booking/book/{slot_id}", data={
         "start_time": (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"), 
