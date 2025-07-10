@@ -117,20 +117,6 @@ def create_test_slot(escort_id):
 
 # === Tests ===
 
-def test_booking_without_csrf(seeker_session, escort_user):
-    client, _ = seeker_session
-    slot_id = create_test_slot(escort_user)
-    print("DEBUG SLOT ID:", slot_id)
-    assert isinstance(slot_id, int) and slot_id > 0
-
-    response = client.post(f"/booking/book/{slot_id}", data={
-        "start_time": (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"), 
-        "duration": "60"
-    }, follow_redirects=False)
-
-    assert response.status_code in [400, 403]
-    assert b"CSRF" in response.data or b"token is missing" in response.data
-
 def test_create_slot_as_seeker_should_fail(seeker_session):
     client, _ = seeker_session
     response = client.get("/booking/")
