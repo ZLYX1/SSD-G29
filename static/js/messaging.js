@@ -4,331 +4,476 @@
  */
 
 class SecureMessaging {
-	constructor() {
-		this.currentUserId = null;
-		this.currentConversationId = null;
-		this.encryptionEnabled = true;
-		this.messageContainer = null;
-		this.conversationList = null;
-		this.isSubmitting = false;
-		this.init();
-	}
+    constructor() {
+        this.currentUserId = null;
+        this.currentConversationId = null;
+        this.encryptionEnabled = true;
+        this.messageContainer = null;
+        this.conversationList = null;
+        this.isSubmitting = false; // Lock to prevent multiple submissions
+        this.init();
+    }
 
-	init() {
-		this.currentUserId = window.currentUserId || null;
-		this.messageContainer = document.getElementById('chatMessages');
-		this.conversationList = document.getElementById('conversationsList');
-		this.setupEventListeners();
-		this.checkEncryptionSupport();
-	}
+    init() {
+        // Get user ID from the page
+        this.currentUserId = window.currentUserId || null;
+        
+        // Get DOM elements
+        this.messageContainer = document.getElementById('chatMessages');
+        this.conversationList = document.getElementById('conversationsList');
+        
+        // Set up event listeners
+        this.setupEventListeners();
+        
+        // Check if encryption is available
+        this.checkEncryptionSupport();
+    }
 
-	checkEncryptionSupport() {
-		if (!window.crypto || !window.crypto.subtle || !window.MessageEncryption) {
-			this.encryptionEnabled = false;
-			this.showEncryptionWarning();
-		}
-	}
+    checkEncryptionSupport() {
+        if (!window.crypto || !window.crypto.subtle) {
+            this.encryptionEnabled = false;
+            this.showEncryptionWarning();
+        } else if (!window.MessageEncryption) {
+            this.encryptionEnabled = false;
+        } else {
+            // MessageEncryption class is available
+            this.encryptionEnabled = true;
+        }
+    }
 
-	showEncryptionWarning() {
-		const warningDiv = document.createElement('div');
-		warningDiv.className = 'alert alert-warning';
-		warningDiv.innerHTML = `
-			<i class="fas fa-exclamation-triangle"></i>
-			<strong>Security Notice:</strong> End-to-end encryption is not available in this browser. 
-			Messages will be sent as plain text.
-		`;
-		const container = document.querySelector('.messaging-container');
-		if (container) container.insertBefore(warningDiv, container.firstChild);
-	}
+    showEncryptionWarning() {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'alert alert-warning';
+        warningDiv.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Security Notice:</strong> End-to-end encryption is not available in this browser. 
+            Messages will be sent as plain text.
+        `;
+        
+        const container = document.querySelector('.messaging-container');
+        if (container) {
+            container.insertBefore(warningDiv, container.firstChild);
+        }
+    }
 
-	setupEventListeners() {
-		if (this.conversationList) {
-			this.conversationList.addEventListener('click', (e) => {
-				const item = e.target.closest('.conversation-item');
-				if (item) {
-					const userId = item.dataset.userId;
-					if (userId) this.switchConversation(parseInt(userId));
-				}
-			});
-		}
-		this.startMessageRefresh();
-	}
+    setupEventListeners() {
+        // NOTE: Send message form is handled by onsubmit="sendMessage(event)" in HTML
+        // Don't add duplicate event listeners here to avoid multiple submissions
+        
+        // Conversation switching
+        if (this.conversationList) {
+            this.conversationList.addEventListener('click', (e) => {
+                const conversationItem = e.target.closest('.conversation-item');
+                if (conversationItem) {
+                    const userId = conversationItem.dataset.userId;
+                    if (userId) {
+                        this.switchConversation(parseInt(userId));
+                    }
+                }
+            });
+        }
 
-	async handleSendMessage(e) {
-		e.preventDefault();
-		if (this.isSubmitting) return;
-		this.isSubmitting = true;
+        // Auto-refresh messages
+        this.startMessageRefresh();
+    }
 
-		const form = e.target;
-		const messageInput = form.querySelector('textarea[name="content"]') || form.querySelector('input[name="content"]');
-		const recipientInput = form.querySelector('input[name="recipient_id"]');
-		if (!messageInput || !recipientInput) return;
+    async handleSendMessage(e) {
+        e.preventDefault();
+        
+        // Prevent multiple concurrent submissions
+        if (this.isSubmitting) {
+            return;
+        }
+        
+        this.isSubmitting = true;
+        
+        const form = e.target;
+        const messageInput = form.querySelector('textarea[name="content"]') || form.querySelector('input[name="content"]');
+        const recipientInput = form.querySelector('input[name="recipient_id"]');
+        
+        if (!messageInput || !recipientInput) {
+            return;
+        }
 
-		const content = messageInput.value.trim();
-		const recipientId = parseInt(recipientInput.value);
-		if (!content || !recipientId) return;
+        const content = messageInput.value.trim();
+        const recipientId = parseInt(recipientInput.value);
+        
+        if (!content || !recipientId) {
+            return;
+        }
 
-		const sendButton = form.querySelector('button[type="submit"]');
-		const originalText = sendButton ? sendButton.textContent : 'Send';
+        // Show sending indicator
+        const sendButton = form.querySelector('button[type="submit"]');
+        const originalText = sendButton ? sendButton.textContent : 'Send';
+        
+        try {
+            if (sendButton) {
+                sendButton.textContent = 'Sending...';
+                sendButton.disabled = true;
+            }
 
-		try {
-			if (sendButton) {
-				sendButton.textContent = 'Sending...';
-				sendButton.disabled = true;
-			}
+            let messageData = {
+                recipient_id: recipientId,
+                content: content
+            };
 
-			let messageData = {
-				recipient_id: recipientId,
-				content: content
-			};
+            // Try to encrypt if encryption is enabled
+            if (this.encryptionEnabled && window.MessageEncryption) {
+                try {
+                    // Create encryption instance if needed (should already exist from init)
+                    if (!window.messageEncryption) {
+                        window.messageEncryption = new window.MessageEncryption();
+                    }
+                    
+                    // Generate conversation ID from user IDs (deterministic)
+                    const currentUserId = window.currentUserId || parseInt(document.getElementById('currentUserId')?.value);
+                    const conversationId = `${Math.min(currentUserId, recipientId)}_${Math.max(currentUserId, recipientId)}`;
+                    
+                    const conversationKey = await window.messageEncryption.getConversationKey(conversationId);
+                    const encryptedData = await window.messageEncryption.encryptMessage(content, conversationKey);
+                    
+                    messageData = {
+                        recipient_id: recipientId,
+                        encrypted_data: encryptedData
+                    };
+                } catch (encError) {
+                    // Keep the original messageData with plain content
+                }
+            }
 
-			if (this.encryptionEnabled && window.MessageEncryption) {
-				if (!window.messageEncryption) {
-					window.messageEncryption = new window.MessageEncryption();
-				}
-				const currentUserId = window.currentUserId || parseInt(document.getElementById('currentUserId')?.value);
-				const conversationId = `${Math.min(currentUserId, recipientId)}_${Math.max(currentUserId, recipientId)}`;
-				const key = await window.messageEncryption.getConversationKey(conversationId);
-				const encryptedData = await window.messageEncryption.encryptMessage(content, key);
+            // Send the message
+            const response = await fetch('/messaging/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': window.csrf_token
+                },
+                body: JSON.stringify(messageData)
+            });
 
-				messageData = {
-					recipient_id: recipientId,
-					encrypted_data: encryptedData
-				};
-			}
+            const result = await response.json();
 
-			const response = await fetch('/messaging/send', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRFToken': window.csrf_token
-				},
-				body: JSON.stringify(messageData)
-			});
+            if (result.success) {
+                // Clear the input
+                messageInput.value = '';
+                
+                // Add message to UI immediately
+                this.addMessageToUI(result.message);
+                
+                // Scroll to bottom
+                this.scrollToBottom();
+                
+                // Refresh conversation list to update last message
+                this.refreshConversationList();
+            } else {
+                alert('Failed to send message: ' + result.error);
+            }
 
-			const result = await response.json();
-			if (result.success) {
-				messageInput.value = '';
-				this.addMessageToUI(result.message);
-				this.scrollToBottom();
-				this.refreshConversationList();
-			} else {
-				alert('Failed to send message: ' + result.error);
-			}
-		} catch (err) {
-			alert('Failed to send message. Please try again.');
-		} finally {
-			this.isSubmitting = false;
-			if (sendButton) {
-				sendButton.textContent = originalText;
-				sendButton.disabled = false;
-			}
-		}
-	}
+        } catch (error) {
+            alert('Failed to send message. Please try again.');
+        } finally {
+            // Release the submission lock
+            this.isSubmitting = false;
+            
+            // Reset send button
+            const sendButton = form.querySelector('button[type="submit"]');
+            if (sendButton) {
+                sendButton.textContent = originalText;
+                sendButton.disabled = false;
+            }
+        }
+    }
 
-	async switchConversation(userId) {
-		this.currentConversationId = userId;
-		try {
-			await this.loadMessages(userId);
-			this.updateActiveConversation(userId);
-			this.markMessagesAsRead(userId);
-		} catch (err) {}
-	}
+    async switchConversation(userId) {
+        this.currentConversationId = userId;
+        
+        try {
+            // Load messages for this conversation
+            await this.loadMessages(userId);
+            
+            // Update UI to show active conversation
+            this.updateActiveConversation(userId);
+            
+            // Mark messages as read
+            this.markMessagesAsRead(userId);
+            
+        } catch (error) {
+            // Error switching conversation
+        }
+    }
 
-	async loadMessages(userId) {
-		try {
-			const response = await fetch(`/messaging/api/messages/${userId}`);
-			const data = await response.json();
-			if (data.messages && this.messageContainer) {
-				this.messageContainer.innerHTML = '';
-				for (const message of data.messages) {
-					await this.addMessageToUI(message);
-				}
-				this.scrollToBottom();
-			}
-		} catch (err) {}
-	}
+    async loadMessages(userId) {
+        try {
+            const response = await fetch(`/messaging/api/messages/${userId}`);
+            const data = await response.json();
+            
+            if (data.messages) {
+                // Clear current messages
+                if (this.messageContainer) {
+                    this.messageContainer.innerHTML = '';
+                }
+                
+                // Decrypt and add each message
+                for (const message of data.messages) {
+                    await this.addMessageToUI(message);
+                }
+                
+                this.scrollToBottom();
+            }
+        } catch (error) {
+            // Error loading messages
+        }
+    }
 
-	async addMessageToUI(message) {
-		if (!this.messageContainer) return;
-		let content = message.content;
+    async addMessageToUI(message) {
+        if (!this.messageContainer) return;
 
-		if (message.is_encrypted && this.encryptionEnabled && window.messageEncryption) {
-			try {
-				const otherId = message.sender_id === this.currentUserId ? message.recipient_id : message.sender_id;
-				const convId = `${Math.min(this.currentUserId, otherId)}_${Math.max(this.currentUserId, otherId)}`;
-				const key = await window.messageEncryption.getConversationKey(convId);
-				content = await window.messageEncryption.decryptMessage({
-					encrypted_content: message.encrypted_content,
-					nonce: message.nonce,
-					algorithm: message.algorithm
-				}, key);
-			} catch (err) {
-				content = '[Failed to decrypt message]';
-			}
-		}
+        let displayContent = message.content;
 
-		const div = document.createElement('div');
-		div.className = `message ${message.sender_id === this.currentUserId ? 'sent' : 'received'}`;
-		const lock = message.is_encrypted ?
-			'<i class="fas fa-lock text-success" title="Encrypted"></i>' :
-			'<i class="fas fa-unlock text-muted" title="Not encrypted"></i>';
+        // Try to decrypt if this is an encrypted message
+        if (message.is_encrypted && this.encryptionEnabled && window.messageEncryption) {
+            try {
+                const otherUserId = message.sender_id === this.currentUserId ? 
+                    message.recipient_id : message.sender_id;
+                
+                // Generate conversation ID in the same format as encryption
+                const conversationId = `${Math.min(this.currentUserId, otherUserId)}_${Math.max(this.currentUserId, otherUserId)}`;
+                
+                const conversationKey = await window.messageEncryption.getConversationKey(conversationId);
+                
+                displayContent = await window.messageEncryption.decryptMessage({
+                    encrypted_content: message.encrypted_content,
+                    nonce: message.nonce,
+                    algorithm: message.algorithm
+                }, conversationKey);
+                
+            } catch (decError) {
+                displayContent = '[Failed to decrypt message]';
+            }
+        }
 
-		div.innerHTML = `
-			<div class="message-content">
-				<div class="message-text">${this.escapeHtml(content)}</div>
-				<div class="message-meta">
-					<span class="message-time">${this.formatTimestamp(message.timestamp)}</span>
-					${lock}
-				</div>
-			</div>
-		`;
-		this.messageContainer.appendChild(div);
-		this.scrollToBottom();
-	}
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${message.sender_id === this.currentUserId ? 'sent' : 'received'}`;
+        
+        const encryptionIcon = message.is_encrypted ? 
+            '<i class="fas fa-lock text-success" title="Encrypted"></i>' : 
+            '<i class="fas fa-unlock text-muted" title="Not encrypted"></i>';
+        
+        messageDiv.innerHTML = `
+            <div class="message-content">
+                <div class="message-text">${this.escapeHtml(displayContent)}</div>
+                <div class="message-meta">
+                    <span class="message-time">${this.formatTimestamp(message.timestamp)}</span>
+                    ${encryptionIcon}
+                </div>
+            </div>
+        `;
 
-	updateActiveConversation(userId) {
-		document.querySelectorAll('.conversation-item').forEach(item => item.classList.remove('active'));
-		const active = document.querySelector(`.conversation-item[data-user-id="${userId}"]`);
-		if (active) active.classList.add('active');
-	}
+        this.messageContainer.appendChild(messageDiv);
+        
+        // Scroll to bottom after adding the message
+        this.scrollToBottom();
+    }
 
-	async markMessagesAsRead(userId) {
-		try {
-			await fetch(`/messaging/mark-read/${userId}`, {
-				method: 'POST',
-				headers: { 'X-CSRFToken': window.csrf_token }
-			});
-		} catch (err) {}
-	}
+    updateActiveConversation(userId) {
+        // Remove active class from all conversations
+        const conversations = document.querySelectorAll('.conversation-item');
+        conversations.forEach(conv => conv.classList.remove('active'));
+        
+        // Add active class to current conversation
+        const activeConv = document.querySelector(`.conversation-item[data-user-id="${userId}"]`);
+        if (activeConv) {
+            activeConv.classList.add('active');
+        }
+    }
 
-	async refreshConversationList() {
-		try {
-			const response = await fetch('/messaging/api/conversations');
-			const data = await response.json();
-			if (data.conversations && this.conversationList) {
-				this.updateConversationList(data.conversations);
-			}
-		} catch (err) {}
-	}
+    async markMessagesAsRead(userId) {
+        try {
+            await fetch(`/messaging/mark-read/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': window.csrf_token
+                }
+            });
+        } catch (error) {
+            // Error marking messages as read
+        }
+    }
 
-	updateConversationList(conversations) {
-		// Placeholder: dynamically update conversation list
-	}
+    async refreshConversationList() {
+        try {
+            const response = await fetch('/messaging/api/conversations');
+            const data = await response.json();
+            
+            if (data.conversations && this.conversationList) {
+                this.updateConversationList(data.conversations);
+            }
+        } catch (error) {
+            // Error refreshing conversations
+        }
+    }
 
-	startMessageRefresh() {
-		setInterval(() => {
-			if (this.currentConversationId) {
-				this.loadMessages(this.currentConversationId);
-			}
-		}, 5000);
+    updateConversationList(conversations) {
+        // This would update the conversation list UI
+        // Implementation depends on the specific HTML structure
+    }
 
-		setInterval(() => {
-			this.refreshConversationList();
-		}, 10000);
-	}
+    startMessageRefresh() {
+        // Refresh messages every 5 seconds if viewing a conversation
+        setInterval(() => {
+            if (this.currentConversationId) {
+                this.loadMessages(this.currentConversationId);
+            }
+        }, 5000);
 
-	scrollToBottom() {
-		if (this.messageContainer) {
-			requestAnimationFrame(() => {
-				this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
-			});
-		}
-	}
+        // Refresh conversation list every 10 seconds
+        setInterval(() => {
+            this.refreshConversationList();
+        }, 10000);
+    }
 
-	formatTimestamp(ts) {
-		const d = new Date(ts);
-		const now = new Date();
-		const days = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-		if (days === 0) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-		if (days === 1) return 'Yesterday ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-		if (days < 7) return d.toLocaleDateString([], { weekday: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-		return d.toLocaleDateString([], { month: '2-digit', day: '2-digit' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-	}
+    scrollToBottom() {
+        if (this.messageContainer) {
+            // Use requestAnimationFrame to ensure DOM updates are complete
+            requestAnimationFrame(() => {
+                this.messageContainer.scrollTop = this.messageContainer.scrollHeight;
+            });
+        }
+    }
 
-	escapeHtml(text) {
-		const div = document.createElement('div');
-		div.textContent = text;
-		return div.innerHTML;
-	}
+    formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-	async decryptExistingMessages() {
-		if (!this.encryptionEnabled || !window.messageEncryption) return;
+        // Same day - show time only
+        if (diffDays === 0) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        // Yesterday
+        else if (diffDays === 1) {
+            return 'Yesterday ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        // Less than 7 days - show day and time
+        else if (diffDays < 7) {
+            return date.toLocaleDateString([], { weekday: 'short' }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        // Older messages - show month/day and time
+        else {
+            return date.toLocaleDateString([], { month: '2-digit', day: '2-digit' }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    }
 
-		const elements = document.querySelectorAll('.message');
-		for (const el of elements) {
-			try {
-				const content = el.querySelector('.message-content');
-				const lock = el.querySelector('.fas.fa-lock');
-				if (content && lock && content.textContent.includes('[Encrypted Message - Decrypting...]')) {
-					const data = {
-						encrypted_content: el.dataset.encryptedContent,
-						nonce: el.dataset.nonce,
-						algorithm: el.dataset.algorithm,
-						sender_id: parseInt(el.dataset.senderId),
-						recipient_id: parseInt(el.dataset.recipientId),
-						is_encrypted: true
-					};
-					const other = data.sender_id === this.currentUserId ? data.recipient_id : data.sender_id;
-					const convId = `${Math.min(this.currentUserId, other)}_${Math.max(this.currentUserId, other)}`;
-					const key = await window.messageEncryption.getConversationKey(convId);
-					const decrypted = await window.messageEncryption.decryptMessage({
-						encrypted_content: data.encrypted_content,
-						nonce: data.nonce,
-						algorithm: data.algorithm
-					}, key);
-					content.textContent = decrypted;
-				}
-			} catch (err) {}
-		}
-		this.scrollToBottom();
-	}
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
-	toggleEncryption() {
-		this.encryptionEnabled = !this.encryptionEnabled;
-		const status = document.getElementById('encryption-status');
-		if (status) {
-			status.textContent = this.encryptionEnabled ? 'Encrypted' : 'Plain Text';
-			status.className = this.encryptionEnabled ? 'text-success' : 'text-warning';
-		}
-	}
+    // Method to decrypt existing messages in the DOM on page load
+    async decryptExistingMessages() {
+        if (!this.encryptionEnabled || !window.messageEncryption) {
+            return;
+        }
+
+        // Find all message elements that contain encrypted content
+        const messageElements = document.querySelectorAll('.message');
+
+        for (const messageElement of messageElements) {
+            try {
+                const messageContent = messageElement.querySelector('.message-content');
+                const encryptedIcon = messageElement.querySelector('.fas.fa-lock');
+                
+                // Check if this is an encrypted message that needs decryption
+                if (messageContent && encryptedIcon && 
+                    messageContent.textContent.includes('[Encrypted Message - Decrypting...]')) {
+                    
+                    // Extract message data from data attributes if available
+                    const messageData = {
+                        encrypted_content: messageElement.dataset.encryptedContent,
+                        nonce: messageElement.dataset.nonce,
+                        algorithm: messageElement.dataset.algorithm,
+                        sender_id: parseInt(messageElement.dataset.senderId),
+                        recipient_id: parseInt(messageElement.dataset.recipientId),
+                        is_encrypted: true
+                    };
+                    
+                    // Skip if we don't have the required data attributes
+                    if (!messageData.encrypted_content || !messageData.nonce) {
+                        continue;
+                    }
+                    
+                    // Determine the other user ID
+                    const otherUserId = messageData.sender_id === this.currentUserId ? 
+                        messageData.recipient_id : messageData.sender_id;
+                    
+                    // Generate conversation ID in the same format as encryption
+                    const conversationId = `${Math.min(this.currentUserId, otherUserId)}_${Math.max(this.currentUserId, otherUserId)}`;
+                    
+                    // Get the conversation key
+                    const conversationKey = await window.messageEncryption.getConversationKey(conversationId);
+                    
+                    // Decrypt the message
+                    const decryptedContent = await window.messageEncryption.decryptMessage({
+                        encrypted_content: messageData.encrypted_content,
+                        nonce: messageData.nonce,
+                        algorithm: messageData.algorithm
+                    }, conversationKey);
+                    
+                    // Update the message content in the DOM
+                    messageContent.textContent = decryptedContent;
+                    
+                } else {
+                    // Message already decrypted or not encrypted
+                }
+            } catch (error) {
+                // Error decrypting existing message
+            }
+        }
+        
+        // Scroll to bottom after decrypting all messages
+        this.scrollToBottom();
+    }
+
+    // Method to toggle encryption for testing
+    toggleEncryption() {
+        this.encryptionEnabled = !this.encryptionEnabled;
+        
+        const statusDiv = document.getElementById('encryption-status');
+        if (statusDiv) {
+            statusDiv.textContent = this.encryptionEnabled ? 'Encrypted' : 'Plain Text';
+            statusDiv.className = this.encryptionEnabled ? 'text-success' : 'text-warning';
+        }
+    }
 }
 
-// Export and initialize
+// Export the class for use in templates
 window.SecureMessaging = SecureMessaging;
 
-window.initializeSecureMessaging = function () {
-	if (window.MessageEncryption && !window.messageEncryption) {
-		window.messageEncryption = new window.MessageEncryption();
-	}
-	if (!window.secureMessaging) {
-		window.secureMessaging = new SecureMessaging();
-		setTimeout(async () => {
-			try {
-				await window.secureMessaging.decryptExistingMessages();
-			} catch (err) {}
-		}, 500);
-		return true;
-	}
-	return false;
-};
+// Safe initialization function to prevent multiple instances
+window.initializeSecureMessaging = function() {
+    // Ensure we have an encryption instance before doing anything
+    if (window.MessageEncryption && !window.messageEncryption) {
+        window.messageEncryption = new window.MessageEncryption();
+    }
 
-// ✅ Global fallback-aware function used by <form onsubmit="sendMessage(event)">
-window.sendMessage = function (event) {
-	event.preventDefault();
-	const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
-
-	if (window.secureMessaging && typeof window.secureMessaging.handleSendMessage === 'function') {
-		window.secureMessaging.handleSendMessage(event);
-	} else if (isProduction) {
-		alert("🔒 Encrypted messaging is required in production. Please refresh or contact support.");
-		console.error("❌ SecureMessaging not available in production — message blocked.");
-	} else {
-		console.warn("⚠️ SecureMessaging unavailable — plaintext fallback only allowed in development.");
-		if (typeof sendMessageFallback === 'function') {
-			sendMessageFallback(event);
-		} else {
-			alert("Plaintext fallback not available.");
-		}
-	}
+    if (!window.secureMessaging) {
+        window.secureMessaging = new SecureMessaging();
+        
+        // Decrypt existing messages on page load
+        setTimeout(async () => {
+            try {
+                await window.secureMessaging.decryptExistingMessages();
+            } catch (error) {
+                // Error decrypting existing messages
+            }
+        }, 500);
+        
+        return true;
+    } else {
+        return false;
+    }
 };
