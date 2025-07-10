@@ -73,7 +73,7 @@ def test_send_message_without_csrf(seeker_session, escort_user):
     response = client.post("/messaging/send", json={
         "recipient_id": escort_user.id,
         "content": "Hello world!"
-    }, follow_redirects=False)
+    }, headers={"X-CSRFToken": ""}, follow_redirects=False)
 
     assert response.status_code in [400, 403]
     assert b"CSRF" in response.data or b"token" in response.data

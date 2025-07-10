@@ -4,6 +4,7 @@ import pytest
 from datetime import datetime, timedelta, timezone  
 from werkzeug.security import generate_password_hash
 from bs4 import BeautifulSoup  # if needed for CSRF token extraction
+from blueprint.models import Message
 
 # Ensure app module is found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -19,12 +20,13 @@ from extensions import db
 def seeker_session():
     flask_app.config["TESTING"] = True
     with flask_app.test_client() as client, flask_app.app_context():
-        # Clean up old test data
         seeker = User.query.filter_by(email="testseeker@example.com").first()
         if seeker:
+            Message.query.filter_by(sender_id=seeker.id).delete()
             Booking.query.filter_by(seeker_id=seeker.id).delete()
             db.session.delete(seeker)
             db.session.commit()
+
 
         seeker = User(
             email="testseeker@example.com",
