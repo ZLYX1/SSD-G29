@@ -13,7 +13,6 @@ from faker import Faker
 import random
 import uuid
 from datetime import datetime
-from controllers.auth_controller import AuthController
 from flask_migrate import Migrate
 from sqlalchemy import or_
 from sqlalchemy import func
@@ -534,9 +533,6 @@ config = DBConfig(
 print(config.database)
 pg_connector = PostgresConnector(config)
 
-# Authentication controller
-auth_controller = AuthController()
-
 def get_db_conn():
     if "db_conn" not in g:
         g.db_conn = pg_connector.get_connection()
@@ -568,23 +564,6 @@ def index():
     return redirect(url_for('auth.auth'))
     # return render_template("index.html", version=version)
 
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
-
-        if auth_controller.authenticate(email, password):
-            regenerate_session()
-            session['bound_ua'] = request.headers.get('User-Agent')
-            session['bound_ip'] = request.remote_addr
-            # Successful login
-            return redirect(url_for("index"))
-        else:
-            flash("Invalid email or password", "danger")
-
-    return render_template("login.html")
 
 # --- ROUTES ---
 @app.before_request
@@ -620,25 +599,6 @@ def session_config():
     return {
         'session_lifetime_minutes': app.permanent_session_lifetime.total_seconds() // 60
     }
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
-
-        if password != confirm_password:
-            flash("Passwords do not match", "danger")
-            return render_template("register.html")
-
-        if auth_controller.register(email, password):
-            flash("Account created successfully. Please log in.", "success")
-            return redirect(url_for("login"))
-        else:
-            flash("Email already registered", "danger")
-
-    return render_template("register.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
