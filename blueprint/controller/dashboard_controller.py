@@ -22,11 +22,17 @@ class DashboardController:
             func.date_trunc('month', Payment.created_at)
         ).order_by(text('month desc')).limit(1).all()
  
-        breakdown = [
-            {"month": month.strftime("%Y-%m"), "total": float(total)}
-            for month, total in monthly_breakdown
-        ]
- 
+        breakdown = []
+        for month, total in monthly_breakdown:  # or monthly_earnings
+            try:
+                breakdown.append({
+            		"month": month.strftime("%Y-%m"),
+            		"total": float(total)
+        		})
+            except Exception as e:
+                print(f"[DEBUG] Error formatting month/total: month={month}, total={total}, error={e}")
+                continue  # Skip the bad entry
+    
         return {
             "total_spent": round(float(total_spent), 2),
             "transaction_count": total_transactions,
@@ -68,10 +74,19 @@ class DashboardController:
     @staticmethod
     def get_favourite_profiles(user_id):
         favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=user_id).all()]
-        # favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=session['user_id']).all()]
-        if favourite_ids:
-            return Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
-        else: 
+        # # favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=session['user_id']).all()]
+        # if favourite_ids:
+        #     return Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
+        # else: 
+        #     return []
+        
+        try:
+            favourite_ids = [f.favourite_user_id for f in Favourite.query.filter_by(user_id=user_id).all()]
+            if favourite_ids:
+                return Profile.query.filter(Profile.user_id.in_(favourite_ids)).all()
+            return []
+        except Exception as e:
+            print("Error fetching favourites:", e)
             return []
  
     # @staticmethod
