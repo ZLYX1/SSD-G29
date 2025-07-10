@@ -41,12 +41,9 @@ COPY templates/ ./templates/
 COPY scripts/ ./scripts/
 COPY blueprint/ ./blueprint/
 
-# Set secure file permissions after all files are copied
-# This ensures permissions are applied regardless of source file permissions
+# Make sure the entrypoint script and all shell scripts are executable with minimal permissions
 RUN chmod 750 ./entrypoint.sh && \
-    find ./scripts -name "*.sh" -exec chmod 750 {} \; && \
-    find . -type f -name "*.py" -exec chmod 644 {} \; && \
-    find . -type d -exec chmod 755 {} \;
+    find ./scripts -name "*.sh" -exec chmod 750 {} \;
 
 # Create directory for persistent environment variables with restrictive permissions
 RUN mkdir -p /app/persistent && chmod 750 /app/persistent
