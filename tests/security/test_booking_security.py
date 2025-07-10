@@ -106,6 +106,7 @@ def create_test_slot(escort_id):
     slot = TimeSlot(user_id=escort_id, start_time=now + timedelta(days=1), end_time=now + timedelta(days=1, hours=1))
     db.session.add(slot)
     db.session.commit()
+    db.session.refresh(slot)  # Ensure ID is loaded
     return slot.id
 
 # === Tests ===
@@ -113,6 +114,8 @@ def create_test_slot(escort_id):
 def test_booking_without_csrf(seeker_session, escort_user):
     client, _ = seeker_session
     slot_id = create_test_slot(escort_user)
+    print("DEBUG SLOT ID:", slot_id)
+    assert isinstance(slot_id, int) and slot_id > 0
 
     response = client.post(f"/booking/book/{slot_id}", data={
         "start_time": (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"), 
