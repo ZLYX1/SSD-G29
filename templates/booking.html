@@ -42,7 +42,7 @@
 	<div class="card-body">
 
 		<div class="d-flex align-items-center">
-			<img src="{{ booking.seeker.profile.photo or 'https://via.placeholder.com/50' }}" alt="Profile Photo"
+			<img src="{{ booking.seeker.profile.photo or 'https://sitssd.s3.ap-southeast-1.amazonaws.com/profile_photos/default.jpg' }}" alt="Profile Photo"
 				class="rounded-circle me-2" width="50" height="50">
 			<strong>{{ booking.seeker.profile.name or 'Unnamed User' }}</strong>
 		</div>
@@ -72,12 +72,12 @@
 		<div>
 			{% if role == 'seeker' %}
 			<!-- Show Escort Info -->
-			<img src="{{ booking.escort.profile.photo }}" alt="Profile Photo" class="rounded-circle me-2" width="40"
+			<img src="{{ booking.escort.profile.photo or 'https://sitssd.s3.ap-southeast-1.amazonaws.com/profile_photos/default.jpg' }}" alt="Profile Photo" class="rounded-circle me-2" width="40"
 				height="40">
 			<strong>{{ booking.escort.profile.name }}</strong><br>
 			{% elif role == 'escort' %}
 			<!-- Show Seeker Info -->
-			<img src="{{ booking.seeker.profile.photo }}" alt="Profile Photo" class="rounded-circle me-2" width="40"
+			<img src="{{ booking.seeker.profile.photo or 'https://sitssd.s3.ap-southeast-1.amazonaws.com/profile_photos/default.jpg' }}" alt="Profile Photo" class="rounded-circle me-2" width="40"
 				height="40">
 			<strong>{{ booking.seeker.profile.name }}</strong><br>
 			{% endif %}
