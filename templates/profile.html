@@ -136,7 +136,6 @@
 
 	// Load existing photo on page load
 	window.addEventListener('DOMContentLoaded', () => {
-		console.log("dom content loaded")
 		fetch('/profile/photo')
 			.then(res => res.ok ? res.json() : Promise.reject(res))
 			.then(data => {
@@ -155,7 +154,6 @@
 				}
 			})
 			.catch(err => console.error("Photo load error:", err));
-		console.log("end of fetch\n");
 	});
 </script>
 {% endblock %}
