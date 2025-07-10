@@ -103,10 +103,16 @@ def escort_session():
 
 def create_test_slot(escort_id):
     now = datetime.now(timezone.utc)
-    slot = TimeSlot(user_id=escort_id, start_time=now + timedelta(days=1), end_time=now + timedelta(days=1, hours=1))
+    slot = TimeSlot(
+        user_id=escort_id,
+        start_time=now + timedelta(days=1),
+        end_time=now + timedelta(days=1, hours=1)
+    )
     db.session.add(slot)
+    db.session.flush()  
+    db.session.refresh(slot) 
     db.session.commit()
-    db.session.refresh(slot)  # Ensure ID is loaded
+    assert slot.id is not None and isinstance(slot.id, int), "Slot ID was not generated"
     return slot.id
 
 # === Tests ===
