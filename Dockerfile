@@ -32,8 +32,6 @@ COPY app.py entrypoint.sh extensions.py db.py ./
 # (most frequently changed directories last for better caching)
 COPY migrations/ ./migrations/
 COPY config/ ./config/
-COPY entities/ ./entities/
-COPY data_sources/ ./data_sources/
 COPY controllers/ ./controllers/
 COPY utils/ ./utils/
 COPY static/ ./static/
