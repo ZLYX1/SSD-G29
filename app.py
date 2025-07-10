@@ -291,7 +291,7 @@ def role_required(role):
             if session.get('role') != role:
                 flash(f"You must be an {role} to access this page.", "danger")
                 return redirect(
-                    url_for('dashboard'))  # Redirect to a safe page
+                    url_for('dashboard.dashboard'))  # Redirect to a safe page
             return f(*args, **kwargs)
 
         return decorated_function
