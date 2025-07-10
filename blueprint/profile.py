@@ -9,8 +9,34 @@ from extensions import db, csrf, s3
 from datetime import datetime
 from flask import jsonify
 from blueprint.models import User  # make sure you have this
+from blueprint.controller.profile_controller import ProfileController
+import uuid
 
 profile_bp = Blueprint('profile', __name__, url_prefix='/profile')
+
+@profile_bp.route('/', methods=['GET', 'POST'])
+@login_required
+def profile():
+	user_id = session['user_id']
+	if not user_id:
+		return jsonify({'error': 'Not logged in'}), 401
+
+	user_profile = ProfileController.get_profile_by_user_id(user_id)
+
+	if request.method == 'POST':
+		name = request.form.get('name')
+		bio = request.form.get('bio')
+		availability = request.form.get('availability')
+		photo_url = request.form.get('photo_url')
+  
+		_, err = ProfileController.update_profile(user_id, name, bio, availability, photo_url)
+		if err:
+			flash(err, 'danger')
+		else:
+			flash("Profile updated successfully!", "success")
+		return redirect(url_for('profile.profile'))
+
+	return render_template('profile.html', profile=user_profile)
 
 @profile_bp.route('/photo', methods=['GET'])
 @login_required
@@ -19,7 +45,7 @@ def get_profile_photo():
     if not user_id:
         return jsonify({'error': 'Not logged in'}), 401
 
-    profile = Profile.query.filter_by(user_id=user_id).first()
+    profile = ProfileController.get_profile_by_user_id(user_id)
 
     if not profile:
         return jsonify({'error': 'Profile not found'}), 404
@@ -30,82 +56,6 @@ def get_profile_photo():
     }), 200
     
     
-@profile_bp.route('/', methods=['GET', 'POST'])
-@login_required
-def profile():
-	user_profile = Profile.query.filter_by(user_id=session['user_id']).first()
-
-	if request.method == 'POST':
-		user_profile.name = request.form.get('name')
-		user_profile.bio = request.form.get('bio')
-		user_profile.availability = request.form.get('availability')
-
-		photo_url = request.form.get('photo_url')
-		if photo_url:
-			user_profile.photo = photo_url
-
-		db.session.commit()
-		flash("Profile updated successfully!", "success")
-		return redirect(url_for('profile.profile'))
-
-	return render_template('profile.html', profile=user_profile)
-
-# @profile_bp.route('/generate-presigned-url', methods=['POST'])
-# @login_required
-# def generate_presigned_url():
-# 	print("\n=== Received request for presigned URL ===")
-# 	print("Request headers:", request.headers)
-# 	print("Request JSON:", request.json)
-    
-# 	if not request.is_json:
-# 		print("Error: Request is not JSON")
-# 		return jsonify({'error': 'Request must be JSON'}), 400
-        
-# 	# print("generate_presignurl")
-# 	file_name = request.json.get('file_name')
-# 	file_type = request.json.get('file_type')
-# 	S3_BUCKET = os.environ['S3_BUCKET_NAME']
-
-# 	if not file_name or not file_type:
-# 		return {'error': 'Missing file name or type'}, 400
-
-# 	allowed_types = ["image/jpeg", "image/png", "image/jpg"]
-# 	if file_type not in allowed_types:
-# 		return {'error': 'Invalid file type'}, 400
-
-
-# 	try:
-# 		ext = file_name.split('.')[-1]
-# 		unique_filename =   datetime.utcnow().strftime("%Y%m%d%H%M%S")
-# 		key = f"profile_photos/{session['user_id']}/{unique_filename}.{ext}"
-# 		presigned_post = s3.generate_presigned_post(
-# 			Bucket=S3_BUCKET,
-# 			Key=key,
-# 			# Fields={"Content-Type": file_type},
-# 			# Conditions=[{"Content-Type": file_type}],
-   
-#             # Fields={},  # no Content-Type
-#             # Conditions=[],  # no Content-Type
-#             Fields={
-#                 "acl": "public-read",
-#                 "Content-Type": file_type
-#             },
-#             Conditions=[
-#                 {"acl": "public-read"},
-#                 {"Content-Type": file_type}
-#             ],
-# 			ExpiresIn=300
-# 		)
-# 		file_url = f"https://{S3_BUCKET}.s3.amazonaws.com/{key}"
-# 		return jsonify({
-#             'url': presigned_post['url'],
-#             'fields': presigned_post['fields'],
-#             'file_url': file_url
-#         })
-# 		# return jsonify(presigned_post)
-# 	except Exception as e:
-# 		print(f"Exception in generate_presigned_url: {e}")
-# 		return jsonify({'error': str(e)}), 500
 
 @profile_bp.route('/generate-presigned-url', methods=['POST'])
 @login_required
@@ -113,8 +63,6 @@ def generate_presigned_url():
     try:
         file_name = request.json.get('file_name')
         file_type = request.json.get('file_type')
-        
-        print(f"DEBUG: Generating presigned URL for {file_name} ({file_type})")  # 👈 Log input
         
         if not file_name or not file_type:
             return jsonify({'error': 'Missing file name or type'}), 400
@@ -125,10 +73,8 @@ def generate_presigned_url():
             return jsonify({'error': 'Invalid file type'}), 400
 
         # Generate a unique filename to avoid collisions
-        import uuid
         ext = file_name.split('.')[-1]
         unique_key = f"profile_photos/{session['user_id']}/{uuid.uuid4()}.{ext}"
-        
         file_url = f"https://{os.environ['S3_BUCKET_NAME']}.s3.amazonaws.com/{unique_key}"
          
         presigned_data = s3.generate_presigned_post(
@@ -160,14 +106,17 @@ def generate_presigned_url():
 @profile_bp.route('/save-photo', methods=['POST'])
 @login_required
 def save_photo():
-    print("save photo to db!!")
+    user_id = session['user_id']
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+
     photo_url = request.json.get('photo_url')
     if not photo_url:
         return {'error': 'Missing photo URL'}, 400
 
-    user_profile = Profile.query.filter_by(user_id=session['user_id']).first()
-    user_profile.photo = photo_url  # or just the filename if preferred
-    db.session.commit()
+    _, err = ProfileController.save_photo_url(user_id, photo_url)
+    if err:
+        return {'error': err}, 400
 
     return {'message': 'Photo saved successfully'}, 200
 
@@ -175,44 +124,37 @@ def save_photo():
 @login_required
 def request_role_change():
     user_id = session['user_id']
-    user = User.query.get(user_id)
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
 
-    if not user:
-        flash("User not found.", "danger")
-        return redirect(url_for('profile.profile'))
-
-    if user.role == 'seeker':
-        user.pending_role = 'escort'
-        flash("Role change request submitted: seeker ➔ escort. Awaiting admin approval.", "info")
-        log_event(user_id, 'role change request', f"User {user.email} requested role change from seeker to escort.")
-    elif user.role == 'escort':
-        user.pending_role = 'seeker'
-        flash("Role change request submitted: escort ➔ seeker. Awaiting admin approval.", "info")
-        log_event(user_id, 'role change request', f"User {user.email} requested role change from escort to seeker.")
+    user, err = ProfileController.request_role_change(user_id)
+    if err:
+            flash("Role change not allowed for your account type.", "warning")
     else:
-        flash("Role change not allowed for your account type.", "warning")
-        log_event(user_id, 'role change request failed', f"User {user.email} attempted an invalid role change request.")
-        return redirect(url_for('profile.profile'))
-
-    db.session.commit()
+            if user.pending_role == 'escort':
+                flash("Role change request submitted: seeker ➔ escort. Awaiting admin approval.", "info")
+            else:
+                flash("Role change request submitted: escort ➔ seeker. Awaiting admin approval.", "info")
+    
     return redirect(url_for('profile.profile'))
+
+
 
 @profile_bp.route('/deactivate', methods=['POST'])
 @login_required
 def deactivate_profile():
     user_id = session['user_id']
-    user = User.query.get(user_id)
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user, err = ProfileController.deactivate_user(user_id)
 
     if not user:
         flash("User not found.", "danger")
         return redirect(url_for('profile.profile'))
 
-    user.activate = False
-    db.session.commit()
-
     session.clear()
     flash("Your account has been deactivated. You are now logged out.", "info")
-    log_event(user_id, 'deactivate', f"User {user.email} deactivated their account.")
     return redirect(url_for('auth.auth', mode='login'))
 
 @profile_bp.route('/my-ratings', methods=['POST'])
@@ -224,21 +166,3 @@ def view_rating():
 @login_required
 def view_report():
     return redirect(url_for('report.my_reports'))
-
-
-# @profile_bp.route('/photo', methods=['GET'])
-# @login_required
-# def get_profile_photo():
-#     user_id = session.get('user_id')
-#     if not user_id:
-#         return jsonify({'error': 'Not logged in'}), 401
-
-#     profile = Profile.query.filter_by(user_id=user_id).first()
-
-#     if not profile:
-#         return jsonify({'error': 'Profile not found'}), 404
-
-#     return jsonify({
-#         'user_id': user_id,
-#         'photo_url': profile.photo or 'https://via.placeholder.com/150'
-#     }), 200
