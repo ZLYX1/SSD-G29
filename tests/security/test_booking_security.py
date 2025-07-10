@@ -11,6 +11,8 @@ from app import app as flask_app
 from blueprint.models import User, Booking, Message, TimeSlot
 from extensions import db
 
+# === Fixtures ===
+
 @pytest.fixture
 def seeker_session():
     flask_app.config["TESTING"] = True
@@ -67,16 +69,50 @@ def escort_user():
             db.session.commit()
         return user
 
-def create_test_slot(escort):
+@pytest.fixture
+def escort_session():
+    flask_app.config["TESTING"] = True
+    with flask_app.test_client() as client, flask_app.app_context():
+        user = User.query.filter_by(email="testescort@example.com").first()
+        if not user:
+            user = User(
+                email="testescort@example.com",
+                role="escort",
+                gender="Non-binary",
+                active=True,
+                activate=True,
+                deleted=False,
+                created_at=datetime.now(timezone.utc),
+                password_hash=generate_password_hash("ValidPass123"),
+                password_created_at=datetime.now(timezone.utc)
+            )
+            db.session.add(user)
+            db.session.commit()
+
+        client.environ_base["HTTP_USER_AGENT"] = "test-agent"
+        client.environ_base["REMOTE_ADDR"] = "127.0.0.1"
+        with client.session_transaction() as sess:
+            sess["user_id"] = user.id
+            sess["role"] = "escort"
+            sess["bound_ua"] = "test-agent"
+            sess["bound_ip"] = "127.0.0.1"
+
+        yield client
+
+# === Helper ===
+
+def create_test_slot(escort_id):
     now = datetime.now(timezone.utc)
-    slot = TimeSlot(user_id=escort.id, start_time=now + timedelta(days=1), end_time=now + timedelta(days=1, hours=1))
+    slot = TimeSlot(user_id=escort_id, start_time=now + timedelta(days=1), end_time=now + timedelta(days=1, hours=1))
     db.session.add(slot)
     db.session.commit()
     return slot.id
 
+# === Tests ===
+
 def test_booking_without_csrf(seeker_session, escort_user):
     client, _ = seeker_session
-    slot_id = create_test_slot(escort_user)
+    slot_id = create_test_slot(escort_user.id)
 
     response = client.post(f"/booking/book/{slot_id}", data={
         "start_time": (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"), 
@@ -85,7 +121,6 @@ def test_booking_without_csrf(seeker_session, escort_user):
 
     assert response.status_code in [400, 403]
     assert b"CSRF" in response.data or b"token is missing" in response.data
-
 
 def test_create_slot_as_seeker_should_fail(seeker_session):
     client, _ = seeker_session
@@ -102,7 +137,6 @@ def test_create_slot_as_seeker_should_fail(seeker_session):
 
     assert response.status_code in [403, 302, 400]
     assert b"Access denied" in response.data or b"not authorized" in response.data
-
 
 def test_handle_booking_action_wrong_owner(escort_session):
     response = escort_session.get("/booking/")

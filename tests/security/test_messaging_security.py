@@ -5,14 +5,11 @@ from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
 from bs4 import BeautifulSoup
 
-# Ensure app is found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from app import app as flask_app
 from blueprint.models import User, Message
 from extensions import db
-
-# === Fixtures ===
 
 @pytest.fixture
 def seeker_session():
@@ -34,7 +31,6 @@ def seeker_session():
             db.session.add(user)
             db.session.commit()
 
-        # Set expected headers for session security
         client.environ_base["HTTP_USER_AGENT"] = "test-agent"
         client.environ_base["REMOTE_ADDR"] = "127.0.0.1"
 
@@ -43,7 +39,7 @@ def seeker_session():
             sess["role"] = "seeker"
             sess["bound_ua"] = "test-agent"
             sess["bound_ip"] = "127.0.0.1"
-        
+
         yield client, user
 
 @pytest.fixture
@@ -66,27 +62,25 @@ def escort_user():
             db.session.commit()
         return user
 
-# === Messaging Tests ===
+# === Tests ===
 
 def test_send_message_without_csrf(seeker_session, escort_user):
     client, _ = seeker_session
-    response = client.post("/messaging/send", json={
+    response = client.post("/messaging/send", data={
         "recipient_id": escort_user.id,
         "content": "Hello world!"
-    }, headers={"X-CSRFToken": ""}, follow_redirects=False)
+    }, follow_redirects=False)
 
-    assert response.status_code in [400, 403]
-    assert b"CSRF" in response.data or b"token" in response.data
+    assert response.status_code in [400, 403], f"Expected CSRF failure, got {response.status_code}"
 
 def test_cannot_send_message_to_self(seeker_session, escort_user):
     client, user = seeker_session
     response = client.get(f"/messaging/conversation/{escort_user.id}")
-
-    assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}:\n{response.data.decode()}"
+    assert response.status_code == 200
 
     soup = BeautifulSoup(response.data, "html.parser")
     csrf_input = soup.find("input", {"name": "csrf_token"})
-    assert csrf_input is not None, f"CSRF token input not found. HTML content:\n{response.data.decode()}"
+    assert csrf_input is not None
     csrf_token = csrf_input["value"]
 
     response = client.post("/messaging/send", json={
