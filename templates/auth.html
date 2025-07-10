@@ -333,28 +333,198 @@
 		{% elif mode == 'reset' and token %}
 		<h2 class="text-center mb-4">Set New Password</h2>
 		<p class="text-muted text-center">Please enter your new password below.</p>
-		<form method="post">
+		<form method="post" id="reset-password-form">
 			<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 			<div class="form-floating mb-3">
 				<input type="password" class="form-control" id="new_password" name="new_password" 
-					   placeholder="New Password" required minlength="8" maxlength="128">
+					   placeholder="New Password" required minlength="8" maxlength="64">
 				<label for="new_password">New Password</label>
 			</div>
 			<div class="form-floating mb-3">
 				<input type="password" class="form-control" id="confirm_password" name="confirm_password" 
-					   placeholder="Confirm Password" required minlength="8" maxlength="128">
+					   placeholder="Confirm Password" required minlength="8" maxlength="64">
 				<label for="confirm_password">Confirm Password</label>
+				<div class="invalid-feedback" id="password-mismatch-error-reset" style="display: none;">
+					Passwords do not match.
+				</div>
 			</div>
-			<div class="mb-3">
-				<small class="text-muted">
-					Password must be at least 8 characters long and contain a mix of letters, numbers, and special characters.
-				</small>
+			
+			<!-- NIST Password Requirements -->
+			<div class="card mb-3">
+				<div class="card-body p-3">
+					<h6 class="card-title">
+						<i class="fas fa-info-circle text-info"></i> 
+						NIST Password Requirements:
+					</h6>
+					<div class="alert alert-info py-2 mb-2">
+						<small>
+							<strong>Modern approach:</strong> We follow NIST guidelines focusing on length and memorability rather than complex character requirements.
+						</small>
+					</div>
+					<div class="row">
+						<div class="col-md-8">
+							<ul class="list-unstyled mb-0">
+								<li><i class="fas fa-check text-success"></i> 8-64 characters (longer is better!)</li>
+								<li><i class="fas fa-check text-success"></i> Not a commonly used password</li>
+								<li><i class="fas fa-check text-success"></i> No excessive repetition</li>
+							</ul>
+						</div>
+						<div class="col-md-4">
+							<div class="text-muted small">
+								<strong>Examples:</strong><br>
+								<code class="text-success">coffee brewing time</code><br>
+								<code class="text-success">hiking mountains 2024</code>
+							</div>
+						</div>
+					</div>
+					<div class="mt-2">
+						<small class="text-muted">
+							<i class="fas fa-lightbulb"></i> 
+							<strong>New approach:</strong> We focus on length and memorability rather than complex symbols.
+							<a href="{{ url_for('auth.password_policy') }}" class="ms-2" target="_blank">Learn more →</a>
+						</small>
+					</div>
+				</div>
 			</div>
-			<button class="w-100 btn btn-lg btn-success" type="submit">Reset Password</button>
+			
+			<button class="w-100 btn btn-lg btn-success" type="submit" id="reset-submit-btn">Reset Password</button>
 		</form>
 		<div class="mt-3 text-center">
 			<a href="{{ url_for('auth.auth', mode='login') }}" class="text-muted">Back to Login</a>
 		</div>
+		
+		<script>
+			// NIST-compliant password validation for reset password
+			function validateResetPasswordStrength(password) {
+				if (!password) return { valid: false, message: '', strength: '' };
+				
+				const errors = [];
+				
+				// Check length (8-64 characters)
+				if (password.length < 8) {
+					errors.push("at least 8 characters");
+				} else if (password.length > 64) {
+					errors.push("no more than 64 characters");
+				}
+				
+				// Check for common passwords
+				const commonPasswords = [
+					'password', 'password123', '123456', '123456789', 'qwerty',
+					'abc123', 'password1', 'admin', 'letmein', 'welcome',
+					'monkey', 'dragon', 'football', 'passw0rd', 'Password1'
+				];
+				
+				if (commonPasswords.some(common => 
+					password.toLowerCase().includes(common.toLowerCase()))) {
+					errors.push("cannot be a commonly used password");
+				}
+				
+				// Check for excessive repetition
+				if (password.length > 0) {
+					const charCounts = {};
+					for (const char of password.toLowerCase()) {
+						charCounts[char] = (charCounts[char] || 0) + 1;
+					}
+					const maxCharRatio = Math.max(...Object.values(charCounts)) / password.length;
+					if (maxCharRatio > 0.5) {
+						errors.push("cannot have excessive character repetition");
+					}
+				}
+				
+				const valid = errors.length === 0;
+				let score = 0;
+				let strength = '';
+				
+				if (valid) {
+					// Score based on length
+					if (password.length >= 20) score = 5;
+					else if (password.length >= 15) score = 4;
+					else if (password.length >= 12) score = 3;
+					else if (password.length >= 10) score = 2;
+					else score = 1;
+					
+					// Bonus for character diversity
+					let diversityBonus = 0;
+					if (/[a-z]/.test(password)) diversityBonus++;
+					if (/[A-Z]/.test(password)) diversityBonus++;
+					if (/\d/.test(password)) diversityBonus++;
+					if (/[^a-zA-Z0-9]/.test(password)) diversityBonus++;
+					
+					score += Math.floor(diversityBonus / 2);
+					
+					if (score >= 5) strength = "Excellent";
+					else if (score >= 4) strength = "Strong";
+					else if (score >= 2) strength = "Good";
+					else strength = "Acceptable";
+				}
+				
+				return {
+					valid: valid,
+					message: valid ? `Password strength: ${strength}` : `Password must have ${errors.join(', ')}`,
+					strength: strength
+				};
+			}
+			
+			function updateResetPasswordFeedback() {
+				const password = document.getElementById('new_password').value;
+				const passwordField = document.getElementById('new_password');
+				const result = validateResetPasswordStrength(password);
+				
+				// Remove existing feedback
+				passwordField.classList.remove('is-valid', 'is-invalid');
+				let existingFeedback = passwordField.parentNode.querySelector('.password-feedback');
+				if (existingFeedback) {
+					existingFeedback.remove();
+				}
+				
+				if (password.length > 0) {
+					// Add new feedback
+					const feedbackDiv = document.createElement('div');
+					feedbackDiv.className = 'password-feedback small mt-1';
+					
+					if (result.valid) {
+						passwordField.classList.add('is-valid');
+						feedbackDiv.innerHTML = `<span class="text-success"><i class="fas fa-check"></i> ${result.message}</span>`;
+					} else {
+						passwordField.classList.add('is-invalid');
+						feedbackDiv.innerHTML = `<span class="text-danger"><i class="fas fa-times"></i> ${result.message}</span>`;
+					}
+					
+					passwordField.parentNode.appendChild(feedbackDiv);
+				}
+				
+				validateResetPasswordMatch();
+			}
+
+			// Password confirmation validation
+			function validateResetPasswordMatch() {
+				const password = document.getElementById('new_password').value;
+				const confirmPassword = document.getElementById('confirm_password').value;
+				const errorDiv = document.getElementById('password-mismatch-error-reset');
+				const confirmField = document.getElementById('confirm_password');
+				
+				if (confirmPassword && password !== confirmPassword) {
+					confirmField.classList.add('is-invalid');
+					errorDiv.style.display = 'block';
+					return false;
+				} else {
+					confirmField.classList.remove('is-invalid');
+					errorDiv.style.display = 'none';
+					return true;
+				}
+			}
+
+			// Add event listeners for real-time validation
+			document.addEventListener('DOMContentLoaded', function() {
+				const passwordField = document.getElementById('new_password');
+				const confirmPasswordField = document.getElementById('confirm_password');
+				
+				if (passwordField && confirmPasswordField) {
+					passwordField.addEventListener('input', updateResetPasswordFeedback);
+					confirmPasswordField.addEventListener('input', validateResetPasswordMatch);
+				}
+			});
+		</script>
 
 		{% elif mode == 'verify' %}
 		<h2 class="text-center mb-4">Email Verification</h2>
