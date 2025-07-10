@@ -52,7 +52,7 @@ def get_profile_photo():
 
     return jsonify({
         'user_id': user_id,
-        'photo_url': profile.photo or 'https://via.placeholder.com/150'
+        'photo_url': profile.photo or 'https://sitssd.s3.ap-southeast-1.amazonaws.com/profile_photos/default.jpg'
     }), 200
     
     
