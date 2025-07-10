@@ -17,14 +17,14 @@ fi
 if [ -z "$FLASK_SECRET_KEY" ]; then
   echo "⚠️ No FLASK_SECRET_KEY environment variable found, generating a random one"
   export FLASK_SECRET_KEY=$(openssl rand -hex 32)
-  echo "✅ Generated secret key: ${FLASK_SECRET_KEY:0:8}..."
+  echo "✅ Generated secret key (hidden for security)"
 fi
 
 # Set CSRF secret key if not set
 if [ -z "$CSRF_SECRET_KEY" ]; then
   echo "⚠️ No CSRF_SECRET_KEY environment variable found, generating a random one"
   export CSRF_SECRET_KEY=$(openssl rand -hex 32)
-  echo "✅ Generated CSRF key: ${CSRF_SECRET_KEY:0:8}..."
+  echo "✅ Generated CSRF key (hidden for security)"
 fi
 
 # Set default database password if empty
