@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# Fix file ownership if running with mounted volumes (e.g., CI/CD deployment)
+# This ensures app user can access files even when volumes are mounted from host
+if [ "$(id -u)" = "0" ]; then
+  echo "🔄 Container started as root - fixing ownership and switching to app user"
+  
+  # Fix ownership of mounted files if needed
+  if [ "$(stat -c %u /app)" != "$(id -u app)" ]; then
+    echo "🔄 Fixing /app ownership for mounted volumes"
+    chown -R app:app /app
+    echo "✅ File ownership fixed"
+  else
+    echo "✅ File ownership already correct"
+  fi
+  
+  # Switch to app user and re-execute this script
+  echo "🔄 Switching to app user for security"
+  exec su app -c "$0 $@"
+  exit $?
+else
+  echo "✅ Running as app user (UID: $(id -u))"
+fi
+
 # Load persisted environment variables if they exist
 PERSIST_FILE="/app/persistent/env.sh"
 if [ -f "${PERSIST_FILE}" ]; then

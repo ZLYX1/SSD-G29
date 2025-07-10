@@ -27,8 +27,8 @@ RUN pip install --no-cache-dir -r $REQ_FILE && \
     rm -rf /root/.cache/pip /tmp/* && \
     echo "Installed Python dependencies from $REQ_FILE"
 
-# Copy application files with proper ownership and permissions
-# Using COPY --chown to set ownership during copy for better security
+# Copy application files with proper ownership using COPY --chown
+# This ensures files are owned by app:app in the image layer
 COPY --chown=app:app app.py entrypoint.sh extensions.py db.py ./
 COPY --chown=app:app migrations/ ./migrations/
 COPY --chown=app:app config/ ./config/
@@ -45,15 +45,17 @@ COPY --chown=app:app blueprint/ ./blueprint/
 RUN mkdir -p /app/persistent && chown app:app /app/persistent
 
 # Set secure file permissions after all files are copied
-# This consolidates permission setting and ensures security
+# Files are already owned by app:app from COPY --chown directives
 RUN chmod 750 ./entrypoint.sh && \
-    find ./scripts -name "*.sh" -exec chmod 750 {} \; && \
+    find ./scripts -name "*.sh" -exec chmod 750 {} \; 2>/dev/null || true && \
     find . -type f -name "*.py" -exec chmod 644 {} \; && \
     find . -type d -not -path "./persistent*" -exec chmod 755 {} \; && \
     chmod 750 ./persistent && \
     # Additional security hardening - remove group/other write permissions
-    find . -type f -name "*.txt" -exec chmod 644 {} \; && \
-    find . -type f -name "*.md" -exec chmod 644 {} \;
+    find . -type f -name "*.txt" -exec chmod 644 {} \; 2>/dev/null || true && \
+    find . -type f -name "*.md" -exec chmod 644 {} \; 2>/dev/null || true && \
+    # Remove any group/other write permissions that might exist
+    find . -type f -exec chmod g-w,o-w {} \;
 
 # Expose port used by Flask/Gunicorn
 EXPOSE 5000
@@ -64,12 +66,13 @@ ENV FLASK_RUN_HOST=0.0.0.0
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Switch to non-root user for security
-USER app
+# Don't switch to non-root user yet - let entrypoint handle ownership first
+# The entrypoint script will fix ownership and then switch to app user
+# USER app  # ← Commented out - entrypoint will handle user switching
 
 # Health check to ensure the application is running properly
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:5000/ || exit 1
 
-# Use entrypoint script to handle environment setup and app startup
+# Use entrypoint script to handle ownership fix and app startup
 ENTRYPOINT ["./entrypoint.sh"]
