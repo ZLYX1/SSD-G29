@@ -394,6 +394,18 @@
 <script src="{{ url_for('static', filename='js/messaging.js') }}"></script>
 
 <script>
+	// Initialize SecureMessaging after encryption has loaded
+	document.addEventListener('DOMContentLoaded', function () {
+		setTimeout(() => {
+			if (window.messageEncryption) {
+				window.secureMessaging = new SecureMessaging();
+				console.log("✅ SecureMessaging initialized");
+			}
+		}, 200);
+	});
+</script>
+
+<script>
 	// Global variables for messaging
 	window.csrf_token = '{{ csrf_token }}';
 	window.currentUserId = {{ user_id }};
