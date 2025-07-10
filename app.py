@@ -203,6 +203,19 @@ csrf.init_app(app)
 # Initialize rate limiter
 limiter.init_app(app)
 
+# Rate limit error handler
+@app.errorhandler(429)
+def handle_rate_limit_exceeded(e):
+    """Handle rate limit exceeded errors with user-friendly messages"""
+    flash("Too many requests. Please wait a moment before trying again.", "warning")
+    
+    # Check if the request was for authentication
+    if request.endpoint and 'auth' in request.endpoint:
+        return redirect(url_for('auth.auth', mode='login')), 429
+    
+    # Default fallback
+    return redirect(url_for('index')), 429
+
 # Add CSRF token and environment variables to template context
 @app.context_processor
 def inject_csrf_token():

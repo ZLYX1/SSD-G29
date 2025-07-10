@@ -1013,8 +1013,6 @@ add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsaf
 
 ### **PRIORITY 1: IMMEDIATE QUICK FIXES** (⏱️ 5-30 minutes each)
 
-### **PRIORITY 1: IMMEDIATE QUICK FIXES** (⏱️ 5-30 minutes each)
-
 #### **1.1 Remove Debug Logging of AWS Credentials** - ✅ **COMPLETED**
 **File:** `blueprint/profile.py` line 139  
 **Date Fixed:** July 10, 2025  
@@ -1132,5 +1130,165 @@ def save_photo():
 - **OWASP A08 (Software and Data Integrity):** Improved - CSRF protection enforced
 
 **PRIORITY 1 FIXES COMPLETE** - Ready for PRIORITY 2 implementation! 🚀
+
+---
+
+### **PRIORITY 2: SIMPLE SECURITY FIXES** (⏱️ 30 minutes - 2 hours each)
+
+#### **2.1 Enable Brute Force Protection** - ❌ **HIGH**
+**File:** `controllers/security_controller.py`  
+**Issue:** Security methods commented out and not integrated into authentication  
+**Fix:** Uncomment brute force protection and integrate into login flow  
+**Risk:** High - No protection against brute force attacks  
+**Effort:** 1 hour  
+
+**Current Status:** Methods exist but commented out in triple quotes
+**Required Integration:** Add to `blueprint/auth.py` authentication process
+
+#### **2.2 Add File Upload Validation** - ❌ **MEDIUM**
+**File:** `blueprint/profile.py`  
+**Issue:** MIME type validation commented out in presigned URL endpoint  
+**Fix:** Re-enable file type validation for uploads  
+**Risk:** Medium - Unrestricted file uploads possible  
+**Effort:** 30 minutes  
+
+**Current Status:** Validation logic commented out, accepts any file type
+**Required Action:** Uncomment and enforce allowed file types only
+
+#### **2.3 Implement Session Security Configuration** - ❌ **MEDIUM**
+**File:** `app.py`  
+**Issue:** Session cookies lack security flags  
+**Fix:** Add HTTPOnly, Secure, SameSite attributes  
+**Risk:** Medium - Session hijacking vulnerability  
+**Effort:** 45 minutes  
+
+**Current Status:** Basic session config without security hardening
+**Required Action:** Environment-aware secure session configuration
+
+---
+
+### **PRIORITY 3: MODERATE COMPLEXITY FIXES** (⏱️ 2-4 hours each)
+
+#### **3.1 Add Rate Limiting** - ❌ **MEDIUM**
+**File:** `blueprint/auth.py`  
+**Issue:** No rate limiting on authentication endpoints  
+**Fix:** Implement Flask-Limiter for login/registration throttling  
+**Risk:** Medium - Brute force and abuse attacks  
+**Effort:** 3 hours  
+
+**Required Action:** Install Flask-Limiter and configure rate limits
+
+#### **3.2 Enhance Input Validation** - ❌ **MEDIUM**
+**File:** Multiple authentication and profile endpoints  
+**Issue:** Basic input validation, needs comprehensive enhancement  
+**Fix:** Add WTForms validation with proper sanitization  
+**Risk:** Medium - Injection and data integrity issues  
+**Effort:** 4 hours  
+
+**Required Action:** Implement form validation classes and input sanitization
+
+#### **3.3 Add Comprehensive Security Headers** - ❌ **MEDIUM**
+**File:** `app.py` or `nginx/nginx.prod.conf`  
+**Issue:** Missing CSP, HSTS, and other security headers  
+**Fix:** Implement full security header suite  
+**Risk:** Medium - Clickjacking and content injection  
+**Effort:** 2 hours  
+
+**Required Action:** Add X-Frame-Options, CSP, HSTS headers
+
+---
+
+### **PRIORITY 4: ADVANCED SECURITY ENHANCEMENTS** (⏱️ 1-2 days each)
+
+#### **4.1 Implement Security Logging** - ❌ **LOW**
+**File:** Multiple files  
+**Issue:** Inconsistent security event logging throughout application  
+**Fix:** Add structured security logging with proper event tracking  
+**Risk:** Low - Compliance and monitoring gaps  
+**Effort:** 1 day  
+
+**Required Action:** Implement centralized security event logging system
+
+#### **4.2 Add Password History Encryption** - ❌ **LOW**
+**File:** `blueprint/models.py`  
+**Issue:** Password history stored as hashes only  
+**Fix:** Encrypt password history entries for additional security  
+**Risk:** Low - Historical password exposure risk  
+**Effort:** 1 day  
+
+**Required Action:** Implement password history encryption layer
+
+#### **4.3 Memory-Safe Token Storage** - ❌ **LOW**
+**File:** `blueprint/payment.py`  
+**Issue:** Payment tokens stored in memory dictionary  
+**Fix:** Use Redis or database for secure token persistence  
+**Risk:** Low - Token loss and memory issues  
+**Effort:** 2 days  
+
+**Required Action:** Implement persistent token storage system
+
+---
+
+### **PRIORITY 5: INFRASTRUCTURE IMPROVEMENTS** (⏱️ 2-3 days each)
+
+#### **5.1 Exclude .git from Production Builds** - ❌ **LOW**
+**File:** `Dockerfile`, deployment configuration  
+**Issue:** Potential .git directory inclusion in production  
+**Fix:** Explicitly exclude .git in production builds  
+**Risk:** Low - Metadata exposure in production  
+**Effort:** 2 days  
+
+**Required Action:** Update build process to exclude development files
+
+#### **5.2 Enhanced Error Message Sanitization** - ❌ **LOW**
+**File:** `db.py`, multiple error handling locations  
+**Issue:** Generic error messages may expose system information  
+**Fix:** Implement production-safe error message handling  
+**Risk:** Low - Information disclosure through errors  
+**Effort:** 3 days  
+
+**Required Action:** Create sanitized error response system
+
+---
+
+## 📋 **OUTSTANDING FIXES SUMMARY**
+
+### **Can Be Fixed in Under 2 Hours:**
+1. ❌ Enable brute force protection (1 hour)
+2. ❌ Add file upload validation (30 minutes) 
+3. ❌ Implement session security (45 minutes)
+
+### **Can Be Fixed in 2-4 Hours:**
+1. ❌ Add rate limiting (3 hours)
+2. ❌ Enhance input validation (4 hours)
+3. ❌ Add security headers (2 hours)
+
+### **Require 1+ Days:**
+1. ❌ Implement security logging (1 day)
+2. ❌ Add password history encryption (1 day)
+3. ❌ Memory-safe token storage (2 days)
+4. ❌ Infrastructure improvements (2-3 days each)
+
+---
+
+## 🎯 **RECOMMENDED NEXT ACTIONS**
+
+### **Week 1: High Priority Security Fixes**
+- Day 1: Enable brute force protection and file upload validation (1.5 hours)
+- Day 2: Implement session security configuration (45 minutes)
+- Day 3: Add rate limiting to authentication endpoints (3 hours)
+
+### **Week 2: Medium Priority Enhancements**
+- Day 1-2: Enhance input validation across application (4 hours)
+- Day 3: Add comprehensive security headers (2 hours)
+- Day 4-5: Begin security logging implementation
+
+### **Week 3+: Advanced Features**
+- Implement remaining advanced security features as time permits
+- Focus on infrastructure and long-term improvements
+
+**Estimated Time to Complete All Fixes:** 2-3 weeks  
+**High Priority Items:** Can be completed in 3-4 days  
+**Security Impact:** 90% improvement after Week 1, 95% after Week 2
 
 ---

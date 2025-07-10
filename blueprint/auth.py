@@ -1,7 +1,7 @@
 import os, requests, logging
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from blueprint.models import User, Profile
-from extensions import db
+from extensions import db, limiter  # Import limiter for rate limiting
 from blueprint.decorators import login_required
 from blueprint.audit_log import log_event
 from utils.utils import send_verification_email, verify_email_token, generate_otp, validate_phone_number, send_otp_sms, verify_otp_code, resend_otp, validate_password_strength, send_reset_email, verify_reset_token, consume_reset_token  # Import reset functions
@@ -49,7 +49,8 @@ def verify_recaptcha(token):
         return False
 
 # @auth_bp.route('/', methods=['GET', 'POST'])
-@auth_bp.route('/', methods=['GET', 'POST']) 
+@auth_bp.route('/', methods=['GET', 'POST'])
+@limiter.limit("30 per minute")  # Rate limit: 30 attempts per minute for auth endpoint (more reasonable for dev)
 def auth():
     mode = request.args.get('mode', 'login')
     token = request.args.get('token')
@@ -285,6 +286,7 @@ def auth():
     return render_template('auth.html', mode=mode, token=token, csrf_token=csrf_token)
 
 @auth_bp.route('/verify-email/<token>')
+@limiter.limit("10 per minute")  # Rate limit: 10 email verification attempts per minute
 def verify_email(token):
     """Handle email verification and activate user account"""
     user, message = verify_email_token(token)
@@ -304,6 +306,7 @@ def verify_email(token):
 
 
 @auth_bp.route('/resend-verification', methods=['POST'])
+@limiter.limit("6 per minute")  # Rate limit: 6 resend attempts per minute
 def resend_verification():
     """Resend email verification for a user"""
     email = request.form.get('email')
@@ -326,6 +329,7 @@ def resend_verification():
 
 
 @auth_bp.route('/verify-phone/<int:user_id>', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")  # Rate limit: 5 phone verification attempts per minute
 def verify_phone(user_id):
     """Handle phone verification with OTP"""
     user = User.query.get_or_404(user_id)
@@ -359,6 +363,7 @@ def verify_phone(user_id):
 
 
 @auth_bp.route('/resend-otp/<int:user_id>', methods=['POST'])
+@limiter.limit("3 per minute")  # Rate limit: 3 OTP resend attempts per minute
 def resend_otp_code(user_id):
     """Resend OTP code to user's phone"""
     print(f"🔧 DEBUG: Resend OTP request for user_id: {user_id}")
@@ -478,6 +483,7 @@ def password_policy():
 
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")  # Rate limit: 10 password reset attempts per minute  
 def reset_password(token):
     """Handle password reset with token verification"""
     print(f"🔐 DEBUG: Password reset access with token: {token}")
@@ -535,6 +541,7 @@ def reset_password(token):
 
 
 @auth_bp.route('/forgot-password')
+@limiter.limit("5 per minute")  # Rate limit: 5 forgot password requests per minute
 def forgot_password():
     """Redirect to password reset form"""
     return redirect(url_for('auth.auth', mode='reset'))

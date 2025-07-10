@@ -1,11 +1,20 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import boto3
 import os
 from flask_wtf import CSRFProtect
 
 db = SQLAlchemy()
 csrf = CSRFProtect()
+
+# Initialize rate limiter
+limiter = Limiter(
+    key_func=get_remote_address,  # Rate limit by IP address
+    default_limits=[],  # No default limits - only apply to specific endpoints
+    storage_uri="memory://"  # Use memory storage for development (Redis for production)
+)
 
 # AWS S3 configuration (optional for development)
 s3 = None
