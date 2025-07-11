@@ -10,9 +10,6 @@ import logging
 
 
 
-
-
-
 logger = logging.getLogger(__name__)
 
 class PaymentController:
@@ -72,17 +69,9 @@ class PaymentController:
 
 	@staticmethod
 	def mark_token_used():
-		# if token in PaymentController.payment_tokens:
-			# PaymentController.payment_tokens[token]['used'] = True
 		if 'payment_token' in session:
 			session['payment_token']['used'] = True
             
-##
-	# @staticmethod
-	# def get_amount_due(booking):
-	#     duration_minutes = int((booking.end_time - booking.start_time).total_seconds() / 60)
-	#     rate_per_minute = 2.0
-	#     return duration_minutes * rate_per_minute
 
 	@staticmethod
 	def authorize_booking_payment(user_id, booking_id):
@@ -131,6 +120,10 @@ class PaymentController:
 	@staticmethod
 	def create_payment(user_id, booking,booking_id, amount_due,token):
 		transaction_id = str(uuid4())
+		print(user_id)
+		print(booking_id)
+		print(amount_due)
+		print(token)
 		new_payment = Payment(
 			user_id=user_id,
 			amount=amount_due,
@@ -141,7 +134,7 @@ class PaymentController:
 		try:
 			db.session.add(new_payment)
 			booking.status = 'Confirmed'
-			PaymentController.mark_token_used(token)
+			PaymentController.mark_token_used()
 			db.session.commit()
 			logger.info(f"Payment successful for booking {booking_id} by user {user_id}. TXN: {transaction_id}")
 			return transaction_id
