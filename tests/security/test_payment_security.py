@@ -10,8 +10,7 @@ from blueprint.models import Message
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from app import app as flask_app
-# from blueprint.payment import generate_payment_token, mark_token_used
-from blueprint.controller.payment_controller import PaymentController
+from blueprint.payment import generate_payment_token, mark_token_used
 from blueprint.models import Booking, User
 from extensions import db
 
