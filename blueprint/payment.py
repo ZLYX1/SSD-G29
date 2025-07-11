@@ -16,9 +16,6 @@ from blueprint.controller.payment_controller import PaymentController
 payment_bp = Blueprint('payment', __name__, url_prefix='/payment')
 logger = logging.getLogger(__name__)
 
-payment_tokens = {}
-TOKEN_EXPIRY_SECONDS = 300
-
 @payment_bp.route('/initiate/<int:booking_id>', methods=['GET'])
 @login_required
 def initiate_payment(booking_id):
@@ -40,14 +37,22 @@ def payment_page():
 	if not user_id:
 		return jsonify({'error': 'Not logged in'}), 401
 
-	token = request.form.get('token') if request.method == 'POST' else request.args.get('token')
+	# token = request.form.get('token') if request.method == 'POST' else request.args.get('token')
 
-	if not PaymentController.validate_payment_token(token, user_id):
-		logger.warning(f"User {user_id} attempted to use invalid/expired token: {token}")
-		abort(403, description="Invalid or expired payment token")
+	# if not PaymentController.validate_payment_token(user_id):
+	# 	logger.warning(f"User {user_id} attempted to use invalid/expired token: {token}")
+	# 	abort(403, description="Invalid or expired payment token")
 
 	# booking_id = payment_tokens[token]['booking_id']
-	booking_id = PaymentController.payment_tokens[token]['booking_id']
+	# booking_id = PaymentController.payment_tokens[token]['booking_id']
+	token_data = PaymentController.validate_payment_token(user_id)
+	if not token_data:
+		logger.warning(f"User {user_id} attempted to use invalid/expired token")
+		abort(403, description="Invalid or expired payment token")
+
+	token = token_data['token']
+	booking_id = token_data['booking_id']
+
 	booking = Booking.query.get_or_404(booking_id)
 	escort = User.query.get_or_404(booking.escort_id)
 
