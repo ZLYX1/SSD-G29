@@ -38,7 +38,6 @@ class PaymentController:
             'used': False
         }
 		logger.info(f"Payment token issued for booking {booking_id} by user {user_id}.")
-		logger.info(f"Payment token issued for booking {booking_id} by user {user_id}.")
 		return token
 
 	@staticmethod
